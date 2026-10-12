@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, errorText, getMe } from "@/lib/api";
+import { api, clearMeCache, errorText, getMe } from "@/lib/api";
 import { useYodo } from "@/lib/yodo-store";
 import loginImg from "@/assets/login-ballet.jpg";
 import { PinLogin, markSignedOut } from "@/components/yodo/Pin";
@@ -41,7 +41,7 @@ function AuthPage() {
     api<{ googleClientId: string }>("/auth/options").then((r) => setGoogleId(r.googleClientId)).catch(() => null);
   }, [navigate]);
 
-  const signedIn = async () => { markSignedOut(); await reload(); navigate({ to: "/", replace: true }); };
+  const signedIn = async () => { markSignedOut(); clearMeCache(); await reload(); navigate({ to: "/", replace: true }); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

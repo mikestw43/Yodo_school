@@ -89,3 +89,18 @@ export interface Me {
   image: string; positionId: string; positionName: string; role: string; superadmin: boolean; name: string; lang: "th" | "en";
 }
 export const getMe = () => api<Me>("/me");
+
+// The signed-in check before every page used to ask the server on each click (owner 12/10/2026: slow over the NAS
+// link). Now the last answer is used at once and refreshed in the background; a lost session still goes to sign-in.
+let meCache: Me | null = null;
+export const clearMeCache = () => { meCache = null; };
+export async function getMeCached(): Promise<Me> {
+  if (meCache) {
+    getMe().then((m) => { meCache = m; }).catch((e) => {
+      if (e instanceof ApiError && e.status === 401) { meCache = null; window.location.assign("/auth"); }
+    });
+    return meCache;
+  }
+  meCache = await getMe();
+  return meCache;
+}

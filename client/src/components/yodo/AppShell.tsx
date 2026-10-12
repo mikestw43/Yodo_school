@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarHeart, ChevronDown, Crown, FileUp, History, LogOut, Menu, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog } from "lucide-react";
-import { api, getMe } from "@/lib/api";
+import { api, clearMeCache, getMe } from "@/lib/api";
 import { ROLE_LABEL } from "@/lib/auth-utils";
 import { Avatar, EmptyState } from "@/components/yodo/ui";
 import { useYodo, type MenuKey } from "@/lib/yodo-store";
@@ -56,6 +56,7 @@ export function useSignOut() {
   const { clear } = useYodo();
   return async () => {
     try { await api("/auth/logout", { body: {} }); } catch { /* signed out anyway */ }
+    clearMeCache();
     await qc.cancelQueries();
     qc.clear();
     clear();

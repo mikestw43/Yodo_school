@@ -1,3 +1,4 @@
+import compression from 'compression';
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,6 +18,8 @@ export function createApp() {
   const app = express();
   app.set('trust proxy', 'loopback, linklocal, uniquelocal'); // nginx / Tailscale / DSM reverse proxy
   app.disable('x-powered-by');
+  // Smaller downloads over the internet (Tailscale Funnel): scripts, styles and data are sent gzipped (owner 12/10/2026: slow).
+  app.use(compression());
   app.use((_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'same-origin');

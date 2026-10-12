@@ -122,6 +122,12 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
     name TH/EN, address, phone, email, 13-digit tax ID, branch, logo (empty = YODO), receiver's signature (optional),
     stored in `Setting`. Dashboard money card for `money` 'view'.
 
+- 12/10/2026 speed (owner: clicks felt slow/stuck over the internet): every page change waited for `GET /me` (route
+  `beforeLoad`) and the first visit of each page waited for its own script file. Now `getMeCached()` (lib/api.ts) answers
+  from the last result and refreshes in the background (401 -> /auth; cleared on sign-in/out), the client is one bundle
+  (`autoCodeSplitting: false`, ~280 KB gzipped, cached forever) and the server gzips responses (`compression`).
+  Measured on a simulated 150 ms / 5 Mbit link: opening a student 1.5 s -> 0.4 s, /data 34 KB -> 4 KB.
+
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
   - `routes/auth.ts` first-run setup code (`DATA_DIR/setup-code.txt`), login (username or profile email), me, password.

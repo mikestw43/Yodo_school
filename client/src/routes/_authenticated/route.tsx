@@ -1,12 +1,12 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { ApiError, getMe } from "@/lib/api";
+import { ApiError, getMeCached } from "@/lib/api";
 import { AutoLock } from "@/components/yodo/Pin";
 import { useSignOut } from "@/components/yodo/AppShell";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     try {
-      return { user: await getMe() };
+      return { user: await getMeCached() };
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) throw redirect({ to: "/auth" });
       throw e;
