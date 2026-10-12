@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { Student } from "@/lib/yodo-store";
 import { ageDetail, displayDate, terms } from "@/lib/student-print";
-import { L, fd, opt, prefixed } from "@/lib/i18n";
+import { L, fd, opt, prefixed, optOr, splitList } from "@/lib/i18n";
 import logoUrlRaw from "@/assets/yodo-logo.png";
 const logo = { url: logoUrlRaw };
 
@@ -106,14 +106,14 @@ export function StudentDocument({ student, signMode = false, canvasRefs, onDirty
         <table className="ydoc-table"><tbody>
           <tr><th>{L("ชื่อ", "First name")}</th><td>{prefixed(student.prefix, student.firstName)}</td><th>{L("นามสกุล", "Last name")}</th><td>{student.lastName}</td><th>{L("ชื่อเล่น", "Nickname")}</th><td>{student.nickname}</td></tr>
           <tr><th>{L("วันเกิด", "Date of birth")}</th><td>{displayDate(student.dob)}</td><th>{L("อายุ", "Age")}</th><td colSpan={3}>{ageDetail(student.dob)}</td></tr>
-          <tr><th>{L("เชื้อชาติ", "Ethnicity")}</th><td></td><th>{L("สัญชาติ", "Nationality")}</th><td>{nationality}</td><th>{L("ศาสนา", "Religion")}</th><td>{student.religion ? opt(student.religion) : ""}</td></tr>
+          <tr><th>{L("เชื้อชาติ", "Ethnicity")}</th><td>{optOr(student.ethnicity, student.ethnicityOther)}</td><th>{L("สัญชาติ", "Nationality")}</th><td>{nationality}</td><th>{L("ศาสนา", "Religion")}</th><td>{optOr(student.religion, student.religionOther)}</td></tr>
           <tr><th>{L("ที่อยู่", "Address")}</th><td colSpan={5}>{student.address}</td></tr>
           <tr><th>{L("เบอร์โทร", "Phone")}</th><td>{student.phone}</td><th>E-mail</th><td>{student.email}</td><th>Line ID</th><td>{student.lineId}</td></tr>
           <tr><th>{L("ผู้ติดต่อฉุกเฉิน", "Emergency contact")}</th><td colSpan={2}>{student.emergencyName}</td><th>{L("เบอร์โทร", "Phone")}</th><td colSpan={2}>{student.emergencyPhone}</td></tr>
           <tr><th>{L("มีความสัมพันธ์เป็น", "Relationship")}</th><td colSpan={5}>{student.relationship}</td></tr>
-          <tr><th>{L("คลาสเต้นที่สนใจ", "Interested dance classes")}</th><td colSpan={5}>{student.interested.join(", ")}</td></tr>
+          <tr><th>{L("คลาสเต้นที่สนใจ", "Interested dance classes")}</th><td colSpan={5}>{student.interested.map(opt).join(", ")}</td></tr>
           <tr><th>{L("เคยเรียนเต้นมาก่อนหรือไม่", "Danced before?")}</th><td colSpan={2}>{student.hasExperience ? L("เคย", "Yes") : L("ไม่เคย", "No")}</td><th>{L("หากเคย โปรดระบุ", "If yes, please specify")}</th><td colSpan={2}>{student.hasExperience ? student.experienceDetail : ""}</td></tr>
-          <tr><th>{L("รู้จัก Y.O.D.O. จากช่องทางไหน", "How did you hear about Y.O.D.O.?")}</th><td colSpan={2}>{student.source ? opt(student.source) : ""}</td><th>{L("อื่นๆ โปรดระบุ", "Other, please specify")}</th><td colSpan={2}>{student.source === "Other" ? student.sourceOther : ""}</td></tr>
+          <tr><th>{L("รู้จัก Y.O.D.O. จากช่องทางไหน", "How did you hear about Y.O.D.O.?")}</th><td colSpan={2}>{splitList(student.source).map(opt).join(", ")}</td><th>{L("อื่นๆ โปรดระบุ", "Other, please specify")}</th><td colSpan={2}>{splitList(student.source).includes("Other") ? student.sourceOther : ""}</td></tr>
         </tbody></table>
         <SignatureBlock key={resetKey} showOld={showOld} student={student} signMode={signMode} canvasRef={canvasRefs?.[1]} onDirty={() => onDirty?.(1)} />
       </section>

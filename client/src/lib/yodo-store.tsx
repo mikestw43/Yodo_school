@@ -8,7 +8,8 @@ import { L, prefixed, setLang } from "@/lib/i18n";
 export const PREFIXES = ["ด.ญ.", "ด.ช.", "นาย", "นางสาว", "นาง"] as const;
 export const TEACHER_PREFIXES = ["นาย", "นาง", "นางสาว"] as const;
 export const NATIONALITIES = ["ไทย", "Singaporean", "Other"] as const;
-export const RELIGIONS = ["พุทธ", "คริสต์", "อิสลาม"] as const;
+export const RELIGIONS = ["พุทธ", "คริสต์", "อิสลาม", "Other"] as const;
+export const ETHNICITIES = ["ไทย", "จีน", "Other"] as const;
 export const DANCE_TYPES = ["Ballet", "Jazz", "Contemporary", "Kpop", "HipHop", "Acting", "Singing"] as const;
 export const SOURCES = ["Facebook", "Instagram", "TikTok", "Friends", "Other"] as const;
 
@@ -25,6 +26,9 @@ export interface Student {
   nationality: string;
   nationalityOther: string;
   religion: string;
+  religionOther: string;
+  ethnicity: string;
+  ethnicityOther: string;
   address: string;
   phone: string;
   email: string;

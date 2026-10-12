@@ -319,7 +319,7 @@ export function ImageUpload({ value, onChange, shape = "circle" }: { value: stri
   );
 }
 
-export function ChipSelect({ options, value, onChange }: { options: readonly string[]; value: string[]; onChange: (v: string[]) => void }) {
+export function ChipSelect({ options, value, onChange, label = (o) => o }: { options: readonly string[]; value: string[]; onChange: (v: string[]) => void; label?: (o: string) => string }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((o) => {
@@ -334,7 +334,7 @@ export function ChipSelect({ options, value, onChange }: { options: readonly str
               on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:border-primary/50",
             )}
           >
-            {o}
+            {label(o)}
           </button>
         );
       })}

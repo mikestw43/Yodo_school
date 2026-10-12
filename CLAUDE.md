@@ -51,6 +51,15 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   Home Screen / unsupported), my devices with last reached time and remove, "Send a test". App-icon number = unread
   count sent with each push (sw.js setAppBadge) and set by the bell when the app is open.
 
+- 12/10/2026 student form (mockup RXeGPUbEKAFFQYRbCdWc3A, "ทำได้เลย"): prefixes ด.ช./ด.ญ./นาย/นาง/นางสาว;
+  nationality (ไทย, Singaporean, Other + typed), NEW ethnicity (`Student.ethnicity`/`ethnicityOther`: ไทย, จีน, Other
+  + typed), religion (พุทธ, คริสต์, อิสลาม, Other + typed `religionOther`); interested classes = the fixed list
+  `DANCE_TYPES` (Ballet, Jazz, Contemporary, Kpop, HipHop shown "Hip Hop", Acting, Singing), several, plus "Other"
+  with typed classes kept as extra items in `interested` (no longer taken from the class list); experience "yes"
+  shows a "Please specify" box; how did you hear = several choices stored joined ", " in `source` (+ `sourceOther`
+  when Other). Import also fills in a missing photo/signature for students already there (Lovable JSON export
+  with image/signature; owner was given the Lovable prompt).
+
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
   - `routes/auth.ts` first-run setup code (`DATA_DIR/setup-code.txt`), login (username or profile email), me, password.

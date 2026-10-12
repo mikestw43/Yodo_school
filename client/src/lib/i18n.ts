@@ -61,10 +61,17 @@ const OPTIONS: Record<string, [string, string]> = {
   "ด.ญ.": ["ด.ญ.", "Miss"], "ด.ช.": ["ด.ช.", "Master"], "นาย": ["นาย", "Mr."], "นางสาว": ["นางสาว", "Ms."], "นาง": ["นาง", "Mrs."],
   "ไทย": ["ไทย", "Thai"], "Singaporean": ["สิงคโปร์", "Singaporean"], "Other": ["อื่นๆ", "Other"],
   "พุทธ": ["พุทธ", "Buddhist"], "คริสต์": ["คริสต์", "Christian"], "อิสลาม": ["อิสลาม", "Islam"],
-  "Friends": ["เพื่อนแนะนำ", "Friends"],
+  "Friends": ["เพื่อนแนะนำ", "Friends"], "จีน": ["จีน", "Chinese"], "HipHop": ["Hip Hop", "Hip Hop"],
   "Active": ["ใช้งาน", "Active"], "Disabled": ["ปิดใช้งาน", "Disabled"], "Inactive": ["ไม่เปิดสอน", "Inactive"],
 };
 /** Label of a stored choice (prefix, nationality, religion, source, status). Unknown values are shown as typed. */
 export const opt = (v: string) => { const o = OPTIONS[v]; return o ? (current === "en" ? o[1] : o[0]) : v; };
 /** English prefixes are followed by a space ("Ms. Mali"), Thai ones are not ("นางสาวมะลิ"). */
 export const prefixed = (prefix: string, first: string) => { if (!prefix) return first; const p = opt(prefix); return current === "en" && p !== prefix ? `${p} ${first}` : `${p}${first}`; };
+
+/** "Facebook, Friends" <-> ["Facebook", "Friends"] (the "how did you hear about us" choices). */
+export const splitList = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
+/** A choice shown with its typed text when it is "Other". */
+export const optOr = (v: string, other: string) => (v === "Other" ? other || opt(v) : v ? opt(v) : "");
+/** How did you hear about us, for showing: the choices, with "Other" replaced by what was typed. */
+export const sourceText = (source: string, other: string) => splitList(source).map((x) => optOr(x, other)).join(", ");

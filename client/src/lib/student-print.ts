@@ -1,6 +1,6 @@
 import { format, parseISO, isValid } from "date-fns";
 import type { Student } from "@/lib/yodo-store";
-import { L, fd, getLang, opt, prefixed } from "@/lib/i18n";
+import { L, fd, getLang, opt, prefixed, optOr, splitList } from "@/lib/i18n";
 import logoUrlRaw from "@/assets/yodo-logo.png";
 const logo = { url: logoUrlRaw };
 
@@ -68,7 +68,7 @@ export function printStudentDocument(student: Student): boolean {
   const image = student.image && (/^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(student.image) || /^https?:\/\//i.test(student.image))
     ? `<img class="student-photo" src="${escapeHtml(student.image)}" alt="${escapeHtml(L("รูปนักเรียน", "Student photo"))}" />`
     : `<div class="student-photo empty-photo"></div>`;
-  const interests = student.interested.join(", ");
+  const interests = student.interested.map(opt).join(", ");
   const nationality = student.nationality === "Other" ? student.nationalityOther : opt(student.nationality);
 
   popup.document.open();
@@ -106,14 +106,14 @@ ${image}
 <table><colgroup>${Array.from({ length: 12 }, () => "<col/>").join("")}</colgroup><tbody>
 <tr>${cell(L("ชื่อ", "First name"), prefixed(student.prefix, student.firstName))}${cell(L("นามสกุล", "Last name"), student.lastName)}${cell(L("ชื่อเล่น", "Nickname"), student.nickname)}</tr>
 <tr>${cell(L("วันเกิด", "Date of birth"), displayDate(student.dob))}${cell(L("อายุ", "Age"), ageDetail(student.dob), 2, 6)}</tr>
-<tr>${cell(L("เชื้อชาติ", "Ethnicity"), "")}${cell(L("สัญชาติ", "Nationality"), nationality)}${cell(L("ศาสนา", "Religion"), student.religion ? opt(student.religion) : "")}</tr>
+<tr>${cell(L("เชื้อชาติ", "Ethnicity"), optOr(student.ethnicity, student.ethnicityOther))}${cell(L("สัญชาติ", "Nationality"), nationality)}${cell(L("ศาสนา", "Religion"), optOr(student.religion, student.religionOther))}</tr>
 <tr>${cell(L("ที่อยู่", "Address"), student.address, 2, 10)}</tr>
 <tr>${cell(L("เบอร์โทร", "Phone"), student.phone)}${cell("E-mail", student.email)}${cell("Line ID", student.lineId)}</tr>
 <tr>${cell(L("ผู้ติดต่อฉุกเฉิน", "Emergency contact"), student.emergencyName, 3, 3)}${cell(L("เบอร์โทร", "Phone"), student.emergencyPhone, 2, 4)}</tr>
 <tr>${cell(L("มีความสัมพันธ์เป็น", "Relationship"), student.relationship, 3, 9)}</tr>
 <tr>${cell(L("คลาสเต้นที่สนใจ", "Interested dance classes"), interests, 3, 9)}</tr>
 <tr>${cell(L("เคยเรียนเต้นมาก่อนหรือไม่", "Danced before?"), student.hasExperience ? L("เคย", "Yes") : L("ไม่เคย", "No"), 4, 2)}${cell(L("หากเคย โปรดระบุ", "If yes, please specify"), student.hasExperience ? student.experienceDetail : "", 3, 3)}</tr>
-<tr>${cell(L("รู้จัก Y.O.D.O. จากช่องทางไหน", "How did you hear about Y.O.D.O.?"), student.source ? opt(student.source) : "", 4, 2)}${cell(L("อื่นๆ โปรดระบุ", "Other, please specify"), student.source === "Other" ? student.sourceOther : "", 3, 3)}</tr>
+<tr>${cell(L("รู้จัก Y.O.D.O. จากช่องทางไหน", "How did you hear about Y.O.D.O.?"), splitList(student.source).map(opt).join(", "), 4, 2)}${cell(L("อื่นๆ โปรดระบุ", "Other, please specify"), splitList(student.source).includes("Other") ? student.sourceOther : "", 3, 3)}</tr>
 </tbody></table>${signature(today, student.signature)}</section>
 <script>
   window.addEventListener('load', async () => {

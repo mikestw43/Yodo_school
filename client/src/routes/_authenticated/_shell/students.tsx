@@ -15,11 +15,11 @@ import { Avatar, ChipSelect, ConfirmDialog, DateField, EmptyState, Field, ImageU
 import { printReceipt } from "@/lib/receipt-print";
 import { StudentDocument, useSignCanvases } from "@/components/yodo/student-document";
 import {
-  NATIONALITIES, PREFIXES, RELIGIONS, SOURCES, ageText, fullName, nextStudentCode, useYodo,
+  DANCE_TYPES, ETHNICITIES, NATIONALITIES, PREFIXES, RELIGIONS, SOURCES, ageText, fullName, nextStudentCode, useYodo,
   type Enrollment, type EnrollmentInput, type Student, type StudentInput,
 } from "@/lib/yodo-store";
 import { printStudentDocument } from "@/lib/student-print";
-import { L, fd, opt } from "@/lib/i18n";
+import { L, fd, opt, optOr, sourceText, splitList } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/_shell/students")({
   head: () => ({
@@ -47,6 +47,9 @@ const schema = () => {
     nationality: z.string().min(1, L("กรุณาเลือกสัญชาติ", "Please choose a nationality")),
     nationalityOther: z.string().trim().max(50),
     religion: z.string().min(1, L("กรุณาเลือกศาสนา", "Please choose a religion")),
+    religionOther: z.string().trim().max(100),
+    ethnicity: z.string(),
+    ethnicityOther: z.string().trim().max(100),
     address: z.string().trim().max(500),
     phone,
     email: z.string().trim().min(1, L("กรุณากรอกอีเมล", "Please enter an email")).email(L("รูปแบบอีเมลไม่ถูกต้อง", "Invalid email address")).max(255),
@@ -63,12 +66,15 @@ const schema = () => {
   })
   .superRefine((v, ctx) => {
     if (v.nationality === "Other" && !v.nationalityOther) ctx.addIssue({ code: "custom", path: ["nationalityOther"], message: L("กรุณาระบุสัญชาติ", "Please specify the nationality") });
-    if (v.source === "Other" && !v.sourceOther) ctx.addIssue({ code: "custom", path: ["sourceOther"], message: L("กรุณาระบุช่องทาง", "Please specify how you heard about us") });
+    if (v.religion === "Other" && !v.religionOther) ctx.addIssue({ code: "custom", path: ["religionOther"], message: L("กรุณาระบุศาสนา", "Please specify the religion") });
+    if (v.ethnicity === "Other" && !v.ethnicityOther) ctx.addIssue({ code: "custom", path: ["ethnicityOther"], message: L("กรุณาระบุเชื้อชาติ", "Please specify the ethnicity") });
+    if (splitList(v.source).includes("Other") && !v.sourceOther) ctx.addIssue({ code: "custom", path: ["sourceOther"], message: L("กรุณาระบุช่องทาง", "Please specify how you heard about us") });
   });
 };
 
 const empty: StudentInput = {
-  prefix: "", firstName: "", lastName: "", nickname: "", dob: "", nationality: "ไทย", nationalityOther: "", religion: "",
+  prefix: "", firstName: "", lastName: "", nickname: "", dob: "", nationality: "ไทย", nationalityOther: "", religion: "", religionOther: "",
+  ethnicity: "", ethnicityOther: "",
   address: "", phone: "", email: "", lineId: "", emergencyName: "", emergencyPhone: "", relationship: "", image: "",
   interested: [], hasExperience: false, experienceDetail: "", source: "", sourceOther: "",
 };
@@ -220,37 +226,29 @@ function StudentsPage() {
   );
 }
 
-// จับคู่ค่าที่นำเข้าจาก Excel (เช่น "Ballet") เข้ากับชื่อคลาสจริง (เช่น "Ballet Foundation")
-function mapInterested(values: string[], classNames: string[]): string[] {
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9ก-๙]+/g, " ").trim();
-  const out: string[] = [];
-  for (const v of values) {
-    const nv = norm(v);
-    const hit = classNames.find((c) => norm(c) === nv) ?? classNames.find((c) => { const nc = norm(c); return nc.includes(nv) || nv.includes(nc); });
-    const mapped = hit ?? v;
-    if (!out.includes(mapped)) out.push(mapped);
-  }
-  return out;
-}
-
 function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (o: boolean) => void; editing: Student | null }) {
   const { data, addStudent, updateStudent } = useYodo();
-  const classNames = data.classes.filter((c) => !c.disabled && c.status === "Active").map((c) => c.name);
   const [f, setF] = useState<StudentInput>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof StudentInput, string>>>({});
   const [lastOpen, setLastOpen] = useState(false);
+  // Interested classes: the fixed list, plus anything typed under "Other" (kept as extra items in the same list).
+  const [otherOn, setOtherOn] = useState(false);
+  const [otherText, setOtherText] = useState("");
   if (open !== lastOpen) {
     setLastOpen(open);
     if (open) {
       setErrors({});
       if (editing) {
         const { id: _i, code: _c, status: _s, createdAt: _d, ...rest } = editing;
-        setF({ ...rest, interested: mapInterested(rest.interested, classNames) });
-      } else setF(empty);
+        const typed = rest.interested.filter((x) => !(DANCE_TYPES as readonly string[]).includes(x));
+        setF({ ...rest });
+        setOtherOn(typed.length > 0); setOtherText(typed.join(", "));
+      } else { setF(empty); setOtherOn(false); setOtherText(""); }
     }
   }
   const set = <K extends keyof StudentInput>(k: K, v: StudentInput[K]) => setF((p) => ({ ...p, [k]: v }));
   const age = f.dob ? ageText(f.dob) : null;
+  const setInterested = (fixed: string[], typed: string) => set("interested", [...fixed, ...splitList(typed).filter((x) => !fixed.includes(x))]);
 
   const submit = () => {
     const r = schema().safeParse(f);
@@ -302,7 +300,19 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
             </NativeSelect>
           </Field>
           {f.nationality === "Other" ? (
-            <Field label={L("ระบุสัญชาติ", "Specify nationality")} required error={errors.nationalityOther} className="sm:col-span-2"><Input value={f.nationalityOther} onChange={(e) => set("nationalityOther", e.target.value)} /></Field>
+            <Field label={L("ระบุสัญชาติ", "Specify nationality")} required error={errors.nationalityOther}><Input value={f.nationalityOther} onChange={(e) => set("nationalityOther", e.target.value)} /></Field>
+          ) : null}
+          {f.religion === "Other" ? (
+            <Field label={L("ระบุศาสนา", "Specify religion")} required error={errors.religionOther}><Input value={f.religionOther} onChange={(e) => set("religionOther", e.target.value)} /></Field>
+          ) : null}
+          <Field label={L("เชื้อชาติ", "Ethnicity")} error={errors.ethnicity}>
+            <NativeSelect value={f.ethnicity} onValueChange={(value) => set("ethnicity", value)}>
+              <option value="">{L("เลือกเชื้อชาติ", "Choose an ethnicity")}</option>
+              {ETHNICITIES.map((n) => <option key={n} value={n}>{opt(n)}</option>)}
+            </NativeSelect>
+          </Field>
+          {f.ethnicity === "Other" ? (
+            <Field label={L("ระบุเชื้อชาติ", "Specify ethnicity")} required error={errors.ethnicityOther}><Input value={f.ethnicityOther} onChange={(e) => set("ethnicityOther", e.target.value)} /></Field>
           ) : null}
           <Field label={L("เบอร์โทร", "Phone Number")} required error={errors.phone}><Input inputMode="numeric" value={f.phone} placeholder="0812345678" onChange={(e) => set("phone", onlyDigits10(e.target.value))} /></Field>
           <Field label={L("อีเมล", "Email")} required error={errors.email}><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
@@ -315,23 +325,29 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
           <Field label={L("ความสัมพันธ์", "Relationship")} required error={errors.relationship} className="sm:col-span-2"><Input value={f.relationship} placeholder={L("เช่น แม่, พ่อ", "e.g. Mother, Father")} onChange={(e) => set("relationship", e.target.value)} /></Field>
 
           <SectionTitle>{L("ข้อมูลเพิ่มเติม", "Additional Information")}</SectionTitle>
-           <Field label={L("คลาสที่สนใจ", "Interested Classes")} className="sm:col-span-2">
-             {classNames.length ? <ChipSelect options={classNames} value={f.interested} onChange={(v) => set("interested", v)} /> : <p className="text-sm text-muted-foreground">{L("ยังไม่มีคลาสที่เปิดอยู่", "No open classes yet")}</p>}
+           <Field label={L("คลาสที่สนใจ (เลือกได้หลายอัน)", "Interested Classes (choose any)")} className="sm:col-span-2">
+             <ChipSelect options={[...DANCE_TYPES, "Other"]} label={(o) => (o === "Other" ? L("อื่นๆ", "Other") : opt(o))}
+               value={[...f.interested.filter((x) => (DANCE_TYPES as readonly string[]).includes(x)), ...(otherOn ? ["Other"] : [])]}
+               onChange={(v) => { setOtherOn(v.includes("Other")); setInterested(v.filter((x) => x !== "Other"), v.includes("Other") ? otherText : ""); }} />
+             {otherOn && <Input className="mt-2" placeholder={L("พิมพ์คลาสอื่นที่สนใจ (คั่นด้วย ,)", "Type other classes (separate with ,)")} value={otherText}
+               onChange={(e) => { setOtherText(e.target.value); setInterested(f.interested.filter((x) => (DANCE_TYPES as readonly string[]).includes(x)), e.target.value); }} />}
            </Field>
           <Field label={L("ประสบการณ์เรียนเต้น", "Previous Dance Experience")} className="sm:col-span-2">
             <div className="flex gap-4 text-sm">
               <label className="flex items-center gap-2"><input type="radio" className="accent-primary" checked={!f.hasExperience} onChange={() => set("hasExperience", false)} /> {L("ไม่มี", "None")}</label>
               <label className="flex items-center gap-2"><input type="radio" className="accent-primary" checked={f.hasExperience} onChange={() => set("hasExperience", true)} /> {L("มีประสบการณ์", "Has experience")}</label>
             </div>
-            {f.hasExperience && <Textarea rows={2} className="mt-2" placeholder={L("รายละเอียด เช่น เคยเรียน Ballet 2 ปี", "Details, e.g. 2 years of ballet")} value={f.experienceDetail} onChange={(e) => set("experienceDetail", e.target.value)} />}
+            {f.hasExperience && (
+              <div className="mt-2 space-y-1.5">
+                <p className="text-sm font-medium">Please specify</p>
+                <Textarea rows={2} placeholder={L("เช่น เคยเรียน Ballet 2 ปี", "e.g. 2 years of ballet")} value={f.experienceDetail} onChange={(e) => set("experienceDetail", e.target.value)} />
+              </div>
+            )}
           </Field>
-          <Field label={L("รู้จักเราจากช่องทางไหน", "How did you hear about us?")} className="sm:col-span-2">
-            <NativeSelect value={f.source} onValueChange={(value) => set("source", value)}>
-              <option value="">{L("เลือก", "Choose")}</option>
-              {SOURCES.map((n) => <option key={n} value={n}>{opt(n)}</option>)}
-            </NativeSelect>
+          <Field label={L("รู้จักเราจากช่องทางไหน (เลือกได้หลายอัน)", "How did you hear about us? (choose any)")} className="sm:col-span-2">
+            <ChipSelect options={SOURCES} label={opt} value={splitList(f.source)} onChange={(v) => set("source", SOURCES.filter((x) => v.includes(x)).join(", "))} />
           </Field>
-          {f.source === "Other" && <Field label={L("ระบุช่องทาง", "Specify")} required error={errors.sourceOther} className="sm:col-span-2"><Input value={f.sourceOther} onChange={(e) => set("sourceOther", e.target.value)} /></Field>}
+          {splitList(f.source).includes("Other") && <Field label={L("ระบุช่องทาง", "Specify")} required error={errors.sourceOther} className="sm:col-span-2"><Input value={f.sourceOther} onChange={(e) => set("sourceOther", e.target.value)} /></Field>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{L("ยกเลิก", "Cancel")}</Button>
@@ -379,7 +395,8 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
               <Info label={L("วันเกิด", "Date of birth")} value={s.dob ? fd(s.dob) : ""} />
               <Info label={L("อายุ", "Age")} value={ageText(s.dob)} />
               <Info label={L("สัญชาติ", "Nationality")} value={s.nationality === "Other" ? s.nationalityOther : opt(s.nationality)} />
-              <Info label={L("ศาสนา", "Religion")} value={s.religion ? opt(s.religion) : ""} />
+              <Info label={L("ศาสนา", "Religion")} value={optOr(s.religion, s.religionOther)} />
+              <Info label={L("เชื้อชาติ", "Ethnicity")} value={optOr(s.ethnicity, s.ethnicityOther)} />
               <Info label={L("เบอร์โทร", "Phone")} value={s.phone} />
               <Info label={L("อีเมล", "Email")} value={s.email} />
               <Info label="Line ID" value={s.lineId} />
@@ -389,9 +406,9 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
               <Info label={L("ผู้ติดต่อฉุกเฉิน", "Emergency contact")} value={s.emergencyName} />
               <Info label={L("เบอร์ฉุกเฉิน", "Emergency phone")} value={s.emergencyPhone} />
               <Info label={L("ความสัมพันธ์", "Relationship")} value={s.relationship} />
-              <Info label={L("คลาสที่สนใจ", "Interested classes")} value={s.interested.join(", ")} />
+              <Info label={L("คลาสที่สนใจ", "Interested classes")} value={s.interested.map(opt).join(", ")} />
               <Info label={L("ประสบการณ์", "Experience")} value={s.hasExperience ? L(`มี — ${s.experienceDetail || ""}`, `Yes — ${s.experienceDetail || ""}`) : L("ไม่มี", "None")} />
-              <Info label={L("รู้จักจาก", "Heard about us from")} value={s.source === "Other" ? s.sourceOther : s.source ? opt(s.source) : ""} />
+              <Info label={L("รู้จักจาก", "Heard about us from")} value={sourceText(s.source, s.sourceOther)} />
             </div>
             <div>
               <p className="mb-2 text-sm font-semibold">{L(`คลาสที่ลงทะเบียน (${classes.length})`, `Enrolled classes (${classes.length})`)}</p>

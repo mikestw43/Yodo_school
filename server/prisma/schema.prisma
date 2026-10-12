@@ -98,6 +98,9 @@ model Student {
   nationality      String    @default("")
   nationalityOther String    @default("")
   religion         String    @default("")
+  religionOther    String    @default("") // typed when religion is "Other"
+  ethnicity        String    @default("") // เชื้อชาติ (added 12/10/2026)
+  ethnicityOther   String    @default("") // typed when ethnicity is "Other"
   address          String    @default("")
   phone            String    @default("")
   email            String    @default("")
@@ -109,7 +112,7 @@ model Student {
   interested       String    @default("[]")
   hasExperience    Boolean   @default(false)
   experienceDetail String    @default("")
-  source           String    @default("")
+  source           String    @default("") // one or more, joined with ", " (e.g. "Facebook, Friends")
   sourceOther      String    @default("")
   status           String    @default("Active")
   signature        String    @default("")

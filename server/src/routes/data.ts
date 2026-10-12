@@ -20,7 +20,8 @@ const iso = (d: Date) => d.toISOString();
 
 export const studentOut = (s: Student) => ({
   id: s.id, code: s.code, prefix: s.prefix, firstName: s.firstName, lastName: s.lastName, nickname: s.nickname, dob: s.dob,
-  nationality: s.nationality, nationalityOther: s.nationalityOther, religion: s.religion, address: s.address, phone: s.phone,
+  nationality: s.nationality, nationalityOther: s.nationalityOther, religion: s.religion, religionOther: s.religionOther,
+  ethnicity: s.ethnicity, ethnicityOther: s.ethnicityOther, address: s.address, phone: s.phone,
   email: s.email, lineId: s.lineId, emergencyName: s.emergencyName, emergencyPhone: s.emergencyPhone, relationship: s.relationship,
   image: s.image, interested: list(s.interested), hasExperience: s.hasExperience, experienceDetail: s.experienceDetail,
   source: s.source, sourceOther: s.sourceOther, status: s.status, createdAt: iso(s.createdAt), signature: s.signature, signedAt: s.signedAt,
@@ -103,9 +104,10 @@ export function nextStudentCode(codes: string[]) {
 // ---------- students ----------
 export const studentBody = z.object({
   prefix: text(30), firstName: text(100).min(1), lastName: text(100), nickname: text(100), dob: date,
-  nationality: text(60), nationalityOther: text(100), religion: text(60), address: text(1000), phone: text(20), email: text(255),
+  nationality: text(60), nationalityOther: text(100), religion: text(60), religionOther: text(100).default(''),
+  ethnicity: text(60).default(''), ethnicityOther: text(100).default(''), address: text(1000), phone: text(20), email: text(255),
   lineId: text(100), emergencyName: text(200), emergencyPhone: text(20), relationship: text(100), image: img,
-  interested: z.array(text(60)).max(30), hasExperience: z.boolean(), experienceDetail: text(1000), source: text(60), sourceOther: text(200),
+  interested: z.array(text(60)).max(30), hasExperience: z.boolean(), experienceDetail: text(1000), source: text(300), sourceOther: text(200),
 });
 const studentData = (b: z.infer<typeof studentBody>) => ({ ...b, image: storeImage(b.image), interested: JSON.stringify(b.interested) });
 

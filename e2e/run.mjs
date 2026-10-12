@@ -241,6 +241,26 @@ try {
   await pp.waitForTimeout(500);
   await pp.screenshot({ path: `${SHOTS}/p9-menu.png` });
 
+  // ---------- student form (owner 12/10/2026) ----------
+  await page.goto(BASE + '/students');
+  await page.getByRole('button', { name: 'เพิ่มนักเรียน' }).first().click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByText('คลาสที่สนใจ (เลือกได้หลายอัน)').waitFor();
+  for (const c of ['Ballet', 'Hip Hop']) await dlg.getByRole('button', { name: c, exact: true }).click();
+  await dlg.getByRole('button', { name: 'อื่นๆ', exact: true }).first().click();
+  await dlg.getByPlaceholder('พิมพ์คลาสอื่นที่สนใจ (คั่นด้วย ,)').waitFor().then(() => check('interested: "Other" opens a box to type', true), () => check('interested: "Other" opens a box to type', false));
+  await dlg.getByPlaceholder('พิมพ์คลาสอื่นที่สนใจ (คั่นด้วย ,)').fill('Tap dance');
+  await dlg.getByText('มีประสบการณ์').click();
+  await dlg.getByText('Please specify').waitFor().then(() => check('experience: "yes" shows Please specify', true), () => check('experience: "yes" shows Please specify', false));
+  await dlg.getByRole('button', { name: 'Facebook', exact: true }).click();
+  await dlg.getByRole('button', { name: 'เพื่อนแนะนำ', exact: true }).click();
+  await dlg.getByRole('button', { name: 'อื่นๆ', exact: true }).last().click();
+  await dlg.getByText('ระบุช่องทาง').waitFor().then(() => check('how did you hear: several choices + Other box', true), () => check('how did you hear: several choices + Other box', false));
+  check('ethnicity field is on the form', (await dlg.getByText('เชื้อชาติ', { exact: true }).count()) > 0);
+  await dlg.getByText('คลาสที่สนใจ (เลือกได้หลายอัน)').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${SHOTS}/24-student-form.png` });
+  await page.keyboard.press('Escape');
+
   // ---------- notification settings and bell (owner 12/10/2026) ----------
   await page.goto(BASE + '/settings');
   await page.getByText('เรื่องที่อยากรับ').waitFor();

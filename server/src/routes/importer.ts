@@ -117,7 +117,8 @@ router.post('/import/students', requireAuth, express.text({ type: '*/*', limit: 
     const created = when(r.createdAt);
     const s = await prisma.student.create({ data: {
       ...(rid ? { id: rid } : {}), code, firstName, prefix: str(r.prefix), lastName: str(r.lastName), nickname: str(r.nickname), dob: day(r.dob),
-      nationality: str(r.nationality), nationalityOther: str(r.nationalityOther), religion: str(r.religion), address: str(r.address),
+      nationality: str(r.nationality), nationalityOther: str(r.nationalityOther), religion: str(r.religion), religionOther: str(r.religionOther),
+      ethnicity: str(r.ethnicity), ethnicityOther: str(r.ethnicityOther), address: str(r.address),
       phone: str(r.phone), email: str(r.email), lineId: str(r.lineId), emergencyName: str(r.emergencyName), emergencyPhone: str(r.emergencyPhone),
       relationship: str(r.relationship), image: picture(r.image), interested: JSON.stringify(arr(r.interested)), hasExperience: bool(r.hasExperience),
       experienceDetail: str(r.experienceDetail), source: str(r.source), sourceOther: str(r.sourceOther),
