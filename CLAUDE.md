@@ -115,6 +115,7 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
     its receipts and can take a new payment.
   - Receipt numbers RC + YYMM + "-" + 4 digits from the receipt date, restart monthly, never skipped (`@@unique([ym, seq])`);
     never deleted, only cancelled (`/receipts/:id/cancel`, reason, kept, struck through, not counted). No VAT (owner).
+    (Changed 12/10/2026: this month's newest receipt may be edited or deleted, see below.)
   - Receipt document `receiptHtml()` in lib/receipt-print.ts (A4, company details, amount in Thai/English words), shown in
     the app by `ReceiptHost` (components/yodo/receipt.tsx, `openReceipt(id)`, iframe scaled to fit phones) with its own
     TH/EN switch (owner: "ใบเสร็จขอ Eng"), print and cancel. Receipts page `/receipts` (month arrows, total, count,
@@ -159,6 +160,15 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   soon + list in the class panel, dashboard card "courses ending within n days". Expiry bell notices open /courses.
   Money in the history only for receipts or money 'view'. The old "Edit enrollment" window only fixes dates/remark or
   removes from the class (no payment there now).
+- 12/10/2026 (mockup RsAi2pW17acWGcTG5oKwRc; owner: "ของเดือนที่แล้วก็ลบไม่ได้, ที่เหลือโอเค, Admin owner ทำได้"): the NEWEST
+  receipt of the CURRENT month (no receipt after it, not cancelled; `isNewest` in routes/receipts.ts, `editable` from
+  `GET /receipts/:id`) can be edited (`PUT /receipts/:id`: per-line price + discount %/baht, method, date within the same
+  month, payer, remark, slip; courses and their dates stay, delete and buy again for that) or deleted
+  (`POST /receipts/:id/delete`: its courses are taken back, a class joined with that receipt is left again
+  (`removePurchases`), its number goes to the next receipt). Last month's and older receipts: cancel only. The newest one
+  shows Edit / Delete instead of Cancel. Right = receipts 'edit' (permissions chip "แก้ไข/ลบใบล่าสุด"): Admin on (once,
+  key `once:receipts-edit-admin`), Owner/SuperAdmin always, Partner off until the Owner ticks it.
+  Class panel (phones had no way back): a Back button over the cover (`class-back`).
 - 12/10/2026 speed (owner: clicks felt slow/stuck over the internet): every page change waited for `GET /me` (route
   `beforeLoad`) and the first visit of each page waited for its own script file. Now `getMeCached()` (lib/api.ts) answers
   from the last result and refreshes in the background (401 -> /auth; cleared on sign-in/out), the client is one bundle

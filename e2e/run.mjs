@@ -598,14 +598,53 @@ try {
   await page.goto(BASE + '/receipts');
   await page.getByTestId('receipt-total').filter({ hasText: '13,000.00' }).waitFor({ timeout: 5000 }).then(() => check('receipts page: the month total', true), () => check('receipts page: the month total', false));
   await page.screenshot({ path: `${SHOTS}/39-receipts.png`, fullPage: true });
+  // this month's newest receipt: edit (owner 12/10/2026)
   await page.getByTestId('receipt-table').locator('tbody tr').first().click();
+  await rv.getByTestId('receipt-edit').waitFor({ timeout: 5000 }).then(() => check('the newest receipt can be edited and deleted (no cancel button)', true), () => check('the newest receipt can be edited and deleted (no cancel button)', false));
+  check('no cancel button on the newest receipt', (await rv.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).count()) === 0);
+  await rv.getByTestId('receipt-edit').click();
+  const edd = page.getByTestId('receipt-edit-dialog');
+  await edd.getByTestId('edit-discount').first().fill('20');
+  await edd.getByTestId('edit-remark').fill('แก้ส่วนลดเป็น 20%');
+  check('edit: the total follows the new discount', (await edd.getByTestId('edit-total').innerText()) === '12,000.00');
+  await page.screenshot({ path: `${SHOTS}/45-receipt-edit.png` });
+  await edd.getByRole('button', { name: 'บันทึก', exact: true }).click();
+  await edd.waitFor({ state: 'detached' });
+  await page.waitForTimeout(600);
+  {
+    const t = await page.frameLocator('[data-testid="receipt-frame"]').locator('body').innerText();
+    check('edited receipt keeps its number and shows the new amount and remark', /RC\d{4}-0001/.test(t) && t.includes('12,000.00') && t.includes('แก้ส่วนลดเป็น 20%') && t.includes('ส่วนลด 20%'));
+  }
+  await rv.getByRole('button', { name: 'กลับ' }).click();
+  // a second receipt: the first one is no longer the newest (cancel only), the second can be deleted
+  {
+    const jc = (await (await page.request.get(`${BASE}/api/data`)).json()).classes.find((c) => c.name === 'Jazz Course');
+    await post('/courses/buy', { studentId: s1.id, lines: [{ classId: jc.id, startDate: today, expiryDate: plus(90), price: 4500, discountType: 'baht', discountValue: 0 }], pay: { date: today, method: 'cash', slip: '', payer: '', remark: '' } });
+  }
+  await page.reload();
+  await page.getByTestId('receipt-total').filter({ hasText: '16,500.00' }).waitFor({ timeout: 5000 });
+  await page.getByTestId('receipt-table').locator('tbody tr').filter({ hasText: '-0001' }).click();
   await rv.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
   await page.getByRole('dialog', { name: 'ยกเลิกใบเสร็จนี้?' }).getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
   await page.waitForTimeout(800);
+  check('an older receipt has no edit/delete, only cancel', (await rv.getByTestId('receipt-edit').count()) === 0);
   check('a cancelled receipt shows CANCELLED/ยกเลิก', (await page.frameLocator('[data-testid="receipt-frame"]').locator('.void').count()) === 1);
   await rv.getByRole('button', { name: 'กลับ' }).click();
-  await page.getByTestId('receipt-total').filter({ hasText: '0.00' }).waitFor({ timeout: 5000 }).then(() => check('a cancelled receipt is not counted', true), () => check('a cancelled receipt is not counted', false));
+  await page.getByTestId('receipt-total').filter({ hasText: '4,500.00' }).waitFor({ timeout: 5000 }).then(() => check('a cancelled receipt is not counted', true), () => check('a cancelled receipt is not counted', false));
   check('the cancelled receipt stays in the list, struck through', (await page.getByTestId('receipt-table').locator('tbody tr.line-through').count()) === 1);
+  await page.getByTestId('receipt-table').locator('tbody tr').filter({ hasText: '-0002' }).click();
+  await rv.getByTestId('receipt-delete').click();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${SHOTS}/46-receipt-delete.png` });
+  await page.getByRole('button', { name: 'ลบใบเสร็จ', exact: true }).click();
+  await rv.waitFor({ state: 'detached', timeout: 5000 });
+  await page.getByTestId('receipt-total').filter({ hasText: '0.00' }).waitFor({ timeout: 5000 }).then(() => check('deleting the newest receipt removes it', true), () => check('deleting the newest receipt removes it', false));
+  {
+    const d4 = await (await page.request.get(`${BASE}/api/data`)).json();
+    check('its course is taken back', !d4.enrollments.some((e) => e.studentId === s1.id && d4.classes.find((c) => c.id === e.classId)?.name === 'Jazz Course'));
+    const again = await post('/courses/buy', { studentId: s1.id, lines: [{ classId: d4.classes.find((c) => c.name === 'Jazz Course').id, startDate: today, expiryDate: plus(90), price: 4500, discountType: 'baht', discountValue: 0 }], pay: { date: today, method: 'cash', slip: '', payer: '', remark: '' } });
+    check('the deleted number is used again', /-0002$/.test(again.receipt.no), again.receipt.no);
+  }
   await page.goto(BASE + '/');
   await page.getByTestId('money-card').waitFor({ timeout: 5000 }).then(() => check('dashboard shows the month\'s money to those allowed', true), () => check('dashboard shows the month\'s money to those allowed', false));
   await page.screenshot({ path: `${SHOTS}/40-dashboard-money.png` });

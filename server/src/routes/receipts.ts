@@ -7,7 +7,7 @@ import { can, requireAuth, requirePerm } from '../lib/auth.js';
 import { audit } from '../lib/audit.js';
 import { storeImage } from '../lib/images.js';
 import { isDate, todayBkk } from '../lib/dates.js';
-import { cancelPurchases, purchaseOut } from './courses.js';
+import { cancelPurchases, discountOf, purchaseOut, removePurchases } from './courses.js';
 
 // Receipts for class purchases and the company details printed on them (owner 12/10/2026).
 export const router = Router();
@@ -73,7 +73,7 @@ router.get('/receipts/:id', requirePerm('receipts', 'view'), async (req, res) =>
   const [student, setting] = await Promise.all([prisma.student.findUnique({ where: { id: r.studentId } }), prisma.setting.findUnique({ where: { id: 1 } })]);
   const lines = await prisma.coursePurchase.findMany({ where: { receiptId: r.id }, orderBy: { createdAt: 'asc' } });
   res.json({
-    receipt: receiptOut(r, lines), company: companyOut(setting),
+    receipt: receiptOut(r, lines), company: companyOut(setting), editable: await isNewest(r),
     student: student ? { code: student.code, prefix: student.prefix, firstName: student.firstName, lastName: student.lastName } : null,
   });
 });
@@ -86,6 +86,13 @@ export async function nextReceiptNo(db: Prisma.TransactionClient, date: string) 
   const last = await db.receipt.findFirst({ where: { ym }, orderBy: { seq: 'desc' } });
   const seq = (last?.seq ?? 0) + 1;
   return { ym, seq, no: `RC${ym}-${String(seq).padStart(4, '0')}` };
+}
+
+/** Only the newest receipt of THIS month can be edited or deleted (no receipt after it yet; owner 12/10/2026:
+ *  last month's are final). Older ones can only be cancelled. */
+async function isNewest(r: Receipt, db: Prisma.TransactionClient = prisma) {
+  if (r.cancelledAt || r.ym !== ymOf(todayBkk())) return false;
+  return !(await db.receipt.findFirst({ where: { ym: r.ym, seq: { gt: r.seq } } }));
 }
 
 // Receipts are made by POST /courses/buy (one receipt, one or more courses; routes/courses.ts).
@@ -102,4 +109,48 @@ router.post('/receipts/:id/cancel', requirePerm('receipts', 'delete'), async (re
   });
   await audit(req, 'update', 'receipts', after.id, after.no, before, after);
   res.json(receiptOut(after));
+});
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+// Edit the newest receipt: money, how it was paid, the date within the same month, payer, remark, slip.
+// The courses and their dates stay; to change those, delete the receipt and buy again.
+router.put('/receipts/:id', requirePerm('receipts', 'edit'), async (req, res) => {
+  const before = await prisma.receipt.findUnique({ where: { id: id.parse(req.params.id) } });
+  if (!before) throw notFound();
+  const b = z.object({
+    date: z.string().refine(isDate, 'date_format'), method: z.enum(['cash', 'transfer', 'card']), slip: z.string().max(12_000_000).default(''),
+    payer: text(200).default(''), remark: text(500).default(''),
+    lines: z.array(z.object({ id, price: z.number().min(0).max(10_000_000), discountType: z.enum(['baht', 'pct']), discountValue: z.number().min(0).max(10_000_000) })).min(1),
+  }).parse(req.body);
+  if (ymOf(b.date) !== before.ym) throw bad('receipt_same_month');
+  const lines = await prisma.coursePurchase.findMany({ where: { receiptId: before.id }, orderBy: { createdAt: 'asc' } });
+  if (lines.length !== b.lines.length || !b.lines.every((l) => lines.some((p) => p.id === l.id))) throw bad('receipt_lines');
+  const money = b.lines.map((l) => { const discount = discountOf(l.price, l.discountType, l.discountValue); return { ...l, discount, amount: round2(l.price - discount) }; });
+  const slip = b.method === 'transfer' ? storeImage(b.slip) : '';
+  const after = await prisma.$transaction(async (db) => {
+    const now = await db.receipt.findUnique({ where: { id: before.id } });
+    if (!now || !(await isNewest(now, db))) throw bad('receipt_not_newest');
+    for (const m of money) await db.coursePurchase.update({ where: { id: m.id }, data: { price: m.price, discountType: m.discountType, discountValue: m.discountValue, discount: m.discount, amount: m.amount, date: b.date } });
+    return db.receipt.update({ where: { id: before.id }, data: {
+      date: b.date, method: b.method, slip, payer: b.payer, remark: b.remark,
+      price: round2(money.reduce((t, m) => t + m.price, 0)), discount: round2(money.reduce((t, m) => t + m.discount, 0)), amount: round2(money.reduce((t, m) => t + m.amount, 0)),
+    } });
+  });
+  await audit(req, 'update', 'receipts', after.id, after.no, before, after);
+  res.json(receiptOut(after));
+});
+
+// Delete the newest receipt: its number is free for the next one, its courses are taken back.
+router.post('/receipts/:id/delete', requirePerm('receipts', 'edit'), async (req, res) => {
+  const before = await prisma.receipt.findUnique({ where: { id: id.parse(req.params.id) } });
+  if (!before) throw notFound();
+  await prisma.$transaction(async (db) => {
+    const now = await db.receipt.findUnique({ where: { id: before.id } });
+    if (!now || !(await isNewest(now, db))) throw bad('receipt_not_newest');
+    await removePurchases(db, before.id);
+    await db.receipt.delete({ where: { id: before.id } });
+  });
+  await audit(req, 'delete', 'receipts', before.id, before.no, before, null);
+  res.json({ ok: true });
 });

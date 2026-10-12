@@ -17,7 +17,7 @@ const DEFAULTS: { kind: 'partner' | 'admin'; name: string; description: string; 
     kind: 'admin', name: 'Admin', description: 'แอดมินหน้าร้าน',
     perms: {
       dashboard: { view: true }, students: { view: true, add: true, edit: true }, classes: { view: true }, teachers: { view: true },
-      calendar: { view: true, add: true, edit: true }, receipts: { view: true, add: true }, courses: { view: true },
+      calendar: { view: true, add: true, edit: true }, receipts: { view: true, add: true, edit: true }, courses: { view: true },
     },
   },
 ];
@@ -44,5 +44,17 @@ export async function ensureRoles() {
     for (const [menuKey, f] of Object.entries(d.perms)) {
       await prisma.positionPermission.create({ data: { positionId: p.id, menuKey, canView: !!f.view, canAdd: !!f.add, canEdit: !!f.edit, canDelete: !!f.delete } });
     }
+  }
+  // Once (owner 12/10/2026): Admin may edit / delete this month's newest receipt (receipts 'edit').
+  if (!(await prisma.noticeKey.findUnique({ where: { key: 'once:receipts-edit-admin' } }))) {
+    const admin = await prisma.position.findFirst({ where: { kind: 'admin' } });
+    if (admin) {
+      await prisma.positionPermission.upsert({
+        where: { positionId_menuKey: { positionId: admin.id, menuKey: 'receipts' } },
+        create: { positionId: admin.id, menuKey: 'receipts', canView: true, canEdit: true },
+        update: { canEdit: true },
+      });
+    }
+    await prisma.noticeKey.create({ data: { key: 'once:receipts-edit-admin' } });
   }
 }

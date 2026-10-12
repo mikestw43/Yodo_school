@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Ban, ChevronLeft, Printer } from "lucide-react";
+import { Ban, ChevronLeft, Pencil, Printer, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,9 +8,12 @@ import { Input } from "@/components/ui/input";
 import { api, errorText } from "@/lib/api";
 import { L, useLang, type Lang } from "@/lib/i18n";
 import { useYodo, type Receipt } from "@/lib/yodo-store";
-import { printReceipt, receiptHtml, type Company, type ReceiptStudent } from "@/lib/receipt-print";
+import { methodLabel, money, printReceipt, receiptHtml, type Company, type ReceiptStudent } from "@/lib/receipt-print";
+import { DateField, Field, ReceiptUpload } from "@/components/yodo/ui";
+import { Textarea } from "@/components/ui/textarea";
+import { fd, getLang } from "@/lib/i18n";
 
-type Full = { receipt: Receipt; company: Company; student: ReceiptStudent };
+type Full = { receipt: Receipt; company: Company; student: ReceiptStudent; editable?: boolean };
 
 // One receipt viewer for the whole app: any page calls openReceipt(id) (after closing its own window, so nothing
 // underneath blocks scrolling) and <ReceiptHost/> in the shell shows it full screen.
@@ -32,8 +35,10 @@ export function useReceiptOpen() {
 const A4_W = 794, A4_H = 1123;
 
 export function ReceiptHost() {
-  const { can } = useYodo();
+  const { can, reload } = useYodo();
   const appLang = useLang();
+  const [editOpen, setEditOpen] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
   const [id, setId] = useState<string | null>(null);
   const [full, setFull] = useState<Full | null>(null);
   const [lang, setLang] = useState<Lang>(appLang);
@@ -70,6 +75,18 @@ export function ReceiptHost() {
     } catch (e) { toast.error(errorText(e)); }
   };
 
+  // This month's newest receipt can be edited or deleted (owner 12/10/2026); older ones only cancelled.
+  const canChange = !!full?.editable && can("receipts", "edit");
+  const del = async () => {
+    if (!full) return;
+    try {
+      await api(`/receipts/${full.receipt.id}/delete`, { body: {} });
+      toast.success(L(`ลบใบเสร็จ ${full.receipt.no} แล้ว`, `Receipt ${full.receipt.no} deleted`));
+      setDelOpen(false); setId(null);
+      window.dispatchEvent(new Event(RECEIPTS_CHANGED));
+      void reload();
+    } catch (e) { toast.error(errorText(e)); }
+  };
   return (
     <>
       <Dialog open={!!id} onOpenChange={(o) => { if (!o) setId(null); }}>
@@ -89,7 +106,9 @@ export function ReceiptHost() {
                     className={`h-8 min-w-10 rounded-full px-2 transition-colors ${lang === x ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted"}`}>{x.toUpperCase()}</button>
                 ))}
               </div>
-              {full && can("receipts", "delete") && !full.receipt.cancelled && (
+              {canChange && <Button variant="outline" className="rounded-full" onClick={() => setEditOpen(true)} data-testid="receipt-edit"><Pencil className="h-4 w-4" /> {L("แก้ไข", "Edit")}</Button>}
+              {canChange && <Button variant="outline" className="rounded-full text-destructive hover:text-destructive" onClick={() => setDelOpen(true)} data-testid="receipt-delete"><Trash2 className="h-4 w-4" /> {L("ลบ", "Delete")}</Button>}
+              {full && can("receipts", "delete") && !full.receipt.cancelled && !canChange && (
                 <Button variant="outline" className="rounded-full text-destructive hover:text-destructive" onClick={() => setCancelOpen(true)}><Ban className="h-4 w-4" /> {L("ยกเลิกใบเสร็จ", "Cancel receipt")}</Button>
               )}
               <Button className="rounded-full" disabled={!full} onClick={() => { if (full && !printReceipt({ ...full, lang })) toast.error(L("กรุณาอนุญาตหน้าต่างใหม่เพื่อพิมพ์", "Please allow pop-up windows to print")); }}>
@@ -107,6 +126,26 @@ export function ReceiptHost() {
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </Dialog>
+      <Dialog open={delOpen} onOpenChange={setDelOpen}>
+        <DialogContent className="max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>{L(`ลบใบเสร็จ ${full?.receipt.no ?? ""}?`, `Delete receipt ${full?.receipt.no ?? ""}?`)}</DialogTitle>
+            <DialogDescription asChild>
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                <li>{L("ใบเสร็จนี้หายไปจากรายการ และไม่นับยอด", "The receipt leaves the list and is not counted")}</li>
+                <li>{L(`คอร์สในใบนี้ (${(full?.receipt.lines ?? []).map((l) => l.item).join(", ")}) ถูกเอาออก วันหมดอายุกลับไปเหมือนก่อนซื้อ`, `Its courses (${(full?.receipt.lines ?? []).map((l) => l.item).join(", ")}) are taken back to before they were bought`)}</li>
+                <li>{L(`เลข ${full?.receipt.no ?? ""} จะใช้กับใบเสร็จใบถัดไป`, `Number ${full?.receipt.no ?? ""} goes to the next receipt`)}</li>
+                <li>{L("เก็บไว้ในประวัติการแก้ไขว่าใครลบ เมื่อไหร่", "The audit log keeps who deleted it and when")}</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDelOpen(false)}>{L("ไม่ลบ", "Keep it")}</Button>
+            <Button variant="destructive" className="rounded-full" onClick={del}>{L("ลบใบเสร็จ", "Delete receipt")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {full && editOpen && <EditReceipt full={full} onClose={() => setEditOpen(false)} onSaved={async () => { setEditOpen(false); window.dispatchEvent(new Event(RECEIPTS_CHANGED)); await load(full.receipt.id); void reload(); }} />}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent className="max-w-md rounded-3xl">
           <DialogHeader>
@@ -121,5 +160,95 @@ export function ReceiptHost() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+type EditLine = { id: string; item: string; startDate: string; expiryDate: string; price: string; discountType: "baht" | "pct"; discountValue: string };
+const r2 = (n: number) => Math.round(n * 100) / 100;
+const lineAmount = (l: EditLine) => {
+  const price = Number(l.price) || 0, v = Number(l.discountValue) || 0;
+  const discount = l.discountType === "pct" ? r2((price * v) / 100) : r2(v);
+  return { amount: r2(price - discount), bad: l.discountType === "pct" ? v > 100 : v > price };
+};
+
+/** Edit this month's newest receipt (mockup RsAi2pW17acWGcTG5oKwRc board 2): money, method, date in the same month,
+ *  payer, remark, slip. The courses and their dates stay (delete and buy again for that). */
+function EditReceipt({ full, onClose, onSaved }: { full: Full; onClose: () => void; onSaved: () => Promise<void> }) {
+  const r = full.receipt;
+  const [lines, setLines] = useState<EditLine[]>(() => (r.lines ?? []).map((l) => ({
+    id: l.id, item: l.item, startDate: l.startDate, expiryDate: l.expiryDate, price: String(l.price ?? 0),
+    discountType: l.discountType ?? "baht", discountValue: l.discountValue ? String(l.discountValue) : "",
+  })));
+  const [date, setDate] = useState(r.date);
+  const [method, setMethod] = useState(r.method);
+  const [payer, setPayer] = useState(r.payer);
+  const [remark, setRemark] = useState(r.remark);
+  const [slip, setSlip] = useState(r.slip);
+  const [busy, setBusy] = useState(false);
+  const month = r.date.slice(0, 7);
+  const monthEnd = (() => { const [y, m] = month.split("-").map(Number); return new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10); })();
+  const total = lines.reduce((t, l) => t + lineAmount(l).amount, 0);
+  const set = (id: string, patch: Partial<EditLine>) => setLines((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  const save = async () => {
+    if (lines.some((l) => lineAmount(l).bad)) return void toast.error(L("ส่วนลดมากกว่าราคา", "The discount is more than the price"));
+    if (!date.startsWith(month)) return void toast.error(L("วันที่รับเงินต้องอยู่ในเดือนเดิมของใบเสร็จ", "The payment date must stay in the receipt's month"));
+    setBusy(true);
+    try {
+      await api(`/receipts/${r.id}`, { method: "PUT", body: {
+        date, method, slip: method === "transfer" ? slip : "", payer: payer.trim(), remark: remark.trim(),
+        lines: lines.map((l) => ({ id: l.id, price: Number(l.price) || 0, discountType: l.discountType, discountValue: Number(l.discountValue) || 0 })),
+      } });
+      toast.success(L("บันทึกใบเสร็จแล้ว", "Receipt saved"));
+      await onSaved();
+    } catch (e) { toast.error(errorText(e)); }
+    setBusy(false);
+  };
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o && !busy) onClose(); }}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl" data-testid="receipt-edit-dialog">
+        <DialogHeader>
+          <DialogTitle>{L(`แก้ไขใบเสร็จ ${r.no}`, `Edit receipt ${r.no}`)}</DialogTitle>
+          <DialogDescription>{L("เลขที่เดิม ไม่เปลี่ยน", "The number stays the same")}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          {lines.map((l) => (
+            <div key={l.id} className="flex flex-wrap items-end gap-2 rounded-2xl border border-border/70 bg-background p-3" data-testid="edit-line">
+              <div className="w-full min-w-0 sm:w-auto sm:flex-1"><p className="font-semibold">{l.item}</p><p className="text-xs text-muted-foreground">{fd(l.startDate)} – {fd(l.expiryDate)}</p></div>
+              <Field label={L("ราคา", "Price")} className="w-28"><Input type="number" min={0} inputMode="decimal" value={l.price} onChange={(e) => set(l.id, { price: e.target.value })} /></Field>
+              <Field label={L("ส่วนลด", "Discount")} className="w-40">
+                <div className="flex gap-1">
+                  <Input type="number" min={0} inputMode="decimal" placeholder="0" value={l.discountValue} onChange={(e) => set(l.id, { discountValue: e.target.value })} className="min-w-0" data-testid="edit-discount" />
+                  <div className="flex shrink-0 overflow-hidden rounded-lg border border-border text-xs font-bold" role="group" aria-label={L("ส่วนลดเป็น", "Discount in")}>
+                    {(["pct", "baht"] as const).map((t) => (
+                      <button key={t} type="button" aria-pressed={l.discountType === t} onClick={() => set(l.id, { discountType: t })}
+                        className={`px-2.5 ${l.discountType === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>{t === "pct" ? "%" : L("บาท", "THB")}</button>
+                    ))}
+                  </div>
+                </div>
+              </Field>
+              <p className="ml-auto pb-2 text-sm font-semibold">{money(lineAmount(l).amount)}</p>
+            </div>
+          ))}
+          <p className="text-xs text-muted-foreground">{L("แก้ราคาและส่วนลดได้ · จะเปลี่ยนคอร์สหรือวันที่เรียน ให้ลบใบนี้แล้วซื้อใหม่", "Price and discount can change · to change a course or its dates, delete this receipt and buy again")}</p>
+          <p className="text-right text-lg font-bold text-primary">{L("ยอดชำระ", "Total")} <span data-testid="edit-total">{money(total)}</span> {L("บาท", "THB")}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(["cash", "transfer", "card"] as const).map((x) => (
+            <button key={x} type="button" onClick={() => setMethod(x)} aria-pressed={method === x}
+              className={`h-9 rounded-full px-4 text-sm transition-colors ${method === x ? "bg-primary text-primary-foreground" : "border border-border bg-background hover:bg-muted"}`}>{methodLabel(x, getLang())}</button>
+          ))}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={L("วันที่รับเงิน (ในเดือนเดียวกัน)", "Payment date (same month)")}><DateField value={date} min={`${month}-01`} max={monthEnd} onChange={setDate} /></Field>
+          <Field label={L("ชื่อผู้จ่าย (ในใบเสร็จ)", "Payer (on the receipt)")}><Input value={payer} placeholder={L("ไม่ใส่ = ชื่อนักเรียน", "Empty = the student's name")} onChange={(e) => setPayer(e.target.value)} /></Field>
+        </div>
+        <Field label={L("หมายเหตุ (พิมพ์ในใบเสร็จ)", "Remark (printed on the receipt)")}><Textarea rows={2} maxLength={500} value={remark} onChange={(e) => setRemark(e.target.value)} data-testid="edit-remark" /></Field>
+        {method === "transfer" && <Field label={L("สลิปโอน", "Transfer slip")}><ReceiptUpload value={slip} onChange={setSlip} /></Field>}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>{L("ยกเลิก", "Cancel")}</Button>
+          <Button disabled={busy} onClick={save}>{L("บันทึก", "Save")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

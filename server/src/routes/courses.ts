@@ -196,3 +196,27 @@ export async function ensureCourseHistory() {
   }
   await prisma.noticeKey.create({ data: { key } });
 }
+
+/** The newest receipt was deleted (owner 12/10/2026): its courses go, each period goes back to what it was before. */
+export async function removePurchases(db: Prisma.TransactionClient, receiptId: string) {
+  const lines = await db.coursePurchase.findMany({ where: { receiptId } });
+  const ids = lines.map((p) => p.id);
+  for (const p of lines) {
+    const e = await db.enrollment.findUnique({ where: { id: p.enrollmentId } });
+    if (!e) continue;
+    const others = await db.coursePurchase.findMany({ where: { enrollmentId: e.id, id: { notIn: ids } } });
+    const live = others.filter((x) => !x.cancelledAt);
+    if (!others.length && !p.fromExpiry) {
+      // the student joined the class with this receipt: they leave it again (and its lessons)
+      const sched = (await db.schedule.findMany({ where: { classId: e.classId }, select: { id: true } })).map((x) => x.id);
+      await db.scheduleStudent.deleteMany({ where: { studentId: e.studentId, scheduleId: { in: sched } } });
+      await db.enrollment.delete({ where: { id: e.id } });
+    } else if (live.length) {
+      const expiryDate = live.reduce((m, x) => (x.expiryDate > m ? x.expiryDate : m), '');
+      await db.enrollment.update({ where: { id: e.id }, data: { expiryDate, ...(p.fromStart ? { startDate: p.fromStart } : {}) } });
+    } else {
+      await db.enrollment.update({ where: { id: e.id }, data: { startDate: p.fromStart || e.startDate, expiryDate: p.fromExpiry } });
+    }
+  }
+  await db.coursePurchase.deleteMany({ where: { receiptId } });
+}

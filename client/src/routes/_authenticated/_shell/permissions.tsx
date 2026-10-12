@@ -35,7 +35,7 @@ const ROWS = (): { label: string; isNew?: boolean; chips: Chip[] }[] => [
   { label: L("คลาส", "Classes"), chips: VAED("classes") },
   { label: L("ครู", "Teachers"), chips: VAED("teachers") },
   { label: L("ปฏิทิน", "Calendar"), chips: VAED("calendar") },
-  { label: L("ใบเสร็จรับเงิน", "Receipts"), isNew: true, chips: [{ menu: "receipts", action: "view", label: L("ดู", "View") }, { menu: "receipts", action: "add", label: L("ออกใบเสร็จ", "Issue") }, { menu: "receipts", action: "delete", label: L("ยกเลิกใบเสร็จ", "Cancel") }] },
+  { label: L("ใบเสร็จรับเงิน", "Receipts"), isNew: true, chips: [{ menu: "receipts", action: "view", label: L("ดู", "View") }, { menu: "receipts", action: "add", label: L("ออกใบเสร็จ", "Issue") }, { menu: "receipts", action: "edit", label: L("แก้ไข/ลบใบล่าสุด", "Edit/delete newest") }, { menu: "receipts", action: "delete", label: L("ยกเลิกใบเสร็จ", "Cancel") }] },
   { label: L("ตั้งค่าบริษัท", "Company settings"), isNew: true, chips: [{ menu: "company", action: "view", label: L("ดู", "View") }, { menu: "company", action: "edit", label: L("แก้ไข", "Edit") }] },
   { label: L("ผู้ใช้ระบบ", "Users"), chips: VAED("users") },
   { label: L("ประวัติการแก้ไข", "Audit log"), chips: [{ menu: "auditlog", action: "view", label: L("ดู", "View") }] },

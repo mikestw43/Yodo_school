@@ -125,7 +125,7 @@ describe('roles and receipts (owner 12/10/2026)', () => {
     expect(d.owner).toBe(true);
     const partner = d.positions.find((p: { kind: string }) => p.kind === 'partner');
     const adminRole = d.positions.find((p: { kind: string }) => p.kind === 'admin');
-    expect(d.permissions[adminRole.id].receipts).toEqual({ view: true, add: true, edit: false, delete: false });
+    expect(d.permissions[adminRole.id].receipts).toEqual({ view: true, add: true, edit: true, delete: false });
     const u = await admin.post('/api/users').set(H).send({ firstName: 'Pat', lastName: '', nickname: '', username: 'pat', password: 'secret3', email: '', phone: '', positionId: partner.id, image: '' });
     expect(u.status).toBe(201);
     const pat = await login('pat', 'secret3');
@@ -193,6 +193,36 @@ describe('roles and receipts (owner 12/10/2026)', () => {
     expect((await ann.put('/api/settings/company').set(H).send({})).status).toBe(403);
     expect((await ann.get('/api/receipts/summary?month=2026-10')).status).toBe(200);
     expect((await ann.get('/api/data')).body.purchases[0].amount).toBeDefined(); // Admin may view receipts
+
+    // the newest receipt of THIS month can be edited and deleted (number reused); older or last month's ones cannot
+    const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+    const k = await admin.post('/api/classes').set(H).send({ name: 'Kpop 1m', teacherId: '', description: '', image: '', status: 'Active', price: 3000, months: 1 });
+    const kb = await buy([line(k.body.id, today, today, 3000, 'baht', 0)], today);
+    expect(kb.status).toBe(201);
+    const kid = kb.body.receipt.id;
+    const kfull = (await admin.get(`/api/receipts/${kid}`)).body;
+    expect(kfull.editable).toBe(true);
+    const lastMonth = new Date(Date.parse(today.slice(0, 8) + '01') - 864e5).toISOString().slice(0, 10);
+    expect((await ann.put(`/api/receipts/${kid}`).set(H).send({ date: lastMonth, method: 'cash', lines: [{ id: kfull.receipt.lines[0].id, price: 3000, discountType: 'baht', discountValue: 0 }] })).status).toBe(400);
+    const ed = await ann.put(`/api/receipts/${kid}`).set(H).send({ date: today, method: 'cash', payer: 'พ่อ', remark: 'ok', lines: [{ id: kfull.receipt.lines[0].id, price: 3000, discountType: 'pct', discountValue: 10 }] });
+    expect(ed.status, JSON.stringify(ed.body)).toBe(200);
+    expect(ed.body).toMatchObject({ amount: 2700, discount: 300, method: 'cash', payer: 'พ่อ', remark: 'ok', slip: '' });
+    const kb2 = await buy([line(k.body.id, today, today, 3000, 'baht', 0)], today);
+    expect((await admin.get(`/api/receipts/${kid}`)).body.editable).toBe(false);
+    expect((await admin.post(`/api/receipts/${kid}/delete`).set(H).send({})).status).toBe(400);
+    expect((await admin.post(`/api/receipts/${kb2.body.receipt.id}/delete`).set(H).send({})).status).toBe(200);
+    expect((await admin.get(`/api/receipts/${kb2.body.receipt.id}`)).status).toBe(404);
+    const kb3 = await buy([line(k.body.id, today, today, 3000, 'baht', 0)], today);
+    expect(kb3.body.receipt.no).toBe(kb2.body.receipt.no); // the number is used again
+    // deleting the receipt that put the student in the class takes them out again
+    await admin.post(`/api/receipts/${kb3.body.receipt.id}/delete`).set(H).expect(200);
+    await ann.post(`/api/receipts/${kid}/delete`).set(H).expect(200);
+    const after = (await admin.get('/api/data')).body;
+    expect(after.enrollments.some((e: { classId: string }) => e.classId === k.body.id)).toBe(false);
+    expect(after.purchases.some((p: { classId: string }) => p.classId === k.body.id)).toBe(false);
+    const old = await buy([line(k.body.id, lastMonth, lastMonth, 3000, 'baht', 0)], lastMonth);
+    expect((await admin.get(`/api/receipts/${old.body.receipt.id}`)).body.editable).toBe(false); // last month's: final
+    expect((await admin.post(`/api/receipts/${old.body.receipt.id}/delete`).set(H).send({})).status).toBe(400);
   });
 });
 
