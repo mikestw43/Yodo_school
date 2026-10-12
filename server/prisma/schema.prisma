@@ -34,6 +34,7 @@ model User {
   theme        String    @default("light")
   lastLoginAt  DateTime?
   googleSub    String? // Google account id, linked at the first Google sign-in
+  noticeOff    String    @default("") // notice kinds this person turned off, comma separated (enrollment,schedule,expiry)
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -176,6 +177,7 @@ model Notice {
   body      String    @default("")
   url       String    @default("/")
   readAt    DateTime?
+  deletedAt DateTime? // removed from the bell by its person; always read too
   createdAt DateTime  @default(now())
 
   @@index([userId, readAt])
@@ -205,6 +207,7 @@ model PushDevice {
 model Setting {
   id             Int      @id @default(1)
   googleClientId String   @default("")
+  expiryDays     Int      @default(7) // "class ending soon" warning, days before the expiry date
   updatedAt      DateTime @updatedAt
 }
 

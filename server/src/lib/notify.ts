@@ -35,7 +35,11 @@ export function rememberSite(origin: string | undefined) {
   fs.writeFileSync(KEY_FILE, JSON.stringify(keys, null, 2), { mode: 0o600 });
 }
 
-export const unreadCount = (userId: string) => prisma.notice.count({ where: { userId, readAt: null } });
+export const unreadCount = (userId: string) => prisma.notice.count({ where: { userId, readAt: null, deletedAt: null } });
+
+// Kinds a person can turn off (owner 12/10/2026). Test notices always go through.
+export const NOTICE_KINDS = ['enrollment', 'schedule', 'expiry'] as const;
+export const offKinds = (s: string) => s.split(',').filter(Boolean);
 
 export type DeviceResult = { label: string; ok: boolean; status: number | null; detail: string };
 export async function pushTo(userId: string, payload: { title: string; body: string; url: string; tag: string }): Promise<DeviceResult[]> {
@@ -69,8 +73,9 @@ export type NoticeIn = { kind: string; ref?: string; text: (lang: Lang) => { tit
 
 export async function notifyAll(n: NoticeIn) {
   try {
-    const users = await prisma.user.findMany({ where: { status: 'Active', deletedAt: null }, select: { id: true, lang: true } });
+    const users = await prisma.user.findMany({ where: { status: 'Active', deletedAt: null }, select: { id: true, lang: true, noticeOff: true } });
     for (const u of users) {
+      if (offKinds(u.noticeOff).includes(n.kind)) continue;
       const t = n.text(u.lang === 'th' ? 'th' : 'en');
       const title = t.title.slice(0, 120), body = t.body.slice(0, 300);
       await prisma.notice.create({ data: { userId: u.id, kind: n.kind, ref: n.ref ?? '', title, body, url: n.url } });
@@ -81,11 +86,12 @@ export async function notifyAll(n: NoticeIn) {
 
 export const fdate = (d: string) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : ''); // dd/mm/yyyy, Christian era
 
-// Classes ending within 7 days: one warning per enrollment and expiry date.
+// Classes ending within the school's set number of days (default 7): one warning per enrollment and expiry date.
 export async function expiryNotices() {
   try {
     const today = todayBkk();
-    const list = await prisma.enrollment.findMany({ where: { expiryDate: { gte: today, lte: addDays(today, 7) } } });
+    const days = (await prisma.setting.findUnique({ where: { id: 1 } }))?.expiryDays ?? 7;
+    const list = await prisma.enrollment.findMany({ where: { expiryDate: { gte: today, lte: addDays(today, days) } } });
     for (const e of list) {
       const key = `expiry:${e.id}:${e.expiryDate}`;
       if (await prisma.noticeKey.findUnique({ where: { key } })) continue;

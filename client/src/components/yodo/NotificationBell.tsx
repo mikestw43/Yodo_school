@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bell, BellRing, Share } from "lucide-react";
+import { Bell, BellRing, Share, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { api, errorText } from "@/lib/api";
@@ -70,6 +70,15 @@ export function NotificationBell({ className = "" }: { className?: string }) {
     setItems((p) => p.map((n) => (n.id === id ? { ...n, read: true } : n)));
     api<{ unread: number }>("/notices/read", { body: { ids: [id] } }).then((r) => setUnread(r.unread)).catch(() => null);
   };
+  // Removed from my bell only (removed = read); the enrollment or session itself stays.
+  const removeOne = (id: number) => {
+    setItems((p) => p.filter((n) => n.id !== id));
+    api<{ unread: number }>("/notices/delete", { body: { ids: [id] } }).then((r) => setUnread(r.unread)).catch(() => null);
+  };
+  const removeRead = () => {
+    setItems((p) => p.filter((n) => !n.read));
+    api<{ unread: number }>("/notices/delete", { body: { read: true } }).then((r) => setUnread(r.unread)).catch(() => null);
+  };
   const markAll = () => {
     setItems((p) => p.map((n) => ({ ...n, read: true })));
     setUnread(0);
@@ -119,7 +128,10 @@ export function NotificationBell({ className = "" }: { className?: string }) {
       <PopoverContent align="end" className="w-80 rounded-2xl p-0">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <p className="text-sm font-semibold">{L("การแจ้งเตือน", "Notifications")}</p>
-          {unread > 0 && <button onClick={markAll} className="text-xs text-primary">{L("อ่านแล้วทั้งหมด", "Mark all as read")}</button>}
+          <div className="flex items-center gap-3">
+            {unread > 0 && <button onClick={markAll} className="text-xs text-primary">{L("อ่านแล้วทั้งหมด", "Mark all as read")}</button>}
+            {items.some((n) => n.read) && <button onClick={removeRead} className="text-xs text-primary">{L("ลบที่อ่านแล้ว", "Remove read")}</button>}
+          </div>
         </div>
         {iosHint ? (
           <div className="flex items-start gap-2 border-b border-border bg-muted/50 px-4 py-2.5 text-xs">
@@ -142,16 +154,19 @@ export function NotificationBell({ className = "" }: { className?: string }) {
           {items.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">{L("ยังไม่มีการแจ้งเตือน", "No notifications yet")}</p>
           ) : items.map((n) => (
-            <Link key={n.id} to={n.link || "/"} onClick={() => markOne(n.id)} className={`block border-b border-border px-4 py-3 last:border-0 hover:bg-muted ${!n.read ? "bg-primary/5" : ""}`}>
-              <div className="flex items-start gap-2">
-                {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{n.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{n.body}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{fdt(n.created_at)}</p>
+            <div key={n.id} className={`flex items-start border-b border-border last:border-0 ${!n.read ? "bg-primary/5" : ""}`}>
+              <Link to={n.link || "/"} onClick={() => markOne(n.id)} className="block min-w-0 flex-1 py-3 pl-4 hover:bg-muted">
+                <div className="flex items-start gap-2">
+                  {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{n.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{n.body}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{fdt(n.created_at)}</p>
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+              <button type="button" onClick={() => removeOne(n.id)} aria-label={L("ลบการแจ้งเตือนนี้", "Remove this notification")} className="m-2 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
           ))}
         </div>
       </PopoverContent>

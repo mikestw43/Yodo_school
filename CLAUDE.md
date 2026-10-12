@@ -42,6 +42,15 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   language (`notifyAll({ text: (lang) => ... })`). Thai menu names: ภาพรวม, นักเรียน, คลาส, ครู, ปฏิทิน,
   ผู้ใช้ระบบ, สิทธิ์, ประวัติการแก้ไข. e2e checks that English pages show no Thai except typed data.
 
+- 12/10/2026 notifications (mockup JG3Qrzbf9Fa5YhEhsRF1ti; owner's answers): NO new kinds (still enrollment new/changed,
+  new session, class ending soon); expiry warning days set by the SuperAdmin (default 7, 1-60, `Setting.expiryDays`,
+  `PUT /settings/notices`); who gets them: still everyone (owner: "leave it for now", permission-based sending is open);
+  each person turns kinds off (`User.noticeOff`, `GET/PUT /me/notices`, notifyAll skips them); bell: X per notice +
+  "Remove read" (`POST /notices/delete`, `Notice.deletedAt`). Profile settings card "การแจ้งเตือน"
+  (`components/yodo/NoticeSettings.tsx`): this device's state (on / off with a turn-on button / blocked / iPhone needs
+  Home Screen / unsupported), my devices with last reached time and remove, "Send a test". App-icon number = unread
+  count sent with each push (sw.js setAppBadge) and set by the bell when the app is open.
+
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
   - `routes/auth.ts` first-run setup code (`DATA_DIR/setup-code.txt`), login (username or profile email), me, password.

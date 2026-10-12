@@ -2,6 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, Check, KeyRound, Link2 } from "lucide-react";
 import { Row, SecurityCard } from "@/components/yodo/Pin";
+import { NoticeSettings } from "@/components/yodo/NoticeSettings";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -156,6 +157,10 @@ function SettingsPage() {
             <Row icon={<KeyRound className="h-4 w-4" />} title={L("เปลี่ยนรหัสผ่าน", "Change password")}><ChevronRight className="h-4 w-4 text-muted-foreground" /></Row>
           </button>
         </SecurityCard>
+      </Card>
+      <Card className="mt-6 gap-0 rounded-3xl py-2">
+        <h2 className="px-5 pb-1 pt-3 font-semibold">{L("การแจ้งเตือน", "Notifications")}</h2>
+        <NoticeSettings superadmin={google.superadmin} />
       </Card>
       {google.superadmin && <GoogleSetupCard value={google.clientId} onSaved={(v) => setGoogle((g) => ({ ...g, clientId: v }))} />}
       <Dialog open={pwOpen} onOpenChange={setPwOpen}>

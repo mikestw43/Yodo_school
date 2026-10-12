@@ -273,3 +273,32 @@ describe('import: the real Lovable export format', () => {
     expect(s).toMatchObject({ dob: '2023-10-31', interested: ['Ballet', 'Jazz'], hasExperience: true, address: '12/3 ซอย 4, กทม', createdAt: '2026-01-25T00:00:00.000Z' });
   });
 });
+
+describe('notification settings and the bell', () => {
+  it('a person can turn kinds off, remove notices, and the SuperAdmin sets the expiry warning days', async () => {
+    const d = (await admin.get('/api/data')).body;
+    const cls = d.classes[0].id;
+    expect((await admin.get('/api/me/notices')).body).toEqual({ off: [], expiryDays: 7 });
+    expect((await admin.put('/api/me/notices').set(H).send({ off: ['nope'] })).status).toBe(400);
+    await admin.put('/api/me/notices').set(H).send({ off: ['schedule'] }).expect(200);
+    const before = (await admin.get('/api/notices')).body.items.length;
+    await admin.post('/api/schedules').set(H).send({ items: [{ classId: cls, date: '2026-11-04', start: '10:00', end: '11:00' }] }).expect(201);
+    expect((await admin.get('/api/notices')).body.items.length).toBe(before); // turned off: nothing new
+    await admin.put('/api/me/notices').set(H).send({ off: [] }).expect(200);
+    await admin.post('/api/schedules').set(H).send({ items: [{ classId: cls, date: '2026-11-05', start: '10:00', end: '11:00' }] }).expect(201);
+    const list = (await admin.get('/api/notices')).body;
+    expect(list.items.length).toBe(before + 1);
+    // remove one, then every read one
+    const id = list.items[0].id;
+    expect((await admin.post('/api/notices/delete').set(H).send({ ids: [id] })).status).toBe(200);
+    expect((await admin.get('/api/notices')).body.items.some((n: { id: number }) => n.id === id)).toBe(false);
+    await admin.post('/api/notices/read').set(H).send({ all: true });
+    await admin.post('/api/notices/delete').set(H).send({ read: true });
+    expect((await admin.get('/api/notices')).body).toMatchObject({ unread: 0, items: [] });
+    // expiry days: SuperAdmin only, 1-60
+    expect((await admin.put('/api/settings/notices').set(H).send({ expiryDays: 0 })).status).toBe(400);
+    await admin.put('/api/settings/notices').set(H).send({ expiryDays: 14 }).expect(200);
+    expect((await admin.get('/api/me/notices')).body.expiryDays).toBe(14);
+    expect((await admin.get('/api/push/devices')).body).toEqual([]);
+  });
+});

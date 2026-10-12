@@ -241,6 +241,31 @@ try {
   await pp.waitForTimeout(500);
   await pp.screenshot({ path: `${SHOTS}/p9-menu.png` });
 
+  // ---------- notification settings and bell (owner 12/10/2026) ----------
+  await page.goto(BASE + '/settings');
+  await page.getByText('เรื่องที่อยากรับ').waitFor();
+  await page.getByRole('switch', { name: 'ตารางเรียนใหม่' }).click();
+  await page.waitForTimeout(500);
+  check('a person can turn a notice kind off', (await (await page.request.get(`${BASE}/api/me/notices`)).json()).off.includes('schedule'));
+  await page.getByRole('switch', { name: 'ตารางเรียนใหม่' }).click();
+  await page.fill('#expiry-days', '10');
+  await page.locator('#expiry-days').locator('xpath=..').getByRole('button', { name: 'บันทึก' }).click();
+  await page.getByText('ล่วงหน้า 10 วัน').waitFor().then(() => check('SuperAdmin sets the expiry warning days', true), () => check('SuperAdmin sets the expiry warning days', false));
+  await page.screenshot({ path: `${SHOTS}/22-notice-card.png`, fullPage: true });
+  await page.goto(BASE + '/students');
+  await page.getByRole('button', { name: 'การแจ้งเตือน' }).last().click();
+  const rows = page.getByRole('button', { name: 'ลบการแจ้งเตือนนี้' });
+  const n0 = await rows.count();
+  await rows.first().click();
+  await page.waitForTimeout(400);
+  check('bell: X removes one notice', (await rows.count()) === n0 - 1, `${n0} -> ${await rows.count()}`);
+  await page.getByText('อ่านแล้วทั้งหมด').click();
+  await page.getByText('ลบที่อ่านแล้ว').click();
+  await page.waitForTimeout(400);
+  check('bell: "remove read" empties it', (await rows.count()) === 0);
+  await page.screenshot({ path: `${SHOTS}/23-bell-empty.png` });
+  await page.keyboard.press('Escape');
+
   // ---------- English ----------
   await page.goto(BASE + '/');
   await page.getByRole('button', { name: 'Switch to English' }).last().click();
