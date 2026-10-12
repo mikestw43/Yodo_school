@@ -10,7 +10,7 @@ const logo = { url: logoUrlRaw };
 export type SignCanvasHandle = { clear: () => void; isDirty: () => boolean; toDataURL: () => string };
 
 /** Inline signature canvas drawn directly on the document's signature line. */
-export const SignCanvas = forwardRef<SignCanvasHandle, { onDirty: () => void }>(function SignCanvas({ onDirty }, ref) {
+export const SignCanvas = forwardRef<SignCanvasHandle, { onDirty: () => void; color?: string; width?: number }>(function SignCanvas({ onDirty, color = "#111", width = 2.2 }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const dirty = useRef(false);
@@ -28,7 +28,7 @@ export const SignCanvas = forwardRef<SignCanvasHandle, { onDirty: () => void }>(
   const pos = (e: React.PointerEvent<HTMLCanvasElement>) => { const r = e.currentTarget.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top] as const; };
   return (
     <canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none cursor-crosshair"
-      onPointerDown={(e) => { if (!dirty.current) setup(e.currentTarget); e.currentTarget.setPointerCapture(e.pointerId); drawing.current = true; const ctx = e.currentTarget.getContext("2d")!; const [x, y] = pos(e); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 0.1, y + 0.1); ctx.stroke(); dirty.current = true; onDirty(); }}
+      onPointerDown={(e) => { if (!dirty.current) setup(e.currentTarget); e.currentTarget.setPointerCapture(e.pointerId); drawing.current = true; const ctx = e.currentTarget.getContext("2d")!; ctx.strokeStyle = color; ctx.lineWidth = width; const [x, y] = pos(e); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 0.1, y + 0.1); ctx.stroke(); dirty.current = true; onDirty(); }}
       onPointerMove={(e) => { if (!drawing.current) return; const ctx = e.currentTarget.getContext("2d")!; const [x, y] = pos(e); ctx.lineTo(x, y); ctx.stroke(); }}
       onPointerUp={() => { drawing.current = false; }} onPointerLeave={() => { drawing.current = false; }} />
   );

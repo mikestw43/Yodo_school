@@ -452,6 +452,32 @@ try {
     else { g.strokeStyle = '#1a1a40'; g.lineWidth = 6; g.beginPath(); g.moveTo(40, 150); g.bezierCurveTo(120, 20, 220, 190, 360, 50); g.stroke(); }
     return c.toDataURL(kind === 'stamp' ? 'image/jpeg' : 'image/png', 0.95).split(',')[1];
   }, kind);
+  // draw the signature instead of uploading (owner 13/10/2026): blue, thick
+  await page.getByTestId('co-sign-draw').click();
+  const sdw = page.getByTestId('sign-draw');
+  await sdw.waitFor();
+  await sdw.getByRole('group', { name: 'สีหมึก' }).getByRole('button', { name: 'น้ำเงิน' }).click();
+  await sdw.getByRole('group', { name: 'ความหนาเส้น' }).getByRole('button', { name: 'หนา' }).click();
+  {
+    const b = await sdw.getByTestId('sign-draw-pad').boundingBox();
+    await page.mouse.move(b.x + 40, b.y + 120); await page.mouse.down();
+    for (let i = 1; i <= 12; i++) await page.mouse.move(b.x + 40 + i * 25, b.y + 120 - Math.sin(i) * 50);
+    await page.mouse.up();
+  }
+  await page.screenshot({ path: `${SHOTS}/34b-sign-draw.png` });
+  await sdw.getByTestId('sign-draw-use').click();
+  await page.getByTestId('co-sign-img').waitFor();
+  {
+    const px = await page.getByTestId('co-sign-img').evaluate(async (im) => {
+      await im.decode(); const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data;
+      let blue = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200 && d[i + 2] > d[i] + 60) blue++;
+      return { png: im.src.startsWith('data:image/png'), corner: d[3], blue, w: c.width };
+    });
+    check('drawn signature: blue ink, transparent, margins cut', px.png && px.corner === 0 && px.blue > 50 && px.w < 400, JSON.stringify(px));
+  }
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${SHOTS}/34c-sign-drawn.png` });
   await page.getByTestId('co-sign').setInputFiles({ name: 'sign.png', mimeType: 'image/png', buffer: Buffer.from(await mkPic('sign'), 'base64') });
   await page.getByTestId('co-sign-name').fill('ครูพรกันยา');
   await page.getByTestId('co-stamp').setInputFiles({ name: 'stamp.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(await mkPic('stamp'), 'base64') });

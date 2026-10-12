@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Mail, Trash2 } from "lucide-react";
+import { ImagePlus, Mail, PenLine, RotateCcw, Trash2 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SignCanvas, type SignCanvasHandle } from "@/components/yodo/student-document";
 import { EmptyState, Field, PageHeader } from "@/components/yodo/ui";
 import { api, errorText } from "@/lib/api";
 import { L } from "@/lib/i18n";
@@ -64,7 +66,7 @@ function CompanyPage() {
           <Card className="rounded-3xl p-6">
             <p className="mb-1 text-sm font-semibold">{L("ลายเซ็นผู้รับเงิน (ไม่บังคับ)", "Signature of the person receiving money (optional)")}</p>
             <p className="mb-3 text-xs text-muted-foreground">{L("ไม่ใส่ = เซ็นด้วยมือหลังพิมพ์", "Empty = sign by hand after printing")}</p>
-            <PicUpload testId="co-sign" tidy edit={edit} value={f.sign} onChange={(v) => set("sign", v)} />
+            <PicUpload testId="co-sign" tidy draw edit={edit} value={f.sign} onChange={(v) => set("sign", v)} />
             {/* Typed name printed under the signature on receipts (owner 12/10/2026); empty = whoever issued the receipt. */}
             <Field label={L("ชื่อผู้รับเงิน (พิมพ์ในใบเสร็จ)", "Receiver's name (printed on the receipt)")} className="mt-4">
               <Input data-testid="co-sign-name" disabled={!edit} value={f.signName ?? ""} placeholder={L("ไม่ใส่ = ชื่อคนที่ออกใบเสร็จ", "Empty = the person who issued it")} onChange={(e) => set("signName", e.target.value)} />
@@ -85,7 +87,8 @@ const readUrl = (b: Blob) => new Promise<string>((ok, fail) => { const r = new F
 
 /** Picture box that keeps transparency (owner 12/10/2026: a signature came out black after the JPEG editor).
  *  Signature and stamp: paper made transparent and margins cut (`tidyImage`, PNG). Logo: only the empty margin cut. */
-function PicUpload({ value, onChange, edit, tidy, crop, testId }: { value: string; onChange: (v: string) => void; edit: boolean; tidy?: boolean; crop?: boolean; testId: string }) {
+function PicUpload({ value, onChange, edit, tidy, crop, draw, testId }: { value: string; onChange: (v: string) => void; edit: boolean; tidy?: boolean; crop?: boolean; draw?: boolean; testId: string }) {
+  const [drawing, setDrawing] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const pick = async (file?: File) => {
@@ -102,15 +105,80 @@ function PicUpload({ value, onChange, edit, tidy, crop, testId }: { value: strin
         {value ? <img data-testid={`${testId}-img`} src={value} alt="" className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-muted-foreground">{L("ยังไม่มีรูป", "No picture yet")}</span>}
       </div>
       {edit && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input ref={ref} data-testid={testId} type="file" accept="image/*" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
           <Button type="button" variant="outline" size="sm" className="rounded-full" disabled={busy} onClick={() => ref.current?.click()}>
-            <ImagePlus className="mr-1 h-4 w-4" />{value ? L("เปลี่ยนรูป", "Change") : L("เลือกรูป", "Choose a picture")}
+            <ImagePlus className="mr-1 h-4 w-4" />{draw ? L("อัปโหลดรูป", "Upload a picture") : value ? L("เปลี่ยนรูป", "Change") : L("เลือกรูป", "Choose a picture")}
           </Button>
+          {draw && <Button type="button" variant="outline" size="sm" className="rounded-full" disabled={busy} onClick={() => setDrawing(true)} data-testid={`${testId}-draw`}><PenLine className="mr-1 h-4 w-4" />{L("เซ็นเอง", "Sign here")}</Button>}
           {value && <Button type="button" variant="ghost" size="sm" className="rounded-full text-destructive" onClick={() => onChange("")}><Trash2 className="mr-1 h-4 w-4" />{L("ลบ", "Remove")}</Button>}
         </div>
       )}
+      {draw && <DrawSign open={drawing} onClose={() => setDrawing(false)} onDone={(v) => { onChange(v); setDrawing(false); }} />}
     </div>
+  );
+}
+
+// Pen choices for drawing the receiver's signature (owner 13/10/2026, mockup YR8QPLjiGoo5pySRiGDaqL: black or blue + line width).
+const INKS = [{ v: "#111111", th: "ดำ", en: "Black" }, { v: "#1f3a93", th: "น้ำเงิน", en: "Blue" }] as const;
+const WIDTHS = [{ v: 1.6, th: "บาง", en: "Thin" }, { v: 2.6, th: "กลาง", en: "Medium" }, { v: 4, th: "หนา", en: "Thick" }] as const;
+
+/** Draw the signature with a finger or the mouse; saved like an upload (transparent PNG, empty margins cut). */
+function DrawSign({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: (v: string) => void }) {
+  const ref = useRef<SignCanvasHandle>(null);
+  const [ink, setInk] = useState<string>(INKS[0].v);
+  const [width, setWidth] = useState<number>(WIDTHS[1].v);
+  const [dirty, setDirty] = useState(false);
+  const [key, setKey] = useState(0);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (open) { setDirty(false); setKey((k) => k + 1); } }, [open]);
+  const use = async () => {
+    if (!ref.current?.isDirty()) return;
+    setBusy(true);
+    try { const blob = await (await fetch(ref.current.toDataURL())).blob(); onDone(await readUrl(await tidyImage(blob))); }
+    catch { toast.error(L("บันทึกลายเซ็นไม่ได้ ลองใหม่อีกครั้ง", "The signature could not be saved, please try again")); }
+    setBusy(false);
+  };
+  const chip = (on: boolean) => `inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold ${on ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"}`;
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !busy) onClose(); }}>
+      <DialogContent className="sm:max-w-lg" data-testid="sign-draw">
+        <DialogHeader>
+          <DialogTitle>{L("เซ็นชื่อผู้รับเงิน", "Sign as the receiver")}</DialogTitle>
+          <DialogDescription>{L("เซ็นในกรอบด้วยนิ้วหรือเมาส์", "Sign in the box with your finger or the mouse")}</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex items-center gap-1.5" role="group" aria-label={L("สีหมึก", "Ink colour")}>
+            <span className="text-xs text-muted-foreground">{L("สี", "Colour")}</span>
+            {INKS.map((x) => (
+              <button key={x.v} type="button" aria-pressed={ink === x.v} className={chip(ink === x.v)} onClick={() => setInk(x.v)}>
+                <span className="h-3.5 w-3.5 rounded-full" style={{ background: x.v }} />{L(x.th, x.en)}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5" role="group" aria-label={L("ความหนาเส้น", "Line width")}>
+            <span className="text-xs text-muted-foreground">{L("เส้น", "Line")}</span>
+            {WIDTHS.map((x) => (
+              <button key={x.v} type="button" aria-pressed={width === x.v} className={chip(width === x.v)} onClick={() => setWidth(x.v)}>
+                <span className="w-4 rounded-full" style={{ height: x.v, background: ink }} />{L(x.th, x.en)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div key={key} className="relative h-48 rounded-2xl border border-border bg-white" data-testid="sign-draw-pad">
+          <div className="pointer-events-none absolute inset-x-6 bottom-10 border-b border-dashed border-border" />
+          {!dirty && <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{L("เซ็นที่นี่", "Sign here")}</span>}
+          <SignCanvas ref={ref} color={ink} width={width} onDirty={() => setDirty(true)} />
+        </div>
+        <DialogFooter className="items-center gap-2 sm:justify-between">
+          <Button type="button" variant="outline" className="rounded-full" disabled={!dirty} onClick={() => { setDirty(false); setKey((k) => k + 1); }}><RotateCcw className="mr-1 h-4 w-4" />{L("เซ็นใหม่", "Clear")}</Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="rounded-full" onClick={onClose}>{L("ยกเลิก", "Cancel")}</Button>
+            <Button type="button" className="rounded-full" disabled={!dirty || busy} onClick={use} data-testid="sign-draw-use">{L("ใช้ลายเซ็นนี้", "Use this signature")}</Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

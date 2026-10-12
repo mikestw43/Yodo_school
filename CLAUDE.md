@@ -200,6 +200,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   card, company 'edit', `Setting.mailUser/mailFromName/mailPass` encrypted by lib/crypto.ts, only the last 4 shown, never
   audited; "send a test to myself"). Tests use MAIL_OUT_DIR (.eml files); never tried against real Gmail from the dev box.
 
+- 13/10/2026 (mockup YR8QPLjiGoo5pySRiGDaqL; owner "1 ok, 2 เลือกสีได้ดำหรือน้ำเงิน รวมถึงความหนาเส้น, 3 ไม่ต้อง"): Company
+  settings receiver's signature = "อัปโหลดรูป" OR "เซ็นเอง" (`DrawSign` in company.tsx: finger/mouse on `SignCanvas`, ink
+  black/blue (`INKS`), line thin/medium/thick (`WIDTHS`), then `tidyImage` like an upload: transparent PNG, margins cut).
+  The stamp stays upload only (owner).
+
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
   - `routes/auth.ts` first-run setup code (`DATA_DIR/setup-code.txt`), login (username or profile email), me, password.
