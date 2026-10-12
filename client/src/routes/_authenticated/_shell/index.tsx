@@ -54,7 +54,7 @@ function Dashboard() {
           <path d="M-20 140 C 140 40, 240 190, 380 95 S 560 60, 620 140" opacity="0.5" />
         </svg>
         <div className="relative">
-          <p className="text-xs uppercase tracking-[0.3em] text-accent-foreground">YODO Dance Academy</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-foreground">You Only Dance Once</p>
           <h2 className="mt-2 max-w-lg font-display text-3xl font-semibold leading-tight md:text-4xl">{L("ทุกก้าวคือเรื่องราว", "Every step tells a story.")}</h2>
         </div>
       </div>

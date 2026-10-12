@@ -223,6 +223,7 @@ model Setting {
   companyBranch  String   @default("")
   receiptLogo    String   @default("") // "" = the YODO logo
   receiptSign    String   @default("") // signature of the person receiving money, optional
+  receiptStamp   String   @default("") // company stamp printed beside the signature, optional (owner 12/10/2026)
   updatedAt      DateTime @updatedAt
 }
 

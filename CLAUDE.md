@@ -122,6 +122,14 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
     name TH/EN, address, phone, email, 13-digit tax ID, branch, logo (empty = YODO), receiver's signature (optional),
     stored in `Setting`. Dashboard money card for `money` 'view'.
 
+- 12/10/2026 logo (mockup QFcV981guVTjmRcjm56uxN, answers "1 ok 2 YODO 3 เปลี่ยน 4 YODO", "ทำได้เลย"): the school's own
+  logo with the motto "You Only Dance Once" (`src/assets/yodo-logo.png`, made transparent from the owner's picture) on
+  the computer side menu (folded = the Y dancer `yodo-mark.png`), the phone header and the sign-in page; dashboard hero
+  small text = "You Only Dance Once"; app name "YODO" (manifest); app icons/favicon = the Y dancer on #fff6f7;
+  receipt fallback name "YODO". Company settings: NEW stamp picture (`Setting.receiptStamp`, `stamp` in
+  `/settings/company`), printed left of the receiver's signature. Logo/signature/stamp uploads keep transparency
+  (`PicUpload` in company.tsx; signature + stamp go through `lib/tidyImage.ts` copied from FinHR: paper made
+  transparent, margins cut, PNG). Before, the JPEG editor made a transparent signature black.
 - 12/10/2026 speed (owner: clicks felt slow/stuck over the internet): every page change waited for `GET /me` (route
   `beforeLoad`) and the first visit of each page waited for its own script file. Now `getMeCached()` (lib/api.ts) answers
   from the last result and refreshes in the background (401 -> /auth; cleared on sign-in/out), the client is one bundle

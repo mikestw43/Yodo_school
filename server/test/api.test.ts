@@ -159,7 +159,8 @@ describe('roles and receipts (owner 12/10/2026)', () => {
     const list = (await admin.get('/api/receipts?month=2026-10')).body;
     expect(list.map((x: { no: string }) => x.no)).toEqual(['RC2610-0003', 'RC2610-0002', 'RC2610-0001']);
     // company details come with a receipt; an Admin may issue but not cancel
-    await admin.put('/api/settings/company').set(H).send({ name: 'YODO Co., Ltd.', nameEn: 'YODO', address: 'Bangkok', phone: '02', email: '', taxId: '1234567890123', branch: 'HQ', logo: '', sign: '' }).expect(200);
+    await admin.put('/api/settings/company').set(H).send({ name: 'YODO Co., Ltd.', nameEn: 'YODO', address: 'Bangkok', phone: '02', email: '', taxId: '1234567890123', branch: 'HQ', logo: '', sign: '', stamp: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' }).expect(200);
+    expect((await admin.get('/api/settings/company')).body.stamp).toMatch(/^\/api\/files\/.+\.png$/);
     expect((await admin.put('/api/settings/company').set(H).send({ name: '', nameEn: '', address: '', phone: '', email: '', taxId: '12', branch: '', logo: '', sign: '' })).status).toBe(400);
     expect((await admin.get(`/api/receipts/${r1.body.id}`)).body.company.taxId).toBe('1234567890123');
     const adminRole = (await admin.get('/api/data')).body.positions.find((p: { kind: string }) => p.kind === 'admin');

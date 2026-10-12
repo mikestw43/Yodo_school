@@ -1,21 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ImagePlus, Trash2 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { EmptyState, Field, ImageUpload, PageHeader } from "@/components/yodo/ui";
+import { EmptyState, Field, PageHeader } from "@/components/yodo/ui";
 import { api, errorText } from "@/lib/api";
 import { L } from "@/lib/i18n";
 import type { Company } from "@/lib/receipt-print";
 import { useYodo } from "@/lib/yodo-store";
+import { tidyImage } from "@/lib/tidyImage";
 
 export const Route = createFileRoute("/_authenticated/_shell/company")({
   component: CompanyPage,
 });
 
-const EMPTY: Company = { name: "", nameEn: "", address: "", phone: "", email: "", taxId: "", branch: "", logo: "", sign: "" };
+const EMPTY: Company = { name: "", nameEn: "", address: "", phone: "", email: "", taxId: "", branch: "", logo: "", sign: "", stamp: "" };
 
 // Company details printed on receipts (owner 12/10/2026, mockup board 4).
 function CompanyPage() {
@@ -54,15 +56,53 @@ function CompanyPage() {
           <Card className="rounded-3xl p-6">
             <p className="mb-1 text-sm font-semibold">{L("โลโก้ในใบเสร็จ", "Logo on receipts")}</p>
             <p className="mb-3 text-xs text-muted-foreground">{L("ไม่ใส่ = ใช้โลโก้ YODO", "Empty = the YODO logo")}</p>
-            {edit ? <ImageUpload shape="wide" value={f.logo} onChange={(v) => set("logo", v)} /> : f.logo ? <img src={f.logo} alt="" className="max-h-24" /> : null}
+            <PicUpload testId="co-logo" edit={edit} value={f.logo} onChange={(v) => set("logo", v)} />
           </Card>
           <Card className="rounded-3xl p-6">
             <p className="mb-1 text-sm font-semibold">{L("ลายเซ็นผู้รับเงิน (ไม่บังคับ)", "Signature of the person receiving money (optional)")}</p>
             <p className="mb-3 text-xs text-muted-foreground">{L("ไม่ใส่ = เซ็นด้วยมือหลังพิมพ์", "Empty = sign by hand after printing")}</p>
-            {edit ? <ImageUpload shape="wide" value={f.sign} onChange={(v) => set("sign", v)} /> : f.sign ? <img src={f.sign} alt="" className="max-h-20" /> : null}
+            <PicUpload testId="co-sign" tidy edit={edit} value={f.sign} onChange={(v) => set("sign", v)} />
+          </Card>
+          <Card className="rounded-3xl p-6">
+            <p className="mb-1 text-sm font-semibold">{L("ตราประทับ (ไม่บังคับ)", "Stamp (optional)")}</p>
+            <p className="mb-3 text-xs text-muted-foreground">{L("พิมพ์ข้างลายเซ็นผู้รับเงินในใบเสร็จ", "Printed beside the signature on receipts")}</p>
+            <PicUpload testId="co-stamp" tidy edit={edit} value={f.stamp ?? ""} onChange={(v) => set("stamp", v)} />
           </Card>
         </div>
       </div>
     </>
+  );
+}
+
+const readUrl = (b: Blob) => new Promise<string>((ok, fail) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = fail; r.readAsDataURL(b); });
+
+/** Picture box that keeps transparency (owner 12/10/2026: a signature came out black after the JPEG editor).
+ *  Signature and stamp: paper made transparent and margins cut (`tidyImage`, PNG). Logo: kept as it is. */
+function PicUpload({ value, onChange, edit, tidy, testId }: { value: string; onChange: (v: string) => void; edit: boolean; tidy?: boolean; testId: string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const pick = async (file?: File) => {
+    if (!file) return;
+    if (file.size > 8_000_000) { toast.error(L("ไฟล์ใหญ่เกิน 8 MB", "The file is larger than 8 MB")); return; }
+    setBusy(true);
+    try { onChange(await readUrl(tidy ? await tidyImage(file) : file)); }
+    catch { toast.error(L("เปิดรูปนี้ไม่ได้", "This picture could not be opened")); }
+    setBusy(false);
+  };
+  return (
+    <div className="grid gap-3">
+      <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-border bg-white p-3">
+        {value ? <img data-testid={`${testId}-img`} src={value} alt="" className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-muted-foreground">{L("ยังไม่มีรูป", "No picture yet")}</span>}
+      </div>
+      {edit && (
+        <div className="flex gap-2">
+          <input ref={ref} data-testid={testId} type="file" accept="image/*" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
+          <Button type="button" variant="outline" size="sm" className="rounded-full" disabled={busy} onClick={() => ref.current?.click()}>
+            <ImagePlus className="mr-1 h-4 w-4" />{value ? L("เปลี่ยนรูป", "Change") : L("เลือกรูป", "Choose a picture")}
+          </Button>
+          {value && <Button type="button" variant="ghost" size="sm" className="rounded-full text-destructive" onClick={() => onChange("")}><Trash2 className="mr-1 h-4 w-4" />{L("ลบ", "Remove")}</Button>}
+        </div>
+      )}
+    </div>
   );
 }

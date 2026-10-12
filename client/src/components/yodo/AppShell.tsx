@@ -12,6 +12,8 @@ import { NotificationBell } from "@/components/yodo/NotificationBell";
 import { LangToggle } from "@/components/yodo/LangToggle";
 import { L } from "@/lib/i18n";
 import { ReceiptHost } from "@/components/yodo/receipt";
+import logoImg from "@/assets/yodo-logo.png";
+import markImg from "@/assets/yodo-mark.png";
 
 const NAV = [
   { to: "/", th: "ภาพรวม", en: "Dashboard", icon: Sparkles, key: "dashboard" },
@@ -153,12 +155,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-background">
       <aside className={`sticky top-0 hidden h-screen w-20 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-6 md:flex ${wide ? "lg:w-64 lg:px-5" : ""}`}>
         <div className={`mb-10 flex flex-col items-center gap-4 ${wide ? "lg:flex-row lg:gap-3" : ""}`}>
-          <Link to="/" className="flex min-w-0 flex-1 items-center gap-3 px-2">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xl font-bold text-primary-foreground">Y</div>
-            <div className={wide ? "hidden lg:block" : "hidden"}>
-              <p className="font-display text-2xl font-bold leading-none tracking-wide">YODO</p>
-              <p className="whitespace-nowrap text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Dance Academy</p>
-            </div>
+          <Link to="/" className="flex min-w-0 flex-1 items-center justify-center px-1" title="YODO">
+            {/* Full logo + motto when the menu is open, the Y dancer when folded (owner 12/10/2026). */}
+            <img src={markImg} alt="YODO" className={`h-12 w-12 shrink-0 object-contain ${wide ? "lg:hidden" : ""}`} />
+            {wide && <img src={logoImg} alt="YODO You Only Dance Once" className="hidden w-[170px] lg:block" />}
           </Link>
           <button onClick={toggle} className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-primary transition-colors hover:bg-muted lg:flex" title={collapsed ? L("ขยายเมนู", "Expand menu") : L("ย่อเมนู", "Collapse menu")} aria-label={collapsed ? L("ขยายเมนู", "Expand menu") : L("ย่อเมนู", "Collapse menu")}>
             {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
@@ -184,8 +184,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:hidden">
           <Link to="/" className="flex items-center gap-2" onClick={() => setMenuOpen(false)}>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-display text-base font-bold text-primary-foreground">Y</div>
-            <span className="font-display text-xl font-bold">YODO</span>
+            <img src={logoImg} alt="YODO You Only Dance Once" className="h-9 w-auto" />
           </Link>
           <div className="flex items-center gap-1">
           <LangToggle />

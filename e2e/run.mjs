@@ -407,14 +407,35 @@ try {
   await page.screenshot({ path: `${SHOTS}/34-permissions.png`, fullPage: true });
   await page.goto(BASE + '/company');
   await page.getByText('ชื่อโรงเรียน / บริษัท (ตามจดทะเบียน)').waitFor();
+  check('the school logo with the motto is shown', await page.getByAltText('YODO You Only Dance Once').first().isVisible());
   const cbox = (t) => page.locator('label', { hasText: new RegExp('^' + t) }).first().locator('xpath=ancestor::div[1]').locator('input, textarea').first();
   await cbox('ชื่อโรงเรียน').fill('บริษัท โยโด้ แดนซ์ จำกัด');
   await cbox('ชื่อภาษาอังกฤษ').fill('YODO Dance Co., Ltd.');
   await cbox('ที่อยู่').fill('99 ถนนสุขุมวิท กรุงเทพฯ 10110');
   await cbox('เลขประจำตัวผู้เสียภาษี').fill('0105555555555');
+  // signature = dark ink on a transparent PNG (showed black before), stamp = red ink on white paper (JPEG)
+  const mkPic = (kind) => page.evaluate((kind) => {
+    const c = document.createElement('canvas'); c.width = 400; c.height = 200; const g = c.getContext('2d');
+    if (kind === 'stamp') { g.fillStyle = '#fff'; g.fillRect(0, 0, 400, 200); g.strokeStyle = '#c0262d'; g.lineWidth = 8; g.beginPath(); g.arc(200, 100, 70, 0, 7); g.stroke(); }
+    else { g.strokeStyle = '#1a1a40'; g.lineWidth = 6; g.beginPath(); g.moveTo(40, 150); g.bezierCurveTo(120, 20, 220, 190, 360, 50); g.stroke(); }
+    return c.toDataURL(kind === 'stamp' ? 'image/jpeg' : 'image/png', 0.95).split(',')[1];
+  }, kind);
+  await page.getByTestId('co-sign').setInputFiles({ name: 'sign.png', mimeType: 'image/png', buffer: Buffer.from(await mkPic('sign'), 'base64') });
+  await page.getByTestId('co-stamp').setInputFiles({ name: 'stamp.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(await mkPic('stamp'), 'base64') });
+  await page.getByTestId('co-stamp-img').waitFor();
+  const corner = (id) => page.getByTestId(id).evaluate(async (im) => {
+    await im.decode(); const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const g = c.getContext('2d'); g.drawImage(im, 0, 0); return { png: im.src.startsWith('data:image/png'), a: g.getImageData(0, 0, 1, 1).data[3] };
+  });
+  const cs = await corner('co-sign-img'), cst = await corner('co-stamp-img');
+  check('signature upload stays transparent (not black)', cs.png && cs.a === 0, JSON.stringify(cs));
+  check('stamp upload: white paper made transparent', cst.png && cst.a === 0, JSON.stringify(cst));
   await page.getByRole('button', { name: 'บันทึก', exact: true }).click();
   await page.waitForTimeout(600);
-  check('company settings are saved', (await (await page.request.get(`${BASE}/api/settings/company`)).json()).taxId === '0105555555555');
+  {
+    const co = await (await page.request.get(`${BASE}/api/settings/company`)).json();
+    check('company settings are saved (with stamp)', co.taxId === '0105555555555' && co.stamp.startsWith('/api/files/') && co.stamp.endsWith('.png'), JSON.stringify(co).slice(0, 200));
+  }
   await page.screenshot({ path: `${SHOTS}/35-company.png`, fullPage: true });
   await post('/classes', { name: 'Ballet Course', teacherId: '', description: '', image: '', status: 'Active', price: 10000, months: 6 });
   await page.goto(BASE + '/classes');
@@ -437,8 +458,12 @@ try {
   await frame.locator('h1').waitFor();
   const rtxt = await frame.locator('body').innerText();
   check('receipt: running number, company, course, amount in Thai words', /RC\d{4}-0001/.test(rtxt) && rtxt.includes('บริษัท โยโด้ แดนซ์ จำกัด') && rtxt.includes('Ballet Course') && rtxt.includes('6 เดือน') && rtxt.includes('เก้าพันห้าร้อยบาทถ้วน'), rtxt.slice(0, 200));
+  check('receipt shows the stamp and the signature', (await frame.locator('img.stamp').count()) === 1 && (await frame.locator('.sign .line img').count()) === 1);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOTS}/37-receipt-th.png` });
+  await frame.locator('.sign').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${SHOTS}/37b-receipt-stamp.png` });
   await rv.getByRole('group', { name: 'ภาษาของใบเสร็จ' }).getByRole('button', { name: 'EN' }).click();
   await page.waitForTimeout(600);
   const etxt = await page.frameLocator('[data-testid="receipt-frame"]').locator('body').innerText();

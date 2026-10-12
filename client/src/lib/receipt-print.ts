@@ -6,7 +6,7 @@ import logoUrlRaw from "@/assets/yodo-logo.png";
 // The A4 receipt (owner 12/10/2026, mockup 3gLnsvQrxnGWHKpPmbRxBA board 3). One HTML page, used both by the in-app view
 // (an iframe) and by the print window, in Thai or English (the receipt has its own TH/EN switch).
 
-export type Company = { name: string; nameEn: string; address: string; phone: string; email: string; taxId: string; branch: string; logo: string; sign: string };
+export type Company = { name: string; nameEn: string; address: string; phone: string; email: string; taxId: string; branch: string; logo: string; sign: string; stamp?: string };
 export type ReceiptStudent = { code: string; prefix: string; firstName: string; lastName: string } | null;
 
 const esc = (v: string | number | null | undefined) =>
@@ -72,7 +72,7 @@ export function receiptHtml(o: { receipt: Receipt; company: Company; student: Re
   const { receipt: r, company: c, student: s, lang } = o;
   const T = (th: string, en: string) => (lang === "en" ? en : th);
   const name = s ? `${prefixed(s.prefix, s.firstName)} ${s.lastName}`.trim() : "-";
-  const coName = (lang === "en" ? c.nameEn || c.name : c.name || c.nameEn) || "YODO Dance Academy";
+  const coName = (lang === "en" ? c.nameEn || c.name : c.name || c.nameEn) || "YODO";
   const logo = abs(c.logo || logoUrlRaw);
   const coLines = [
     c.address,
@@ -97,8 +97,8 @@ td{padding:3mm;border-top:1px solid #f1e5e8;vertical-align:top}.r{text-align:rig
 .tot{align-self:flex-end;width:80mm;display:flex;flex-direction:column;gap:1.5mm;font-size:10.5pt}.tot div{display:flex;justify-content:space-between}
 .tot .grand{background:#f6e6eb;color:#8e2d4c;font-weight:700;font-size:12.5pt;padding:2mm 3mm;border-radius:2mm}.words{text-align:right;font-size:9pt;color:#5f4b52}
 .pay{font-size:10pt}.note{font-size:9.5pt;color:#5f4b52}
-.sign{margin-top:auto;display:flex;justify-content:flex-end}.sign div{width:62mm;text-align:center;font-size:10pt;display:flex;flex-direction:column;gap:1mm}
-.sign .line{height:16mm;border-bottom:1px solid #2b2024;position:relative}.sign img{position:absolute;left:50%;bottom:1mm;transform:translateX(-50%);max-height:14mm;max-width:100%}
+.sign{margin-top:auto;display:flex;justify-content:flex-end;align-items:flex-end;gap:4mm}.sign .stamp{max-width:34mm;max-height:34mm;object-fit:contain}.sign div{width:62mm;text-align:center;font-size:10pt;display:flex;flex-direction:column;gap:1mm}
+.sign .line{height:16mm;border-bottom:1px solid #2b2024;position:relative}.sign .line img{position:absolute;left:50%;bottom:1mm;transform:translateX(-50%);max-height:14mm;max-width:100%}
 .void{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .void span{transform:rotate(-28deg);font-size:58pt;font-weight:700;color:rgba(190,30,45,.16);border:5px solid rgba(190,30,45,.16);padding:2mm 8mm;border-radius:4mm}
 .voidnote{color:#b4233c;font-size:10pt}
@@ -118,7 +118,7 @@ ${r.discount ? `<div><span>${T("ส่วนลด", "Discount")}</span><span>�
 <div class="pay">${T("ชำระโดย", "Paid by")}: <b>${esc(methodLabel(r.method, lang))}</b> ${T("วันที่", "on")} ${d(r.date)}</div>
 ${r.remark ? `<div class="note">${T("หมายเหตุ", "Remark")}: ${esc(r.remark)}</div>` : ""}
 ${r.cancelled ? `<div class="voidnote">${T("ยกเลิกแล้ว", "Cancelled")}${r.cancelReason ? `: ${esc(r.cancelReason)}` : ""}</div>` : ""}
-<div class="sign"><div><div class="line">${c.sign ? `<img src="${esc(abs(c.sign))}" alt="">` : ""}</div><div>${T("ผู้รับเงิน", "Received by")}</div><div style="color:#5f4b52">(${esc(r.receivedByName)})</div></div></div>
+<div class="sign">${c.stamp ? `<img class="stamp" src="${esc(abs(c.stamp))}" alt="">` : ""}<div><div class="line">${c.sign ? `<img src="${esc(abs(c.sign))}" alt="">` : ""}</div><div>${T("ผู้รับเงิน", "Received by")}</div><div style="color:#5f4b52">(${esc(r.receivedByName)})</div></div></div>
 </section>${o.print ? `<script>window.addEventListener('load',async()=>{try{await document.fonts.ready;await Promise.all(Array.from(document.images,i=>i.decode().catch(()=>{})))}finally{window.focus();window.print()}})</script>` : ""}</body></html>`;
 }
 

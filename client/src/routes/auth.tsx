@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, clearMeCache, errorText, getMe } from "@/lib/api";
+import logoImg from "@/assets/yodo-logo.png";
 import { useYodo } from "@/lib/yodo-store";
 import loginImg from "@/assets/login-ballet.jpg";
 import { PinLogin, markSignedOut } from "@/components/yodo/Pin";
@@ -71,12 +72,8 @@ function AuthPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-primary/10" />
       </div>
 
-      <header className="absolute left-5 top-5 z-20 flex items-center gap-3 md:left-10 md:top-10 md:gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary font-display text-2xl font-bold text-primary-foreground md:h-14 md:w-14">Y</div>
-        <div className="min-w-0">
-          <p className="font-display text-3xl font-bold leading-none tracking-wide md:text-4xl">YODO</p>
-          <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:text-xs">Dance Academy Management System</p>
-        </div>
+      <header className="absolute left-5 top-5 z-20 md:left-10 md:top-10">
+        <img src={logoImg} alt="YODO You Only Dance Once" className="w-[150px] rounded-2xl bg-background/80 p-2 backdrop-blur-sm md:w-[220px] md:p-3" />
       </header>
 
       <div className="absolute right-5 top-5 z-20 md:right-10 md:top-10">
