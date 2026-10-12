@@ -30,7 +30,7 @@ model User {
   image        String    @default("")
   status       String    @default("Active") // Active | Disabled
   tokenVersion Int       @default(0) // bump to sign the user out everywhere
-  lang         String    @default("th")
+  lang         String    @default("en") // th | en (owner 12/10/2026: English first)
   theme        String    @default("light")
   lastLoginAt  DateTime?
   googleSub    String? // Google account id, linked at the first Google sign-in

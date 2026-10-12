@@ -243,3 +243,20 @@ describe('PIN, Google and Face ID sign-in', () => {
     expect((await request(app).post('/api/auth/passkey').set({ ...H, origin: 'https://x.test' }).send({ response: {} })).body.error).toBe('passkey_expired');
   });
 });
+
+describe('Thai / English', () => {
+  it('new accounts start in English; the language is kept with the account and used for notices', async () => {
+    expect((await admin.get('/api/me')).body.lang).toBe('en');
+    expect((await admin.patch('/api/me/lang').set(H).send({ lang: 'xx' })).status).toBe(400);
+    const d = (await admin.get('/api/data')).body;
+    const cls = d.classes[0].id, st = d.students[0].id;
+    await admin.patch('/api/me/lang').set(H).send({ lang: 'th' }).expect(200);
+    expect((await admin.get('/api/me')).body.lang).toBe('th');
+    await admin.post('/api/schedules').set(H).send({ items: [{ classId: cls, date: '2026-11-02', start: '10:00', end: '11:00' }] }).expect(201);
+    await admin.patch('/api/me/lang').set(H).send({ lang: 'en' }).expect(200);
+    await admin.post('/api/schedules').set(H).send({ items: [{ classId: cls, date: '2026-11-03', start: '10:00', end: '11:00' }] }).expect(201);
+    const titles = (await admin.get('/api/notices')).body.items.map((n: { title: string }) => n.title);
+    expect(titles.slice(0, 2)).toEqual(['New class session', 'มีตารางเรียนใหม่']);
+    expect(st).toBeTruthy();
+  });
+});

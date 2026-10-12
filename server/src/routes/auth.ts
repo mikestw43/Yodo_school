@@ -112,7 +112,7 @@ router.get('/me', requireAuth, async (req, res) => {
   res.json({
     id: u.id, username: u.username, firstName: u.firstName, lastName: u.lastName, nickname: u.nickname, email: u.email, phone: u.phone,
     image: u.image, positionId: u.positionId ?? '', positionName: pos?.name ?? '', role: u.role, superadmin: u.role === 'superadmin',
-    name: displayName(u), googleLinked: !!u.googleSub,
+    name: displayName(u), googleLinked: !!u.googleSub, lang: u.lang === 'th' ? 'th' : 'en',
   });
 });
 
@@ -121,6 +121,12 @@ router.patch('/me', requireAuth, async (req, res) => {
   const before = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
   const after = await prisma.user.update({ where: { id: before.id }, data: { ...body, image: storeImage(body.image) } });
   await audit(req, 'update', 'profiles', before.id, before.username, before, after);
+  res.json({ ok: true });
+});
+
+router.patch('/me/lang', requireAuth, async (req, res) => {
+  const { lang } = z.object({ lang: z.enum(['th', 'en']) }).parse(req.body);
+  await prisma.user.update({ where: { id: req.user!.id }, data: { lang } });
   res.json({ ok: true });
 });
 

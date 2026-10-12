@@ -63,13 +63,16 @@ export async function pushTo(userId: string, payload: { title: string; body: str
   }));
 }
 
-export type NoticeIn = { kind: string; ref?: string; title: string; body: string; url: string };
+export type Lang = 'th' | 'en';
+// The text is made in each person's own language (owner 12/10/2026).
+export type NoticeIn = { kind: string; ref?: string; text: (lang: Lang) => { title: string; body: string }; url: string };
 
 export async function notifyAll(n: NoticeIn) {
   try {
-    const users = await prisma.user.findMany({ where: { status: 'Active', deletedAt: null }, select: { id: true } });
-    const title = n.title.slice(0, 120), body = n.body.slice(0, 300);
+    const users = await prisma.user.findMany({ where: { status: 'Active', deletedAt: null }, select: { id: true, lang: true } });
     for (const u of users) {
+      const t = n.text(u.lang === 'th' ? 'th' : 'en');
+      const title = t.title.slice(0, 120), body = t.body.slice(0, 300);
       await prisma.notice.create({ data: { userId: u.id, kind: n.kind, ref: n.ref ?? '', title, body, url: n.url } });
       void pushTo(u.id, { title, body, url: n.url, tag: n.ref || n.kind }).catch(() => {});
     }
@@ -92,7 +95,9 @@ export async function expiryNotices() {
       ]);
       if (!s || !c) continue;
       await prisma.noticeKey.create({ data: { key } });
-      await notifyAll({ kind: 'expiry', ref: key, title: 'คลาสใกล้หมดอายุ', body: `${s.code} ${s.firstName} → ${c.name} หมดอายุ ${fdate(e.expiryDate)}`, url: '/students' });
+      await notifyAll({ kind: 'expiry', ref: key, url: '/students', text: (l) => l === 'th'
+        ? { title: 'คลาสใกล้หมดอายุ', body: `${s.code} ${s.firstName} → ${c.name} หมดอายุ ${fdate(e.expiryDate)}` }
+        : { title: 'Class ending soon', body: `${s.code} ${s.firstName} → ${c.name} ends ${fdate(e.expiryDate)}` } });
     }
   } catch (e) { console.error('expiry notices failed', e); }
 }

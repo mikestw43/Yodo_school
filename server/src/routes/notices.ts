@@ -57,7 +57,9 @@ router.post('/push/subscribe', requireAuth, async (req, res) => {
 router.post('/push/test', requireAuth, async (req, res) => {
   const devices = await prisma.pushDevice.count({ where: { userId: req.user!.id } });
   if (!devices) return void res.json({ devices: 0, results: [] });
-  await prisma.notice.create({ data: { userId: req.user!.id, kind: 'test', title: 'YODO ทดสอบแจ้งเตือน', body: 'อุปกรณ์นี้รับแจ้งเตือนได้แล้ว', url: '/' } });
-  const results = await pushTo(req.user!.id, { title: 'YODO ทดสอบแจ้งเตือน', body: 'อุปกรณ์นี้รับแจ้งเตือนได้แล้ว', url: '/', tag: 'test' });
+  const th = (await prisma.user.findUnique({ where: { id: req.user!.id } }))?.lang === 'th';
+  const title = th ? 'YODO ทดสอบแจ้งเตือน' : 'YODO test notification', body = th ? 'อุปกรณ์นี้รับแจ้งเตือนได้แล้ว' : 'This device can receive notifications';
+  await prisma.notice.create({ data: { userId: req.user!.id, kind: 'test', title, body, url: '/' } });
+  const results = await pushTo(req.user!.id, { title, body, url: '/', tag: 'test' });
   res.json({ devices, results });
 });

@@ -166,7 +166,7 @@ router.post('/enrollments', requirePerm('students', 'edit'), async (req, res) =>
   const e = await prisma.enrollment.create({ data: { ...(eid ? { id: eid } : {}), ...rest, receiptImage: storeImage(rest.receiptImage) } });
   const { label } = await enrollLabel(e);
   await audit(req, 'insert', 'enrollments', e.id, label, null, e);
-  void notifyAll({ kind: 'enrollment', ref: `enrollment:${e.id}`, title: 'ลงทะเบียนคลาสใหม่', body: label, url: '/students' });
+  void notifyAll({ kind: 'enrollment', ref: `enrollment:${e.id}`, url: '/students', text: (l) => ({ title: l === 'th' ? 'ลงทะเบียนคลาสใหม่' : 'New class enrollment', body: label }) });
   res.status(201).json(enrollmentOut(e));
 });
 
@@ -180,7 +180,7 @@ router.put('/enrollments/:id', requirePerm('students', 'edit'), async (req, res)
   const after = await prisma.enrollment.update({ where: { id: before.id }, data: { ...b, receiptImage: storeImage(b.receiptImage) } });
   const { label } = await enrollLabel(after);
   await audit(req, 'update', 'enrollments', after.id, label, before, after);
-  void notifyAll({ kind: 'enrollment', ref: `enrollment:${after.id}`, title: 'แก้ไขการลงทะเบียน', body: label, url: '/students' });
+  void notifyAll({ kind: 'enrollment', ref: `enrollment:${after.id}`, url: '/students', text: (l) => ({ title: l === 'th' ? 'แก้ไขการลงทะเบียน' : 'Enrollment changed', body: label }) });
   res.json(enrollmentOut(after));
 });
 
@@ -284,10 +284,8 @@ router.post('/schedules', requirePerm('calendar', 'add'), async (req, res) => {
   }
   const c = await getClass(items[0]!.classId);
   const first = made[0]!;
-  void notifyAll({
-    kind: 'schedule', ref: `schedule:${first.id}`, title: 'มีตารางเรียนใหม่',
-    body: `${c.name} · ${fdate(first.date)} ${first.startTime}-${first.endTime}${made.length > 1 ? ` (+${made.length - 1})` : ''}`, url: '/calendar',
-  });
+  const when = `${c.name} · ${fdate(first.date)} ${first.startTime}-${first.endTime}${made.length > 1 ? ` (+${made.length - 1})` : ''}`;
+  void notifyAll({ kind: 'schedule', ref: `schedule:${first.id}`, url: '/calendar', text: (l) => ({ title: l === 'th' ? 'มีตารางเรียนใหม่' : 'New class session', body: when }) });
   res.status(201).json(made.map(scheduleOut));
 });
 
