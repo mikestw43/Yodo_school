@@ -296,7 +296,11 @@ try {
   const view = page.getByRole('dialog');
   await view.getByRole('button', { name: 'แก้ไข' }).waitFor().then(() => check('tapping a row opens the details with Edit', true), () => check('tapping a row opens the details with Edit', false));
   await page.screenshot({ path: `${SHOTS}/25-student-details.png` });
-  const [pop] = await Promise.all([page.waitForEvent('popup'), view.getByRole('button', { name: 'พิมพ์ PDF' }).click()]);
+  await view.getByRole('button', { name: 'ดู PDF' }).click();
+  await page.getByTestId('pdf-view').locator('.ydoc-p2').waitFor().then(() => check('"View PDF" shows the application inside the app', true), () => check('"View PDF" shows the application inside the app', false));
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${SHOTS}/31-view-pdf.png` });
+  const [pop] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'พิมพ์ / บันทึกเป็น PDF' }).click()]);
   await pop.waitForLoadState();
   const pimg = pop.locator('img.student-photo');
   await pimg.waitFor({ timeout: 5000 }).catch(() => null);
@@ -304,6 +308,7 @@ try {
   await pop.setViewportSize({ width: 800, height: 1131 });
   await pop.locator('section.sheet').nth(1).screenshot({ path: `${SHOTS}/26-pdf-page2.png` }).catch(() => null);
   await pop.close();
+  await page.getByRole('button', { name: 'กลับ' }).click();
   await view.getByRole('button', { name: 'แก้ไข' }).click();
   await page.getByRole('dialog').getByText('คลาสที่สนใจ (เลือกได้หลายอัน)').waitFor().then(() => check('Edit opens the student form', true), () => check('Edit opens the student form', false));
   // ---------- one signature in the form, used on both pages; no "automatic" notes (owner 12/10/2026) ----------
@@ -314,6 +319,10 @@ try {
   await box('ชื่อผู้ติดต่อฉุกเฉิน').fill('คุณแม่');
   await box('เบอร์โทรผู้ติดต่อฉุกเฉิน').fill('0899999999');
   await fdlg.getByPlaceholder('เช่น แม่, พ่อ').fill('แม่');
+  check('form signature is locked until both boxes are ticked', (await fdlg.getByTestId('form-sign').locator('canvas').count()) === 0);
+  await fdlg.getByText('อ่านและยอมรับข้อตกลงและเงื่อนไขแล้ว').click();
+  await fdlg.getByText('ข้อมูลที่ให้ไว้ถูกต้องตามความเป็นจริง').click();
+  check('form shows the terms above the signature', (await fdlg.getByTestId('sign-terms').locator('li').count()) === 9);
   const pad = fdlg.getByTestId('form-sign');
   await pad.scrollIntoViewIfNeeded();
   const bx = await pad.boundingBox();
@@ -327,7 +336,8 @@ try {
   check('signature drawn in the form is saved', /^\/api\/files\//.test(signed.signature) && /^\d{4}-\d{2}-\d{2}$/.test(signed.signedAt), signed.signature);
   await page.locator('tr', { hasText: 'มะลิ' }).click();
   const v2 = page.getByRole('dialog');
-  const [pop2] = await Promise.all([page.waitForEvent('popup'), v2.getByRole('button', { name: 'พิมพ์ PDF' }).click()]);
+  await v2.getByRole('button', { name: 'ดู PDF' }).click();
+  const [pop2] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'พิมพ์ / บันทึกเป็น PDF' }).click()]);
   await pop2.waitForLoadState();
   await pop2.locator('img.sign-img').first().waitFor({ timeout: 5000 }).catch(() => null);
   check('the same signature prints on both pages', (await pop2.locator('img.sign-img').count()) === 2);
@@ -336,10 +346,15 @@ try {
   await pop2.waitForTimeout(500);
   await pop2.locator('section.sheet').nth(1).screenshot({ path: `${SHOTS}/26-pdf-page2.png` }).catch(() => null);
   await pop2.close();
+  await page.getByRole('button', { name: 'กลับ' }).click();
   await v2.getByRole('button', { name: 'เซ็นใหม่' }).click();
-  await page.waitForTimeout(500);
+  const sd = page.getByRole('dialog', { name: 'เซ็นใหม่' });
+  await sd.getByTestId('sign-terms').waitFor().then(() => check('"Sign again" shows the terms and one sign box, not the whole application', true), () => check('"Sign again" shows the terms and one sign box, not the whole application', false));
+  await sd.getByText('อ่านและยอมรับข้อตกลงและเงื่อนไขแล้ว').click();
+  await sd.getByText('ข้อมูลที่ให้ไว้ถูกต้องตามความเป็นจริง').click();
+  check('sign window: one place to sign after both ticks', (await sd.locator('canvas').count()) === 1 && (await sd.locator('.ydoc-sheet').count()) === 0);
+  await page.waitForTimeout(300);
   await page.screenshot({ path: `${SHOTS}/30-sign-dialog.png` });
-  check('sign dialog has one place to sign', (await page.getByRole('dialog').locator('canvas').count()) === 1);
   await page.keyboard.press('Escape');
 
   // ---------- notification settings and bell (owner 12/10/2026) ----------

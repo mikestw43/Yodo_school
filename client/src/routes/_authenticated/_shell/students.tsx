@@ -3,17 +3,18 @@ import { differenceInCalendarMonths, format, parseISO } from "date-fns";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Ban, PenLine, Pencil, Plus, Printer, RotateCcw, Search, Trash2, UserRoundPlus, X } from "lucide-react";
+import { Ban, ChevronLeft, FileText, PenLine, Pencil, Plus, Printer, RotateCcw, Search, Trash2, UserRoundPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, ChipSelect, ConfirmDialog, DateField, EmptyState, Field, ImageUpload, NativeSelect, ReceiptUpload, PageHeader, Pagination, SectionTitle, StatusBadge, onlyDigits10, usePagination } from "@/components/yodo/ui";
 
 import { printReceipt } from "@/lib/receipt-print";
-import { SignCanvas, StudentDocument, useSignCanvas } from "@/components/yodo/student-document";
+import { SignBox, StudentDocument, useSignCanvas } from "@/components/yodo/student-document";
 import {
   DANCE_TYPES, ETHNICITIES, NATIONALITIES, PREFIXES, RELIGIONS, SOURCES, ageText, fullName, nextStudentCode, useYodo,
   type Enrollment, type EnrollmentInput, type Student, type StudentInput,
@@ -351,18 +352,8 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
             <ChipSelect options={SOURCES} label={opt} value={splitList(f.source)} onChange={(v) => set("source", SOURCES.filter((x) => v.includes(x)).join(", "))} />
           </Field>
           {splitList(f.source).includes("Other") && <Field label={L("ระบุช่องทาง", "Specify")} required error={errors.sourceOther} className="sm:col-span-2"><Input value={f.sourceOther} onChange={(e) => set("sourceOther", e.target.value)} /></Field>}
-          <div className="space-y-2 border-t border-border/60 pt-4 sm:col-span-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold">{L("ลายเซ็นผู้สมัคร / ผู้ปกครอง", "Applicant / Parent signature")}</p>
-              <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={sig.clear}><RotateCcw className="h-3.5 w-3.5" /> {L("เซ็นใหม่", "Sign again")}</Button>
-            </div>
-            <div key={sig.resetKey} className="relative h-36 rounded-2xl border-[1.5px] border-dashed border-primary/30 bg-background" data-testid="form-sign">
-              {sig.showOld && editing?.signature
-                ? <img src={editing.signature} alt={L("ลายเซ็น", "Signature")} className="pointer-events-none absolute inset-0 m-auto max-h-28 max-w-[80%] object-contain" />
-                : !sig.hasSignature && <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{L("เซ็นที่นี่", "Sign here")}</span>}
-              <SignCanvas ref={sig.ref} onDirty={sig.markDrawn} />
-            </div>
-            <p className="text-xs text-muted-foreground">{L("เซ็นครั้งเดียว ใช้ทั้งหน้า 1 และหน้า 2 ของใบสมัคร", "Sign once; it is used on both pages of the application")}</p>
+          <div className="border-t border-border/60 pt-4 sm:col-span-2">
+            <SignBox sig={sig} current={editing?.signature} />
           </div>
         </div>
         <DialogFooter>
@@ -387,6 +378,7 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
   const { data, can, signStudent } = useYodo();
   const canEdit = can("students", "edit");
   const [signing, setSigning] = useState(false);
+  const [viewPdf, setViewPdf] = useState(false);
   const [editEn, setEditEn] = useState<Enrollment | null>(null);
   const [kept, setKept] = useState<Student | null>(null);
   if (student && kept !== student) setKept(student);
@@ -450,7 +442,7 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
             </div>
             <DialogFooter>
               {canEdit && <Button variant="outline" onClick={() => setSigning(true)}><PenLine className="h-4 w-4" /> {s.signature ? L("เซ็นใหม่", "Sign again") : L("เซ็นเอกสาร", "Sign document")}</Button>}
-              <Button variant="outline" onClick={() => { if (!printStudentDocument(s)) toast.error(L("กรุณาอนุญาตหน้าต่างใหม่เพื่อพิมพ์ PDF", "Please allow pop-up windows to print the PDF")); }}><Printer className="h-4 w-4" /> {L("พิมพ์ PDF", "Print PDF")}</Button>
+              <Button variant="outline" onClick={() => setViewPdf(true)}><FileText className="h-4 w-4" /> {L("ดู PDF", "View PDF")}</Button>
               {canEdit && <Button variant="outline" onClick={() => onEdit(s)}><Pencil className="h-4 w-4" /> {L("แก้ไข", "Edit")}</Button>}
             </DialogFooter>
           </>
@@ -459,10 +451,30 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
     </Dialog>
     <EnrollDialog student={editEn ? s : null} enrollment={editEn} onClose={() => setEditEn(null)} />
     <Dialog open={signing} onOpenChange={setSigning}>
-      <DialogContent className="flex max-h-[92vh] max-w-3xl flex-col overflow-hidden">
-        <DialogHeader><DialogTitle>{L("เซ็นเอกสาร", "Sign document")}</DialogTitle><DialogDescription>{L("เลื่อนอ่านเอกสารแล้วเซ็นครั้งเดียวที่ท้ายหน้า 2 ลายเซ็นนี้จะใช้ทั้งสองหน้า", "Scroll through the document and sign once at the end of page 2. The signature is used on both pages.")}</DialogDescription></DialogHeader>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader><DialogTitle>{s?.signature ? L("เซ็นใหม่", "Sign again") : L("เซ็นเอกสาร", "Sign document")}</DialogTitle><DialogDescription>{s ? `${fullName(s)} · ${s.code}` : ""}</DialogDescription></DialogHeader>
         {signing && s && <SignDocumentBody student={s} onDone={() => setSigning(false)} />}
       </DialogContent>
+    </Dialog>
+    {/* View the application in the app, print only on request (owner 12/10/2026) */}
+    <Dialog open={viewPdf} onOpenChange={setViewPdf}>
+      <DialogPrimitive.Portal>
+      <DialogPrimitive.Content className="fixed inset-0 z-50 flex flex-col bg-[#5b4b50] outline-none">
+        <DialogPrimitive.Title className="sr-only">{L("ใบสมัคร", "Application")}</DialogPrimitive.Title>
+        <DialogPrimitive.Description className="sr-only">{s ? `${fullName(s)} · ${s.code}` : ""}</DialogPrimitive.Description>
+        <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-background px-3 py-2.5 sm:px-5">
+          <Button variant="outline" className="rounded-full" onClick={() => setViewPdf(false)}><ChevronLeft className="h-4 w-4" /> {L("กลับ", "Back")}</Button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{L("ใบสมัคร", "Application")} · {s ? fullName(s) : ""}</p>
+            <p className="font-mono text-xs text-muted-foreground">{s?.code}</p>
+          </div>
+          <Button className="rounded-full" onClick={() => { if (s && !printStudentDocument(s)) toast.error(L("กรุณาอนุญาตหน้าต่างใหม่เพื่อพิมพ์ PDF", "Please allow pop-up windows to print the PDF")); }}><Printer className="h-4 w-4" /> {L("พิมพ์ / บันทึกเป็น PDF", "Print / Save as PDF")}</Button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-6" data-testid="pdf-view">
+          {viewPdf && s && <StudentDocument student={s} />}
+        </div>
+      </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
     </Dialog>
     </>
   );
@@ -470,9 +482,9 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
 
 function SignDocumentBody({ student, onDone }: { student: Student; onDone: () => void }) {
   const { signStudent } = useYodo();
-  const { ref, clear, exportSignature, markDrawn, hasSignature, resetKey, showOld } = useSignCanvas();
+  const sig = useSignCanvas();
   const save = () => {
-    const img = exportSignature();
+    const img = sig.exportSignature();
     if (!img) return;
     signStudent(student.id, img, format(new Date(), "yyyy-MM-dd"));
     onDone();
@@ -480,13 +492,10 @@ function SignDocumentBody({ student, onDone }: { student: Student; onDone: () =>
   };
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl bg-muted/60 p-3 sm:p-5">
-        <StudentDocument student={student} signMode resetKey={resetKey} showOld={showOld} canvasRef={ref} onDirty={markDrawn} />
-      </div>
-      <DialogFooter className="pt-3">
-        <Button variant="outline" onClick={clear}>{L("ล้างลายเซ็น", "Clear signature")}</Button>
+      <SignBox sig={sig} current={student.signature} />
+      <DialogFooter className="pt-2">
         <Button variant="outline" onClick={onDone}>{L("ยกเลิก", "Cancel")}</Button>
-        <Button disabled={!hasSignature} onClick={save}>{L("บันทึกลายเซ็น", "Save signature")}</Button>
+        <Button disabled={!sig.hasSignature} onClick={save}>{L("บันทึกลายเซ็น", "Save signature")}</Button>
       </DialogFooter>
     </>
   );

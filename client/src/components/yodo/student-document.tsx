@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { Student } from "@/lib/yodo-store";
 import { appliedOn, formSections, signerLabel, terms } from "@/lib/student-print";
 import { L, fd } from "@/lib/i18n";
+import { RotateCcw } from "lucide-react";
 import logoUrlRaw from "@/assets/yodo-logo.png";
 const logo = { url: logoUrlRaw };
 
@@ -151,4 +152,41 @@ export function useSignCanvas() {
   const reset = () => { setDrawn(false); setCleared(false); setResetKey((k) => k + 1); };
   const exportSignature = (): string | null => (ref.current?.isDirty() ? ref.current.toDataURL() : null);
   return { ref, clear, reset, exportSignature, markDrawn, hasSignature: drawn, resetKey, showOld: !cleared };
+}
+
+/** Sign box (owner 12/10/2026): the terms to read, two ticks (terms accepted, details correct), then the one signature.
+ *  Used at the end of the student form and in the "sign again" window. */
+export function SignBox({ sig, current }: { sig: ReturnType<typeof useSignCanvas>; current?: string | undefined }) {
+  const [agree, setAgree] = useState(false);
+  const [correct, setCorrect] = useState(false);
+  const ready = agree && correct;
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-semibold">{L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions")}</p>
+      <ol className="max-h-44 list-decimal space-y-1.5 overflow-y-auto rounded-2xl border border-border bg-muted/40 py-3 pl-8 pr-4 text-xs leading-relaxed text-foreground/80" data-testid="sign-terms">
+        {terms().map((t, i) => <li key={i}>{t}</li>)}
+      </ol>
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+        {L("อ่านและยอมรับข้อตกลงและเงื่อนไขแล้ว", "I have read and accept the terms and conditions")}
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={correct} onChange={(e) => setCorrect(e.target.checked)} />
+        {L("ข้อมูลที่ให้ไว้ถูกต้องตามความเป็นจริง", "The details given are true and correct")}
+      </label>
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <p className="text-sm font-semibold">{L("ลายเซ็นผู้สมัคร / ผู้ปกครอง", "Applicant / Parent signature")}</p>
+        <button type="button" onClick={sig.clear} disabled={!ready} className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-xs disabled:opacity-40">
+          <RotateCcw className="h-3.5 w-3.5" /> {L("เซ็นใหม่", "Sign again")}
+        </button>
+      </div>
+      <div key={sig.resetKey} className={`relative h-36 rounded-2xl border-[1.5px] border-dashed bg-background ${ready ? "border-primary/40" : "border-border opacity-60"}`} data-testid="form-sign">
+        {sig.showOld && current
+          ? <img src={current} alt={L("ลายเซ็น", "Signature")} className="pointer-events-none absolute inset-0 m-auto max-h-28 max-w-[80%] object-contain" />
+          : !sig.hasSignature && <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-muted-foreground">{ready ? L("เซ็นที่นี่", "Sign here") : L("ติ๊กทั้ง 2 ช่องด้านบนก่อนเซ็น", "Tick both boxes above before signing")}</span>}
+        {ready && <SignCanvas ref={sig.ref} onDirty={sig.markDrawn} />}
+      </div>
+      <p className="text-xs text-muted-foreground">{L("เซ็นครั้งเดียว ใช้ทั้งหน้า 1 และหน้า 2 ของใบสมัคร", "Sign once; it is used on both pages of the application")}</p>
+    </div>
+  );
 }

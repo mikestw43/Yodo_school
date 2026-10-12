@@ -79,6 +79,12 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   either at the end of the student form (`useSignCanvas`, add form sends `signature`/`signedAt` with `POST /students`,
   edit form calls `/students/:id/sign` after the save) or in the details' sign dialog (one box, at the end of page 2;
   page 1 shows the same one). Form labels no longer say "(automatic)" (student ID, age).
+- 12/10/2026 signing + PDF (mockup 6AhYbMtwqaPBREcrPdZsTM, "ทำได้เลย"): signing never skips the terms. One `SignBox`
+  (components/yodo/student-document.tsx) at the end of the student form AND in the details' "Sign document / Sign
+  again" window (small window, no longer the whole application): the 9 terms in a scroll box, two ticks "อ่านและยอมรับ
+  ข้อตกลงและเงื่อนไขแล้ว" and (owner's addition) "ข้อมูลที่ให้ไว้ถูกต้องตามความเป็นจริง", the sign box opens only when both
+  are ticked (ticks are not stored). Details button "ดู PDF" opens the application full screen in the app (Back +
+  "พิมพ์ / บันทึกเป็น PDF", which opens the print window); nothing prints by itself any more.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
