@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+data
+*.db
+*.log
+deploy/.deployed
+deploy/update.log
+.DS_Store
+e2e/shots

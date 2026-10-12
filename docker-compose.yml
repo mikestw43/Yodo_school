@@ -1,0 +1,15 @@
+name: yodo
+
+services:
+  web:
+    build: .
+    image: yodo-web:latest
+    container_name: yodo-web
+    restart: unless-stopped
+    ports:
+      # NAS: 0.0.0.0:8092 (home network; FinHR uses 8090)
+      - "${BIND_ADDR:-0.0.0.0}:${PORT:-8092}:3000"
+    volumes:
+      # Database, pictures, backups and secrets. Must be a folder on this machine's
+      # own disk, never a network share (SQLite needs local locks).
+      - "${DATA_DIR:-../data}:/data"

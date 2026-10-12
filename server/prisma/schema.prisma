@@ -1,0 +1,200 @@
+// YODO database (SQLite, one file in DATA_DIR).
+// Ids are text UUIDs so records brought over from the old Lovable app keep their ids.
+// Dates are "YYYY-MM-DD" strings so time zones can never shift them.
+// Lists (interested classes, specialisations) are JSON text.
+// Pictures are files in DATA_DIR/uploads; the column holds "/api/files/<name>" (or "").
+// NOTE: deploys run `prisma db push` WITHOUT --accept-data-loss, so columns
+// can be added but never dropped or renamed. Think twice before adding a field.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  username     String    @unique // lowercase
+  passwordHash String
+  role         String    @default("user") // superadmin | user
+  firstName    String    @default("")
+  lastName     String    @default("")
+  nickname     String    @default("")
+  email        String    @default("")
+  phone        String    @default("")
+  positionId   String?
+  image        String    @default("")
+  status       String    @default("Active") // Active | Disabled
+  tokenVersion Int       @default(0) // bump to sign the user out everywhere
+  lang         String    @default("th")
+  theme        String    @default("light")
+  lastLoginAt  DateTime?
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Position {
+  id          String    @id @default(uuid())
+  name        String
+  description String    @default("")
+  isSystem    Boolean   @default(false) // full access, cannot be edited
+  createdAt   DateTime  @default(now())
+}
+
+model PositionPermission {
+  positionId String
+  menuKey    String
+  canView    Boolean @default(false)
+  canAdd     Boolean @default(false)
+  canEdit    Boolean @default(false)
+  canDelete  Boolean @default(false)
+
+  @@id([positionId, menuKey])
+}
+
+model Teacher {
+  id              String    @id @default(uuid())
+  image           String    @default("")
+  prefix          String    @default("")
+  firstName       String
+  lastName        String    @default("")
+  nickname        String    @default("")
+  phone           String    @default("")
+  email           String    @default("")
+  lineId          String    @default("")
+  specializations String    @default("[]")
+  status          String    @default("Active")
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model DanceClass {
+  id          String   @id @default(uuid())
+  name        String
+  teacherId   String?
+  description String   @default("")
+  image       String   @default("")
+  status      String   @default("Active") // Active | Inactive
+  disabled    Boolean  @default(false)
+  price       Float?   // baht per month
+  createdAt   DateTime @default(now())
+}
+
+model Student {
+  id               String    @id @default(uuid())
+  code             String    @unique // YDO00001, never reused
+  prefix           String    @default("")
+  firstName        String
+  lastName         String    @default("")
+  nickname         String    @default("")
+  dob              String    @default("")
+  nationality      String    @default("")
+  nationalityOther String    @default("")
+  religion         String    @default("")
+  address          String    @default("")
+  phone            String    @default("")
+  email            String    @default("")
+  lineId           String    @default("")
+  emergencyName    String    @default("")
+  emergencyPhone   String    @default("")
+  relationship     String    @default("")
+  image            String    @default("")
+  interested       String    @default("[]")
+  hasExperience    Boolean   @default(false)
+  experienceDetail String    @default("")
+  source           String    @default("")
+  sourceOther      String    @default("")
+  status           String    @default("Active")
+  signature        String    @default("")
+  signedAt         String    @default("")
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+}
+
+model Enrollment {
+  id           String   @id @default(uuid())
+  studentId    String
+  classId      String
+  joinedAt     DateTime @default(now())
+  purchaseDate String   @default("")
+  startDate    String   @default("")
+  expiryDate   String   @default("")
+  remark       String   @default("")
+  receiptImage String   @default("")
+
+  @@unique([studentId, classId])
+}
+
+model Schedule {
+  id        String   @id @default(uuid())
+  classId   String
+  date      String
+  startTime String
+  endTime   String
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+model ScheduleStudent {
+  scheduleId String
+  studentId  String
+
+  @@id([scheduleId, studentId])
+}
+
+// Same shape as the old app's audit log, so its page shows old and new data the same way.
+// tableName/oldData/newData use the old app's snake_case column names.
+model AuditLog {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  actorId     String?
+  actorName   String   @default("")
+  action      String // insert | update | delete | login | logout
+  tableName   String
+  recordId    String   @default("")
+  recordLabel String   @default("")
+  oldData     String?
+  newData     String?
+
+  @@index([createdAt])
+}
+
+// What the bell shows: one row per person, so reading on one device clears it everywhere.
+model Notice {
+  id        Int       @id @default(autoincrement())
+  userId    String
+  kind      String // enrollment | schedule | expiry | test
+  ref       String    @default("")
+  title     String
+  body      String    @default("")
+  url       String    @default("/")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+// Expiry warnings are made once per enrollment and expiry date.
+model NoticeKey {
+  key       String   @id
+  createdAt DateTime @default(now())
+}
+
+model PushDevice {
+  id        Int       @id @default(autoincrement())
+  userId    String
+  endpoint  String    @unique
+  p256dh    String
+  auth      String
+  label     String    @default("")
+  createdAt DateTime  @default(now())
+  lastOkAt  DateTime?
+
+  @@index([userId])
+}

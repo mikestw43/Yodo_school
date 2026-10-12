@@ -1,0 +1,281 @@
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { format } from "date-fns";
+import { Eye, RefreshCw, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DateField, EmptyState, NativeSelect, PageHeader, Pagination, usePagination } from "@/components/yodo/ui";
+import { api, errorText } from "@/lib/api";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/_shell/audit-log")({
+  head: () => ({
+    meta: [
+      { title: "YODO" },
+      { name: "description", content: "ประวัติการเพิ่ม แก้ไข และลบข้อมูลในระบบ YODO" },
+      { property: "og:title", content: "YODO" },
+      { property: "og:description", content: "ประวัติการเพิ่ม แก้ไข และลบข้อมูลในระบบ YODO" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: AuditLogPage,
+});
+
+type Json = Record<string, unknown>;
+interface Log {
+  id: string; created_at: string; actor_id: string | null; actor_name: string; action: string; table_name: string;
+  record_label: string; old_data: Json | null; new_data: Json | null;
+}
+
+const ACTION: Record<string, { label: string; cls: string }> = {
+  insert: { label: "เพิ่ม", cls: "bg-success/15 text-success" },
+  update: { label: "แก้ไข", cls: "bg-accent text-accent-foreground" },
+  delete: { label: "ลบ", cls: "bg-destructive/15 text-destructive" },
+  login: { label: "เข้าสู่ระบบ", cls: "bg-primary/15 text-primary" },
+  logout: { label: "ออกจากระบบ", cls: "bg-muted text-muted-foreground" },
+};
+const TABLE: Record<string, string> = {
+  students: "นักเรียน", teachers: "ครู", classes: "คลาส", enrollments: "ลงทะเบียนคลาส", schedules: "ตารางเรียน",
+  schedule_students: "นักเรียนในคาบ", positions: "ตำแหน่ง", position_permissions: "สิทธิ์", profiles: "ผู้ใช้ระบบ",
+  auth: "การเข้าสู่ระบบ",
+};
+const FIELD: Record<string, string> = {
+  code: "รหัส", prefix: "คำนำหน้า", first_name: "ชื่อ", last_name: "นามสกุล", nickname: "ชื่อเล่น", dob: "วันเกิด",
+  nationality: "สัญชาติ", nationality_other: "สัญชาติ (อื่นๆ)", religion: "ศาสนา", address: "ที่อยู่", phone: "เบอร์โทร",
+  email: "Email", line_id: "Line ID", emergency_name: "ผู้ติดต่อฉุกเฉิน", emergency_phone: "เบอร์ฉุกเฉิน", relationship: "ความสัมพันธ์",
+  image: "รูปภาพ", interested: "คลาสที่สนใจ", has_experience: "มีประสบการณ์", experience_detail: "รายละเอียดประสบการณ์",
+  source: "รู้จักจาก", source_other: "รู้จักจาก (อื่นๆ)", status: "สถานะ", del_flg: "ถูกลบ", specializations: "ความถนัด",
+  name: "ชื่อ", teacher_id: "ครู", description: "รายละเอียด", disabled: "ปิดใช้งาน", category: "หมวด", price: "ราคา (บาท/เดือน)",
+  student_id: "นักเรียน", class_id: "คลาส", purchase_date: "วันที่ซื้อ", start_date: "วันเริ่มเรียน", expiry_date: "วันหมดอายุ",
+  remark: "หมายเหตุ", receipt_image: "รูปใบเสร็จ", signature: "ลายเซ็น", signed_at: "วันที่เซ็น", date: "วันที่", start_time: "เวลาเริ่ม", end_time: "เวลาเลิก",
+  schedule_id: "คาบเรียน", position_id: "ตำแหน่ง", menu_key: "เมนู", can_view: "ดู", can_add: "เพิ่ม", can_edit: "แก้ไข",
+  can_delete: "ลบ", is_system: "ตำแหน่งระบบ", username: "Username", display_name: "ชื่อที่แสดง", password: "รหัสผ่าน",
+  notif_seen_at: "เวลาอ่านแจ้งเตือน", full_name: "ชื่อ–นามสกุล", logged_in_at: "เวลาเข้าสู่ระบบ", logged_out_at: "เวลาออกจากระบบ",
+};
+const HIDDEN = new Set(["id"]);
+
+const thDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) ? v.split("-").reverse().join("/") : v;
+
+// ตารางอ้างอิง id → ชื่อจริง โหลดตอนเปิดหน้า
+let LOOKUPS: Record<string, Record<string, string>> = {};
+let ACTOR_NAMES: Record<string, string> = {};
+const REF_KEYS = new Set(["class_id", "teacher_id", "student_id", "position_id", "schedule_id"]);
+
+const actorName = (l: Log) => l.actor_id ? ACTOR_NAMES[l.actor_id] || "-" : "ระบบ";
+
+function show(k: string, v: unknown): string {
+  if (v === null || v === undefined || v === "") return "-";
+  if (typeof v === "string" && v.startsWith("img:")) return "มีรูป";
+  if (typeof v === "boolean") return v ? "ใช่" : "ไม่ใช่";
+  if (Array.isArray(v)) return v.length ? v.join(", ") : "-";
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? s : format(d, "dd/MM/yyyy HH:mm");
+  }
+  if (typeof s === "string" && s.length === 36 && REF_KEYS.has(k)) return LOOKUPS[k]?.[s] ?? "รายการที่ลบแล้ว";
+  if (s.length === 36 && /^[0-9a-f-]+$/i.test(s)) return s.slice(0, 8) + "…";
+  return thDate(s);
+}
+
+interface Row { k: string; old: unknown; new: unknown }
+function detailRows(l: Log): Row[] {
+  const o = { ...(l.old_data ?? {}) }, n = { ...(l.new_data ?? {}) };
+  if (l.table_name === "auth") {
+    delete o["username"];
+    delete n["username"];
+    n["full_name"] = actorName(l);
+  }
+  const keys = Array.from(new Set([...Object.keys(o), ...Object.keys(n)])).filter((k) => !HIDDEN.has(k));
+  if (l.action === "update" && l.old_data && l.new_data)
+    return keys.filter((k) => JSON.stringify(o[k]) !== JSON.stringify(n[k])).map((k) => ({ k, old: o[k], new: n[k] }));
+  const src = l.action === "insert" ? n : (l.old_data ?? n);
+  return keys.filter((k) => src[k] !== "" && src[k] !== null).map((k) => ({ k, old: undefined, new: src[k] }));
+}
+
+const isUpdate = (l: Log) => l.action === "update" && !!l.old_data && !!l.new_data;
+
+function summarySide(l: Log, side: "old" | "new"): string {
+  const rows = detailRows(l);
+  const val = (r: Row) => {
+    const v = r[side];
+    const img = typeof v === "string" && v.startsWith("img:");
+    if (r.k === "image" || r.k === "receipt_image" || r.k === "signature") {
+      if (side === "old") return img ? "รูปเดิม" : "-";
+      return img ? "เปลี่ยนรูป" : "ลบรูป";
+    }
+    return show(r.k, v);
+  };
+  if (isUpdate(l))
+    return rows.map((r) => `${FIELD[r.k] ?? r.k}: ${val(r)}`).join(" · ");
+  if (l.action === "insert" && side === "old") return "";
+  if (l.action === "delete" && side === "new") return "";
+  return rows.map((r) => `${FIELD[r.k] ?? r.k} ${val(r)}`).join(" · ");
+}
+
+const oldSummary = (l: Log) => summarySide(l, "old") || "-";
+const newSummary = (l: Log) => summarySide(l, "new") || "-";
+
+function AuditLogPage() {
+  const [logs, setLogs] = useState<Log[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [action, setAction] = useState("all");
+  const [table, setTable] = useState("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [viewing, setViewing] = useState<Log | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    // โหลดตารางอ้างอิงเพื่อแปลง id เป็นชื่อจริง
+    try {
+      const r = await api<{ logs: Log[]; lookups: typeof LOOKUPS; actors: typeof ACTOR_NAMES }>("/audit-log");
+      LOOKUPS = r.lookups;
+      ACTOR_NAMES = r.actors;
+      setLogs(r.logs);
+    } catch (e) { toast.error(errorText(e)); }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const summaries = useMemo(
+    () => new Map<string, { old: string; new: string }>(logs.map((l) => [l.id, { old: oldSummary(l), new: newSummary(l) }])),
+    [logs],
+  );
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return logs.filter((l) => {
+      const d = l.created_at.slice(0, 10);
+      const sum = summaries.get(l.id);
+      return (action === "all" || l.action === action) && (table === "all" || l.table_name === table) &&
+        (!from || d >= from) && (!to || d <= to) &&
+        (!s || `${l.table_name === "auth" ? "" : l.record_label} ${actorName(l)} ${sum?.old ?? ""} ${sum?.new ?? ""}`.toLowerCase().includes(s));
+    });
+  }, [logs, summaries, q, action, table, from, to]);
+  const pg = usePagination(filtered, 20, `${q}|${action}|${table}|${from}|${to}`);
+
+  return (
+    <>
+      <PageHeader title="Audit Log" subtitle="ประวัติการเพิ่ม แก้ไข และลบข้อมูล" action={<Button variant="outline" onClick={load}><RefreshCw className="h-4 w-4" /> รีเฟรช</Button>} />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-60 flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหารายการ หรือผู้ทำ" className="rounded-full pl-9" />
+        </div>
+        <div className="w-36"><NativeSelect value={action} onValueChange={setAction}>
+          <option value="all">ทุกประเภท</option>
+          {Object.entries(ACTION).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </NativeSelect></div>
+        <div className="w-44"><NativeSelect value={table} onValueChange={setTable}>
+          <option value="all">ทุกหมวด</option>
+          {Object.entries(TABLE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </NativeSelect></div>
+        <div className="w-40"><DateField value={from} onChange={setFrom} /></div>
+        <span className="text-sm text-muted-foreground">ถึง</span>
+        <div className="w-40"><DateField value={to} min={from || undefined} onChange={setTo} /></div>
+      </div>
+
+      {loading ? <p className="text-sm text-muted-foreground">กำลังโหลด...</p> : filtered.length === 0 ? (
+        <EmptyState title="ยังไม่มีประวัติ" text="เมื่อมีการเพิ่ม แก้ไข หรือลบข้อมูล จะแสดงที่นี่" />
+      ) : (
+        <>
+        <div className="space-y-3 md:hidden">
+          {pg.pageItems.map((l) => (
+            <Card key={l.id} className="rounded-3xl p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">{format(new Date(l.created_at), "dd/MM/yyyy HH:mm")}</p>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${ACTION[l.action]?.cls ?? ""}`}>{ACTION[l.action]?.label ?? l.action}</span>
+              </div>
+              <p className="mt-2 text-sm font-medium">{actorName(l)} · {TABLE[l.table_name] ?? l.table_name}</p>
+              {(() => { const s = summaries.get(l.id); if (!s) return null; return (
+                <>
+                  {s.old !== "-" && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground"><span className="font-medium text-foreground">เก่า:</span> {s.old}</p>}
+                  {s.new !== "-" && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground"><span className="font-medium text-foreground">ใหม่:</span> {s.new}</p>}
+                  {s.old === "-" && s.new === "-" && <p className="mt-1 text-sm text-muted-foreground">-</p>}
+                </>
+              ); })()}
+              <div className="mt-3 flex justify-end border-t border-border/60 pt-3">
+                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setViewing(l)}><Eye className="h-4 w-4" /> ดูรายละเอียด</Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+        <Card className="hidden overflow-x-auto rounded-3xl p-0 md:block">
+          <table className="w-full text-center text-sm">
+            <thead className="bg-muted/50 text-center text-xs text-muted-foreground">
+              <tr>
+                <th className="px-5 py-3">วันเวลา</th><th className="px-3 py-3">ผู้ทำ</th><th className="px-3 py-3">ประเภท</th>
+                <th className="px-3 py-3">หมวด</th>
+                <th className="px-3 py-3 text-center">รายการเก่า</th>
+                <th className="px-3 py-3 text-center">รายการใหม่</th>
+                <th className="px-5 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {pg.pageItems.map((l) => (
+                <tr key={l.id} className="border-t border-border">
+                  <td className="whitespace-nowrap px-5 py-3">{format(new Date(l.created_at), "dd/MM/yyyy HH:mm")}</td>
+                  <td className="px-3 py-3">{actorName(l)}</td>
+                  <td className="px-3 py-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${ACTION[l.action]?.cls ?? ""}`}>{ACTION[l.action]?.label ?? l.action}</span></td>
+                  <td className="px-3 py-3">{TABLE[l.table_name] ?? l.table_name}</td>
+                  <td className="max-w-[15rem] px-3 py-3 text-center"><span className="line-clamp-2 whitespace-normal text-muted-foreground">{summaries.get(l.id)?.old ?? "-"}</span></td>
+                  <td className="max-w-[15rem] px-3 py-3 text-center"><span className="line-clamp-2 whitespace-normal">{summaries.get(l.id)?.new ?? "-"}</span></td>
+                  <td className="px-5 py-3">
+                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" title="ดูรายละเอียด" aria-label="ดูรายละเอียด" onClick={() => setViewing(l)}><Eye className="h-4 w-4" /></Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        </>
+      )}
+      <div className="mt-4"><Pagination page={pg.page} totalPages={pg.totalPages} onChange={pg.setPage} from={pg.from} to={pg.to} total={pg.total} /></div>
+      <LogDialog log={viewing} onClose={() => setViewing(null)} />
+    </>
+  );
+}
+
+function LogDialog({ log, onClose }: { log: Log | null; onClose: () => void }) {
+  const [kept, setKept] = useState<Log | null>(null);
+  if (log && kept !== log) setKept(log);
+  const l = log ?? kept;
+  const rows = useMemo(() => (l ? detailRows(l) : []), [l]);
+  const isUpdate = l?.action === "update" && !!l.old_data && !!l.new_data;
+
+  return (
+    <Dialog open={!!log} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{l ? `${ACTION[l.action]?.label ?? l.action}${TABLE[l.table_name] ?? l.table_name}` : ""}</DialogTitle>
+          <DialogDescription>{l ? `${l.table_name === "auth" ? actorName(l) : (l.record_label || "-")} · โดย ${actorName(l)} · ${format(new Date(l.created_at), "dd/MM/yyyy HH:mm")}` : ""}</DialogDescription>
+        </DialogHeader>
+        {rows.length === 0 ? <p className="text-sm text-muted-foreground">ไม่มีรายละเอียด</p> : (
+          <div className="overflow-hidden rounded-2xl border border-border">
+            <table className="w-full text-center text-sm">
+              <thead className="bg-muted/50 text-center text-xs text-muted-foreground">
+                <tr><th className="px-4 py-2">ช่อง</th>{isUpdate && <th className="px-4 py-2">ข้อมูลเก่า</th>}<th className="px-4 py-2">{isUpdate ? "ข้อมูลใหม่" : "ข้อมูล"}</th></tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const img = typeof r.new === "string" && r.new.startsWith("img:") || typeof r.old === "string" && r.old.startsWith("img:");
+                  return (
+                    <tr key={r.k} className="border-t border-border align-top">
+                      <td className="px-4 py-2 font-medium">{FIELD[r.k] ?? r.k}</td>
+                      {isUpdate && <td className="px-4 py-2 text-muted-foreground line-through decoration-destructive/40">{img ? (r.old ? "รูปเดิม" : "-") : show(r.k, r.old)}</td>}
+                      <td className="px-4 py-2">{isUpdate && img ? (r.new ? "เปลี่ยนรูป" : "ลบรูป") : show(r.k, r.new)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
