@@ -169,6 +169,12 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   shows Edit / Delete instead of Cancel. Right = receipts 'edit' (permissions chip "แก้ไข/ลบใบล่าสุด"): Admin on (once,
   key `once:receipts-edit-admin`), Owner/SuperAdmin always, Partner off until the Owner ticks it.
   Class panel (phones had no way back): a Back button over the cover (`class-back`).
+- 12/10/2026 (owner): student email is optional (checked only when typed). The title dropdowns (students, teachers) show
+  both languages ("ด.ญ. / Miss", `bothLang` in lib/i18n.ts); values stay the Thai choices. A Thai first name always shows
+  its Thai title, also on English screens (`prefixed`: "ด.ญ. ธริดา", never "Miss ธริดา"). Once at start
+  (`ensureThaiPrefixes` in server lib/prefixes.ts, key `once:prefix-th`, audited as "System"), English/other titles
+  (Miss, Master, Mr., Ms., Mrs., เด็กหญิง, น.ส. ...) became the Thai choice by age (under 15 = ด.ญ./ด.ช.; no birthday =
+  child, owner: most are ด.ญ.); the importer does the same.
 - 12/10/2026 speed (owner: clicks felt slow/stuck over the internet): every page change waited for `GET /me` (route
   `beforeLoad`) and the first visit of each page waited for its own script file. Now `getMeCached()` (lib/api.ts) answers
   from the last result and refreshes in the background (401 -> /auth; cleared on sign-in/out), the client is one bundle

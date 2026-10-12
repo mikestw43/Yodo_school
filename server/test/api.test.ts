@@ -6,6 +6,7 @@ import { createApp } from '../src/app.js';
 import { ensureSetupCode } from '../src/routes/auth.js';
 import { DATA_DIR, UPLOAD_DIR } from '../src/lib/config.js';
 import { parseCsv } from '../src/routes/importer.js';
+import { thaiPrefix } from '../src/lib/prefixes.js';
 
 const app = createApp();
 type Agent = ReturnType<typeof request.agent>;
@@ -431,5 +432,22 @@ describe('import: pictures for students already there', () => {
     expect(s.image).toMatch(/^\/api\/files\//);
     expect(s).toMatchObject({ signedAt: '2026-10-01', firstName: 'ทดลอง', ethnicity: 'ไทย' });
     expect((await admin.post('/api/import/students').set({ ...H, 'content-type': 'text/plain' }).send(json)).body.pictures).toBe(0);
+  });
+});
+
+describe('student titles back to Thai (owner 12/10/2026)', () => {
+  it('maps English and other spellings to the Thai choices by age', () => {
+    const t = '2026-10-13';
+    expect(thaiPrefix('Miss', '2020-01-01', t)).toBe('ด.ญ.');
+    expect(thaiPrefix('Miss', '1990-01-01', t)).toBe('นางสาว');
+    expect(thaiPrefix('Miss', '', t)).toBe('ด.ญ.'); // no birthday: most students are children
+    expect(thaiPrefix('Master', '2018-01-01', t)).toBe('ด.ช.');
+    expect(thaiPrefix('Mr.', '2015-01-01', t)).toBe('ด.ช.');
+    expect(thaiPrefix('Mr.', '1980-01-01', t)).toBe('นาย');
+    expect(thaiPrefix('Mrs.', '1980-01-01', t)).toBe('นาง');
+    expect(thaiPrefix('เด็กหญิง', '2019-01-01', t)).toBe('ด.ญ.');
+    expect(thaiPrefix('น.ส.', '2000-01-01', t)).toBe('นางสาว');
+    expect(thaiPrefix('ด.ญ.', '2019-01-01', t)).toBeNull();
+    expect(thaiPrefix('Dr.', '1980-01-01', t)).toBeNull();
   });
 });

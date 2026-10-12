@@ -1,3 +1,4 @@
+import { thaiPrefix } from '../lib/prefixes.js';
 import { Router } from 'express';
 import express from 'express';
 import { prisma } from '../lib/db.js';
@@ -118,7 +119,7 @@ router.post('/import/students', requireAuth, express.text({ type: '*/*', limit: 
     const deleted = bool(r.delFlg);
     const created = when(r.createdAt);
     const s = await prisma.student.create({ data: {
-      ...(rid ? { id: rid } : {}), code, firstName, prefix: str(r.prefix), lastName: str(r.lastName), nickname: str(r.nickname), dob: day(r.dob),
+      ...(rid ? { id: rid } : {}), code, firstName, prefix: thaiPrefix(str(r.prefix), day(r.dob)) ?? str(r.prefix), lastName: str(r.lastName), nickname: str(r.nickname), dob: day(r.dob),
       nationality: str(r.nationality), nationalityOther: str(r.nationalityOther), religion: str(r.religion), religionOther: str(r.religionOther),
       ethnicity: str(r.ethnicity), ethnicityOther: str(r.ethnicityOther), address: str(r.address),
       phone: str(r.phone), email: str(r.email), lineId: str(r.lineId), emergencyName: str(r.emergencyName), emergencyPhone: str(r.emergencyPhone),

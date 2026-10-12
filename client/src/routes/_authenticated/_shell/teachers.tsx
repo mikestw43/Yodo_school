@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, onlyDigits10, usePagination } from "@/components/yodo/ui";
 import { TEACHER_PREFIXES, fullName, useYodo, type Teacher, type TeacherInput } from "@/lib/yodo-store";
-import { L, opt } from "@/lib/i18n";
+import { L, bothLang, opt } from "@/lib/i18n";
 
 
 export const Route = createFileRoute("/_authenticated/_shell/teachers")({
@@ -164,7 +164,7 @@ function TeacherForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
           <Field label={L("คำนำหน้า", "Prefix")} error={errors.prefix}>
             <NativeSelect value={f.prefix} onValueChange={(value) => set("prefix", value)}>
               <option value="">{L("เลือก", "Select")}</option>
-              {TEACHER_PREFIXES.map((p) => <option key={p} value={p}>{opt(p)}</option>)}
+              {TEACHER_PREFIXES.map((p) => <option key={p} value={p}>{bothLang(p)}</option>)}
             </NativeSelect>
           </Field>
           <Field label={L("ชื่อเล่น", "Nickname")} error={errors.nickname}><Input value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></Field>

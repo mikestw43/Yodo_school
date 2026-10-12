@@ -358,6 +358,9 @@ try {
   const fdlg = page.getByRole('dialog');
   check('form has no "automatic" notes', (await fdlg.getByText('อัตโนมัติ').count()) === 0);
   const box = (t) => fdlg.locator('label', { hasText: new RegExp('^' + t) }).first().locator('xpath=ancestor::div[1]').locator('input').first();
+  await fdlg.getByRole('combobox').first().click();
+  await page.getByRole('option', { name: 'ด.ญ. / Miss' }).click().then(() => check('title list shows Thai and English', true), () => check('title list shows Thai and English', false));
+  check('email is not required', !(await page.locator('label', { hasText: /^อีเมล/ }).first().innerText()).includes('*'));
   await box('อีเมล').fill('mali@example.com');
   await box('ชื่อผู้ติดต่อฉุกเฉิน').fill('คุณแม่');
   await box('เบอร์โทรผู้ติดต่อฉุกเฉิน').fill('0899999999');
@@ -697,6 +700,7 @@ try {
     const text = (await page.evaluate(() => document.body.innerText)).replace(TYPED, '');
     const thai = [...new Set(text.match(/[\u0E00-\u0E7F][\u0E00-\u0E7F .]*/g) ?? [])].slice(0, 6);
     // the audit log shows what was typed into old records, which may be Thai
+    if (pth === '/students') check('English: a Thai name keeps its Thai title', !text.includes('Miss') && (await page.evaluate(() => document.body.innerText)).includes('ด.ญ. มะลิ'));
     check(`English ${pth} has no Thai left`, pth === '/audit-log' || thai.length === 0, thai.join(' | '));
     await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
   }

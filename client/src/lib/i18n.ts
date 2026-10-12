@@ -66,8 +66,16 @@ const OPTIONS: Record<string, [string, string]> = {
 };
 /** Label of a stored choice (prefix, nationality, religion, source, status). Unknown values are shown as typed. */
 export const opt = (v: string) => { const o = OPTIONS[v]; return o ? (current === "en" ? o[1] : o[0]) : v; };
-/** Prefix, a space, then the first name, in both languages ("ด.ญ. มะลิ", "Miss Mali"; owner 12/10/2026). */
-export const prefixed = (prefix: string, first: string) => (prefix ? `${opt(prefix)} ${first}` : first);
+/** "ด.ญ. / Miss": the prefix list shows both languages (owner 12/10/2026). */
+export const bothLang = (v: string) => { const o = OPTIONS[v]; return o && o[0] !== o[1] ? `${o[0]} / ${o[1]}` : v; };
+const THAI = /[\u0E00-\u0E7F]/;
+/** Prefix, a space, then the first name ("ด.ญ. มะลิ", "Miss Mali"). A Thai name keeps its Thai prefix in English too,
+ *  so a name never mixes languages ("ด.ญ. ธริดา", never "Miss ธริดา"; owner 12/10/2026). */
+export const prefixed = (prefix: string, first: string) => {
+  if (!prefix) return first;
+  const o = OPTIONS[prefix];
+  return `${o && THAI.test(first) ? o[0] : opt(prefix)} ${first}`;
+};
 
 /** "Facebook, Friends" <-> ["Facebook", "Friends"] (the "how did you hear about us" choices). */
 export const splitList = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);

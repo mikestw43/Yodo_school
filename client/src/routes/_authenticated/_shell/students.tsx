@@ -21,7 +21,7 @@ import {
   type Enrollment, type EnrollmentInput, type Student, type StudentInput,
 } from "@/lib/yodo-store";
 import { printStudentDocument } from "@/lib/student-print";
-import { L, fd, opt, optOr, sourceText, splitList } from "@/lib/i18n";
+import { L, bothLang, fd, opt, optOr, sourceText, splitList } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/_shell/students")({
   head: () => ({
@@ -55,7 +55,8 @@ const schema = () => {
     ethnicityOther: z.string().trim().max(100),
     address: z.string().trim().max(500),
     phone,
-    email: z.string().trim().min(1, L("กรุณากรอกอีเมล", "Please enter an email")).email(L("รูปแบบอีเมลไม่ถูกต้อง", "Invalid email address")).max(255),
+    // Email is optional (owner 12/10/2026); when typed it must look like one.
+    email: z.string().trim().max(255).refine((v) => v === "" || z.string().email().safeParse(v).success, L("รูปแบบอีเมลไม่ถูกต้อง", "Invalid email address")),
     lineId: z.string().trim().max(50),
     emergencyName: z.string().trim().min(1, L("กรุณากรอกชื่อผู้ติดต่อฉุกเฉิน", "Please enter the emergency contact name")).max(100),
     emergencyPhone: phone,
@@ -292,7 +293,7 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
           <Field label={L("คำนำหน้า", "Prefix")} required error={errors.prefix}>
             <NativeSelect value={f.prefix} onValueChange={(value) => set("prefix", value)}>
               <option value="">{L("เลือกคำนำหน้า", "Choose a prefix")}</option>
-              {PREFIXES.map((p) => <option key={p} value={p}>{opt(p)}</option>)}
+              {PREFIXES.map((p) => <option key={p} value={p}>{bothLang(p)}</option>)}
             </NativeSelect>
           </Field>
           <Field label={L("ชื่อเล่น", "Nickname")} error={errors.nickname}><Input value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></Field>
@@ -327,7 +328,7 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
             <Field label={L("ระบุเชื้อชาติ", "Specify ethnicity")} required error={errors.ethnicityOther}><Input value={f.ethnicityOther} onChange={(e) => set("ethnicityOther", e.target.value)} /></Field>
           ) : null}
           <Field label={L("เบอร์โทร", "Phone Number")} required error={errors.phone}><Input inputMode="numeric" value={f.phone} placeholder="0812345678" onChange={(e) => set("phone", onlyDigits10(e.target.value))} /></Field>
-          <Field label={L("อีเมล", "Email")} required error={errors.email}><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
+          <Field label={L("อีเมล", "Email")} error={errors.email}><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
           <Field label="Line ID" error={errors.lineId}><Input value={f.lineId} onChange={(e) => set("lineId", e.target.value)} /></Field>
           <Field label={L("ที่อยู่", "Address")} error={errors.address} className="sm:col-span-2"><Textarea rows={2} value={f.address} onChange={(e) => set("address", e.target.value)} /></Field>
 
