@@ -99,6 +99,14 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   terms switch changes only the terms and the two statements (owner: the rest stays in the app's language).
   Phones (owner 12/10/2026, layout broke): the in-app application keeps its A4 layout and is shrunk to the screen width
   (CSS `zoom` from a ResizeObserver in `StudentDocument`); the on-screen terms are numbered like the print.
+- 12/10/2026 roles + receipts (mockup 3gLnsvQrxnGWHKpPmbRxBA; owner's answers, NOT built yet, waiting for "ทำได้เลย" on the
+  updated boards 4-6): roles Owner / Partner / Admin shown, SuperAdmin (Dev) hidden (the owner's own account stays
+  SuperAdmin); default rights as on board 1 OK; the Owner can add more roles; ONLY the Owner edits rights. New rights:
+  receipts (view / issue / cancel), company settings, dashboard money. Receipts: number RC + YYMM + "-" + 4 digits,
+  restarting each month, never skipped; issued receipts are never deleted, only cancelled (kept, struck through, not
+  counted); A4; school details from a new "Company settings" page; a receipts page by month with totals. Class price is
+  the WHOLE COURSE (e.g. 10,000 baht for 6 months): class gets a course length in months, the expiry date follows from
+  it, the receipt line is the course (no price x months). VAT question not answered yet.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
