@@ -55,6 +55,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 - HTTPS: Tailscale Funnel `--https=8443 8092` -> `https://mikenas.tail4afc1d.ts.net:8443`, in the same `tailscale-funnel`
   task as FinHR's 443.
 - Own deploy key (GitHub allows one per repo).
+- Installed 12/10/2026 (owner, Windows PowerShell + ssh; first build failed on an out-of-sync client lockfile, fixed in
+  77b2c74: always check `npm ci` + build from a clean copy before pushing). Task Scheduler `YODO update` runs every 5 min.
+- Funnel ON 12/10/2026: both DSM tasks `tailscale-funnel` and `tailscale-funnel-b...` (at boot, `sleep 90` first) use
+  `TS=/var/packages/Tailscale/target/bin/tailscale` and now have `$TS funnel --bg --https=8443 8092` after FinHR's
+  `$TS funnel --bg 8090`. Owner confirmed both apps open from outside.
 
 ## Testing
 1. `cd server && npx tsc --noEmit && npx vitest run`
