@@ -53,8 +53,16 @@ function cell(label: string, value: string | number | null | undefined, labelSpa
   return `<th colspan="${labelSpan}"><span>${escapeHtml(label)}</span></th><td colspan="${valueSpan}"><span>${escapeHtml(value)}</span></td>`;
 }
 
-function signature(date: string, img = "") {
-  const pic = /^data:image\/png;base64,/i.test(img) ? `<img class="sign-img" src="${escapeHtml(img)}" alt="${escapeHtml(L("ลายเซ็น", "Signature"))}" />` : "";
+/** A picture the document may show: a data URL or one of our stored files (made absolute for the print window). */
+function picUrl(v = "") {
+  if (/^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(v) || /^https?:\/\//i.test(v)) return v;
+  if (v.startsWith("/api/files/")) return new URL(v, window.location.origin).href;
+  return "";
+}
+
+function signature(date: string, raw = "") {
+  const img = picUrl(raw);
+  const pic = img ? `<img class="sign-img" src="${escapeHtml(img)}" alt="${escapeHtml(L("ลายเซ็น", "Signature"))}" />` : "";
   return `<div class="signature"><div class="sign-line"><span>${escapeHtml(L("ลายเซ็นต์", "Signature"))}</span><span class="line">${pic}</span></div><div class="sign-date"><span>${escapeHtml(L("วันที่", "Date"))}</span><span>${escapeHtml(date)}</span></div></div>`;
 }
 
@@ -65,8 +73,9 @@ export function printStudentDocument(student: Student): boolean {
 
   const today = student.signedAt ? fd(student.signedAt) : fd(new Date());
   const logoUrl = new URL(logo.url, window.location.origin).href;
-  const image = student.image && (/^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(student.image) || /^https?:\/\//i.test(student.image))
-    ? `<img class="student-photo" src="${escapeHtml(student.image)}" alt="${escapeHtml(L("รูปนักเรียน", "Student photo"))}" />`
+  const photo = picUrl(student.image);
+  const image = photo
+    ? `<img class="student-photo" src="${escapeHtml(photo)}" alt="${escapeHtml(L("รูปนักเรียน", "Student photo"))}" />`
     : `<div class="student-photo empty-photo"></div>`;
   const interests = student.interested.map(opt).join(", ");
   const nationality = student.nationality === "Other" ? student.nationalityOther : opt(student.nationality);
@@ -89,7 +98,7 @@ export function printStudentDocument(student: Student): boolean {
   .sign-line .line { flex: 1; height: 14mm; border-bottom: 1px solid #111; position: relative; }
   .sign-img { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); max-height: 16mm; max-width: 100%; object-fit: contain; }
   .sign-date { justify-content: center; gap: 3mm; padding: 1mm 0 0; }
-  .student-photo { display: block; width: 43mm; height: 39mm; object-fit: cover; margin: 9mm auto 10mm; }
+  .student-photo { display: block; width: 40mm; height: 53mm; object-fit: cover; margin: 5mm auto 7mm; }
   .empty-photo { background: transparent; }
   table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 9pt; line-height: 1.4; }
   col { width: 8.333333%; }

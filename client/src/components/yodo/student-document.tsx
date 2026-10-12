@@ -68,7 +68,7 @@ export function StudentDocument({ student, signMode = false, canvasRefs, onDirty
   onDirty?: ((index: number) => void) | undefined;
 }) {
   const nationality = student.nationality === "Other" ? student.nationalityOther : opt(student.nationality);
-  const photo = student.image && (/^data:image\//i.test(student.image) || /^https?:\/\//i.test(student.image));
+  const photo = student.image && (/^data:image\//i.test(student.image) || /^https?:\/\//i.test(student.image) || student.image.startsWith("/api/files/"));
   return (
     <div className="ydoc-root">
       <style>{`
@@ -85,8 +85,8 @@ export function StudentDocument({ student, signMode = false, canvasRefs, onDirty
         .ydoc-sign-img { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); max-height: 16mm; max-width: 100%; object-fit: contain; }
         .ydoc-sign-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #b3b3b3; font-size: 9pt; pointer-events: none; }
         .ydoc-sign-date { justify-content: center; gap: 3mm; padding: 1mm 0 0; }
-        .ydoc-photo { display: block; width: 43mm; height: 39mm; object-fit: cover; margin: 7mm auto 8mm; }
-        .ydoc-photo-empty { width: 43mm; height: 39mm; margin: 7mm auto 8mm; }
+        .ydoc-photo { display: block; width: 40mm; height: 53mm; object-fit: cover; margin: 5mm auto 7mm; }
+        .ydoc-photo-empty { width: 40mm; height: 53mm; margin: 5mm auto 7mm; }
         .ydoc-table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 9pt; line-height: 1.4; }
         .ydoc-table th, .ydoc-table td { border: 1px solid #171717; padding: 1.8mm 1.4mm; text-align: left; vertical-align: middle; font-weight: 400; word-break: break-word; }
       `}</style>

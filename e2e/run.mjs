@@ -236,6 +236,11 @@ try {
     check(`phone ${p} has no sideways scrolling`, o.length === 0, o.join(', '));
     await pp.screenshot({ path: `${SHOTS}/${name}.png` });
   }
+  await pp.goto(BASE + '/students');
+  await pp.getByText('มะลิ').first().click();
+  await pp.getByRole('dialog').getByRole('button', { name: 'แก้ไข' }).waitFor().then(() => check('phone: tapping a student card opens the details', true), () => check('phone: tapping a student card opens the details', false));
+  await pp.screenshot({ path: `${SHOTS}/p9-student-details.png` });
+  await pp.keyboard.press('Escape');
   await pp.goto(BASE + '/');
   await pp.getByLabel('เปิดเมนู').click();
   await pp.waitForTimeout(500);
@@ -259,6 +264,30 @@ try {
   check('ethnicity field is on the form', (await dlg.getByText('เชื้อชาติ', { exact: true }).count()) > 0);
   await dlg.getByText('คลาสที่สนใจ (เลือกได้หลายอัน)').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${SHOTS}/24-student-form.png` });
+  await page.keyboard.press('Escape');
+
+  // ---------- tap a student row = details; no eye button (owner 12/10/2026) ----------
+  {
+    const st = (await (await page.request.get(`${BASE}/api/data`)).json()).students.find((x) => x.firstName === 'มะลิ');
+    const r = await page.request.put(`${BASE}/api/students/${st.id}`, { headers: H, data: { ...st, image: 'data:image/png;base64,' + fs.readFileSync(path.join(ROOT, 'e2e', 'fixtures', 'face.png')).toString('base64') } });
+    check('a student photo can be saved', r.ok(), `${r.status()} ${(await r.text()).slice(0, 200)}`);
+  }
+  await page.goto(BASE + '/students');
+  check('student list has no "view" eye button', (await page.getByRole('button', { name: /^ดูข้อมูล/ }).count()) === 0);
+  await page.locator('tr', { hasText: 'มะลิ' }).click();
+  const view = page.getByRole('dialog');
+  await view.getByRole('button', { name: 'แก้ไข' }).waitFor().then(() => check('tapping a row opens the details with Edit', true), () => check('tapping a row opens the details with Edit', false));
+  await page.screenshot({ path: `${SHOTS}/25-student-details.png` });
+  const [pop] = await Promise.all([page.waitForEvent('popup'), view.getByRole('button', { name: 'พิมพ์ PDF' }).click()]);
+  await pop.waitForLoadState();
+  const pimg = pop.locator('img.student-photo');
+  await pimg.waitFor({ timeout: 5000 }).catch(() => null);
+  check('application PDF page 2 shows the student photo', (await pimg.count()) === 1 && await pimg.evaluate((i) => i.complete && i.naturalWidth > 0));
+  await pop.setViewportSize({ width: 800, height: 1131 });
+  await pop.locator('section.sheet').nth(1).screenshot({ path: `${SHOTS}/26-pdf-page2.png` }).catch(() => null);
+  await pop.close();
+  await view.getByRole('button', { name: 'แก้ไข' }).click();
+  await page.getByRole('dialog').getByText('คลาสที่สนใจ (เลือกได้หลายอัน)').waitFor().then(() => check('Edit opens the student form', true), () => check('Edit opens the student form', false));
   await page.keyboard.press('Escape');
 
   // ---------- notification settings and bell (owner 12/10/2026) ----------

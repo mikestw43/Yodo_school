@@ -62,6 +62,10 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   from the owner's old AppSheet export (register.xlsx + images zip): converted to a JSON import file in the scratchpad
   and handed to the owner (signature = AppSheet `sign`, owner OK'd; AppSheet classes/teachers/timetable NOT imported,
   owner's decision). Names show "prefix + space + first name" in both languages ("ด.ญ. มะลิ"), owner 12/10/2026.
+- 12/10/2026 student list (owner): no eye button; tapping a row (computer) or card (phone) opens the details, which
+  hold Edit / Sign / Print PDF (row action buttons stop the tap). Application page 2 shows the student photo
+  portrait 40x53 mm under the logo like the old AppSheet PDF; pictures stored as `/api/files/...` are accepted in the
+  print window (`picUrl` in `lib/student-print.ts`, made absolute), signatures too (before, only data URLs showed).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

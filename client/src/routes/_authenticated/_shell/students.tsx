@@ -3,7 +3,7 @@ import { differenceInCalendarMonths, format, parseISO } from "date-fns";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Ban, Eye, PenLine, Pencil, Plus, Printer, RotateCcw, Search, Trash2, UserRoundPlus, X } from "lucide-react";
+import { Ban, PenLine, Pencil, Plus, Printer, RotateCcw, Search, Trash2, UserRoundPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -127,7 +127,7 @@ function StudentsPage() {
         <>
           <div className="space-y-3 md:hidden">
             {pg.pageItems.map((s) => (
-              <Card key={s.id} className={`rounded-3xl p-4 ${s.status === "Disabled" ? "opacity-60" : ""}`}>
+              <Card key={s.id} role="button" tabIndex={0} onClick={() => setViewing(s)} onKeyDown={(e) => { if (e.key === "Enter") setViewing(s); }} className={`cursor-pointer rounded-3xl p-4 transition-colors hover:bg-muted/40 ${s.status === "Disabled" ? "opacity-60" : ""}`}>
                 <div className="flex items-center gap-3">
                   <Avatar src={s.image} name={s.firstName} />
                   <div className="min-w-0 flex-1">
@@ -141,8 +141,7 @@ function StudentsPage() {
                   <div><p className="text-xs text-muted-foreground">{L("อายุ", "Age")}</p><p>{ageText(s.dob)}</p></div>
                   <div><p className="text-xs text-muted-foreground">{L("เบอร์โทร", "Phone")}</p><p>{s.phone}</p></div>
                 </div>
-                <div className="mt-3 flex justify-center gap-1.5 border-t border-border/60 pt-3">
-                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ดูข้อมูล", "View")} aria-label={L(`ดูข้อมูล ${fullName(s)}`, `View ${fullName(s)}`)} onClick={() => setViewing(s)}><Eye strokeWidth={1.6} /></Button>
+                {canManage && <div className="mt-3 flex justify-center gap-1.5 border-t border-border/60 pt-3" onClick={(e) => e.stopPropagation()}>
                   {can("students", "edit") && (s.status === "Active" ? (
                     <>
                       <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เพิ่มเข้าคลาส", "Add to class")} aria-label={L(`เพิ่ม ${fullName(s)} เข้าคลาส`, `Add ${fullName(s)} to a class`)} onClick={() => setEnrolling(s)}><UserRoundPlus strokeWidth={1.6} /></Button>
@@ -152,7 +151,7 @@ function StudentsPage() {
                     <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เปิดใช้งาน", "Enable")} aria-label={L(`เปิดใช้งาน ${fullName(s)}`, `Enable ${fullName(s)}`)} onClick={() => { setStudentStatus(s.id, "Active"); toast.success(L("เปิดใช้งานนักเรียนแล้ว", "Student enabled")); }}><RotateCcw strokeWidth={1.6} /></Button>
                   ))}
                   {can("students", "delete") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ลบ", "Delete")} aria-label={L(`ลบ ${fullName(s)}`, `Delete ${fullName(s)}`)} onClick={() => setDeleting(s)}><Trash2 strokeWidth={1.6} /></Button>}
-                </div>
+                </div>}
               </Card>
             ))}
           </div>
@@ -171,7 +170,7 @@ function StudentsPage() {
               </TableHeader>
               <TableBody>
                 {pg.pageItems.map((s) => (
-                  <TableRow key={s.id} className={`[&>td]:py-4 ${s.status === "Disabled" ? "opacity-60" : ""}`}>
+                  <TableRow key={s.id} onClick={() => setViewing(s)} className={`cursor-pointer [&>td]:py-4 ${s.status === "Disabled" ? "opacity-60" : ""}`}>
                     <TableCell className="text-left">
                       <div className="flex items-center gap-3.5">
                         <Avatar src={s.image} name={s.firstName} />
@@ -184,9 +183,8 @@ function StudentsPage() {
                     <TableCell>{s.phone}</TableCell>
                     <TableCell><StatusBadge status={s.status} /></TableCell>
                     {canManage && (
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-center gap-1.5">
-                          <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ดูข้อมูล", "View")} aria-label={L(`ดูข้อมูล ${fullName(s)}`, `View ${fullName(s)}`)} onClick={() => setViewing(s)}><Eye strokeWidth={1.6} /></Button>
                           {can("students", "edit") && (s.status === "Active" ? (
                             <>
                               <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เพิ่มเข้าคลาส", "Add to class")} aria-label={L(`เพิ่ม ${fullName(s)} เข้าคลาส`, `Add ${fullName(s)} to a class`)} onClick={() => setEnrolling(s)}><UserRoundPlus strokeWidth={1.6} /></Button>
