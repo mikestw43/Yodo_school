@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { Student } from "@/lib/yodo-store";
 import { agreeText, appliedOn, correctText, formSections, signerLabel, terms } from "@/lib/student-print";
+import { Square, SquareCheck } from "lucide-react";
 import { L, fd } from "@/lib/i18n";
 import { RotateCcw } from "lucide-react";
 import logoUrlRaw from "@/assets/yodo-logo.png";
@@ -57,6 +58,12 @@ function SignatureBlock({ student, signMode, canvasRef, onDirty, showOld = false
   );
 }
 
+/** A ticked line on the application: ticked once signed (signing needs both ticks; owner 12/10/2026). */
+function Tick({ on, text }: { on: boolean; text: string }) {
+  const Icon = on ? SquareCheck : Square;
+  return <div className="ydoc-tick" data-on={on ? "1" : "0"}><Icon className="h-[15px] w-[15px] shrink-0" strokeWidth={2} aria-hidden="true" /><span>{text}</span></div>;
+}
+
 /** On-screen mirror of the printable A4 document (terms page + registration form page). */
 export function StudentDocument({ student, signMode = false, canvasRef, onDirty, resetKey = 0, showOld = false }: {
   student: Student;
@@ -96,6 +103,8 @@ export function StudentDocument({ student, signMode = false, canvasRef, onDirty,
         .ydoc-sec-title { display: flex; align-items: center; gap: 2.5mm; font-size: 10pt; font-weight: 600; color: #8e2d4c; white-space: nowrap; }
         .ydoc-sec-title i { flex: 1; height: 1px; background: #e6c9d2; }
         .ydoc-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 4.5mm; row-gap: 2.6mm; }
+        .ydoc-tick { display: flex; align-items: flex-start; gap: 2mm; font-size: 10.2pt; margin-top: 3mm; }
+        .ydoc-tick svg { margin-top: 0.6mm; }
         .ydoc-lbl { font-size: 8.3pt; color: #7a666c; }
         .ydoc-val { font-size: 10.5pt; min-height: 6mm; padding-bottom: 0.8mm; border-bottom: 1px dotted #b9a2a9; word-break: break-word; }
       `}</style>
@@ -104,6 +113,7 @@ export function StudentDocument({ student, signMode = false, canvasRef, onDirty,
         <div className="ydoc-terms">
           <p className="ydoc-terms-title">{L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions")}</p>
           <ol>{terms().map((term, i) => <li key={i}>{term}</li>)}</ol>
+          <Tick on={!!student.signature} text={agreeText()} />
         </div>
         <SignatureBlock key={resetKey} student={student} signMode={signMode} mirror />
       </section>
@@ -134,6 +144,7 @@ export function StudentDocument({ student, signMode = false, canvasRef, onDirty,
             </div>
           </div>
         ))}
+        <Tick on={!!student.signature} text={correctText()} />
         <SignatureBlock key={resetKey} showOld={showOld} student={student} signMode={signMode} canvasRef={canvasRef} onDirty={onDirty} />
       </section>
     </div>

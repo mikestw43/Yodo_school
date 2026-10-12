@@ -51,6 +51,8 @@ export function ageDetail(dob: string) {
 
 /** The two statements ticked before signing (owner's wording 12/10/2026). */
 export const agreeText = () => L("ข้าพเจ้าได้อ่านและยอมรับข้อตกลงและเงื่อนไขของโรงเรียนด้านบนแล้ว", "I have read and agree to the school's terms and conditions above.");
+/** A tick box line for the printed application: ticked once signed (signing needs both ticks; owner 12/10/2026). */
+export const BOX_SVG = (on: boolean) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2b2024" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/>${on ? '<path d="m9 12 2 2 4-4"/>' : ""}</svg>`;
 export const correctText = () => L("ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง", "I confirm that the information provided in this application form is true and correct.");
 
 /** The applicant's label under the signature line (owner 12/10/2026). */
@@ -147,19 +149,22 @@ export function printStudentDocument(student: Student): boolean {
   .sec-title { display: flex; align-items: center; gap: 2.5mm; font-size: 10pt; font-weight: 600; color: #8e2d4c; white-space: nowrap; }
   .sec-title i { flex: 1; height: 1px; background: #e6c9d2; }
   .grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 4.5mm; row-gap: 2.6mm; }
+  .tick { display: flex; align-items: flex-start; gap: 2mm; font-size: 10.2pt; margin-top: 3mm; }
+  .tick svg { flex-shrink: 0; margin-top: 0.6mm; }
   .lbl { font-size: 8.3pt; color: #7a666c; }
   .val { font-size: 10.5pt; min-height: 6mm; padding-bottom: 0.8mm; border-bottom: 1px dotted #b9a2a9; word-break: break-word; }
   @media screen { body { background: #eee; } .sheet { background: #fff; box-shadow: 0 2px 15px #bbb; margin: 10mm auto; } }
   @media print { html, body { width: 210mm; } .sheet { margin: 0; box-shadow: none; } }
 </style></head><body>
 <section class="sheet"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" />
-<div class="terms"><p class="terms-title">${escapeHtml(L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions"))}</p><ol>${terms().map((term) => `<li>${escapeHtml(term)}</li>`).join("")}</ol></div>
+<div class="terms"><p class="terms-title">${escapeHtml(L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions"))}</p><ol>${terms().map((term) => `<li>${escapeHtml(term)}</li>`).join("")}</ol><div class="tick">${BOX_SVG(!!student.signature)}<span>${escapeHtml(agreeText())}</span></div></div>
 ${signature(today, student.signature)}</section>
 <section class="sheet p2"><div class="head"><div class="head-text"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" />
 <h1>${escapeHtml(L("ใบสมัครเรียน", "Application form"))}</h1>
 <div class="meta"><span>${escapeHtml(L("รหัสนักเรียน", "Student ID"))} <b>${escapeHtml(student.code)}</b></span><span>${escapeHtml(L("วันที่สมัคร", "Applied on"))} <b>${escapeHtml(appliedOn(student))}</b></span></div></div>
 ${image}</div>
 ${sections}
+<div class="tick">${BOX_SVG(!!student.signature)}<span>${escapeHtml(correctText())}</span></div>
 ${signature(today, student.signature)}</section>
 <script>
   window.addEventListener('load', async () => {

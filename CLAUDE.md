@@ -89,6 +89,10 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   เงื่อนไขของโรงเรียนด้านบนแล้ว" / "ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง", English given by the
   owner). The PDF view hides the details window while open (a window under it blocked scrolling). Tapping the photo in
   the details opens it big.
+  Owner 12/10/2026 (mockup board "Ticks"): the application shows the two statements as tick lines, split by page: page 1
+  under term 9 = `agreeText`, page 2 under the dance section above the signature = `correctText`; ticked whenever the
+  student has a signature (signing needs both ticks; the 37 AppSheet students with their old signature show ticked,
+  owner's choice), empty boxes when not signed (`Tick` in student-document.tsx, `BOX_SVG` in the print window).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

@@ -302,6 +302,8 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   await view.getByRole('button', { name: 'ดู PDF' }).click();
+  await page.getByTestId('pdf-view').locator('.ydoc-p2').waitFor();
+  check('unsigned application shows empty tick boxes', (await page.getByTestId('pdf-view').locator('.ydoc-tick[data-on="0"]').count()) === 2);
   await page.getByTestId('pdf-view').locator('.ydoc-p2').waitFor().then(() => check('"View PDF" shows the application inside the app', true), () => check('"View PDF" shows the application inside the app', false));
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${SHOTS}/31-view-pdf.png` });
@@ -351,10 +353,12 @@ try {
   await pop2.waitForLoadState();
   await pop2.locator('img.sign-img').first().waitFor({ timeout: 5000 }).catch(() => null);
   check('the same signature prints on both pages', (await pop2.locator('img.sign-img').count()) === 2);
+  check('signed application shows both statements ticked (page 1 and page 2)', (await pop2.locator('section.sheet').nth(0).locator('.tick svg path').count()) === 1 && (await pop2.locator('section.p2 .tick svg path').count()) === 1 && (await pop2.locator('section.p2').innerText()).includes('ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง'));
   check('PDF page 2: code, applied date and "applicant / parent"', (await pop2.locator('section.p2').innerText()).includes('YDO00001') && (await pop2.locator('section.p2').innerText()).includes('วันที่สมัคร') && (await pop2.locator('section.p2').innerText()).includes('ผู้สมัคร / ผู้ปกครอง'));
   await pop2.setViewportSize({ width: 800, height: 1131 });
   await pop2.waitForTimeout(500);
   await pop2.locator('section.sheet').nth(1).screenshot({ path: `${SHOTS}/26-pdf-page2.png` }).catch(() => null);
+  await pop2.locator('section.sheet').nth(0).screenshot({ path: `${SHOTS}/26-pdf-page1.png` }).catch(() => null);
   await pop2.close();
   await page.getByRole('button', { name: 'กลับ' }).click();
   await v2.getByRole('button', { name: 'เซ็นใหม่' }).click();
