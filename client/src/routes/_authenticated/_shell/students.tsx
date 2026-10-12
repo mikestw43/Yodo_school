@@ -98,7 +98,7 @@ function StudentsPage() {
       .sort((a, b) => b.code.localeCompare(a.code));
   }, [data.students, q, status]);
 
-  const pg = usePagination(list, 10, `${q}|${status}`);
+  const pg = usePagination(list, 25, `${q}|${status}`);
   const canManage = can("students", "edit") || can("students", "delete");
 
 
@@ -160,7 +160,6 @@ function StudentsPage() {
               <TableHeader>
                 <TableRow className="bg-muted/50 [&>th]:h-12">
                   <TableHead className="text-left">{L("นักเรียน", "Student")}</TableHead>
-                  <TableHead>{L("รหัสนักเรียน", "Student ID")}</TableHead>
                   <TableHead>{L("ชื่อเล่น", "Nickname")}</TableHead>
                   <TableHead>{L("อายุ", "Age")}</TableHead>
                   <TableHead>{L("เบอร์โทร", "Phone")}</TableHead>
@@ -174,10 +173,12 @@ function StudentsPage() {
                     <TableCell className="text-left">
                       <div className="flex items-center gap-3.5">
                         <Avatar src={s.image} name={s.firstName} />
-                        <span className="font-medium">{fullName(s)}</span>
+                        <div className="min-w-0">
+                          <p className="font-medium">{fullName(s)}</p>
+                          <p className="font-mono text-xs text-muted-foreground">{s.code}</p>
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{s.code}</TableCell>
                     <TableCell>{s.nickname || "-"}</TableCell>
                     <TableCell>{ageText(s.dob)}</TableCell>
                     <TableCell>{s.phone}</TableCell>

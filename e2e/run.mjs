@@ -70,7 +70,7 @@ try {
   await page.reload();
 
   // sign out and back in through the login form
-  await page.getByTitle('เมนูโปรไฟล์').click();
+  await page.getByTitle('เมนูบัญชี').last().click();
   const ver = await page.getByText(/^เวอร์ชัน /).first().textContent({ timeout: 5000 }).catch(() => '');
   check('profile menu shows the version', !!ver, ver ?? '');
   await page.getByText('ออกจากระบบ').click();
@@ -168,14 +168,14 @@ try {
 
   // signed out: Face ID is tried straight away and signs in
   await page.goto(BASE + '/');
-  await page.getByTitle('เมนูโปรไฟล์').click();
+  await page.getByTitle('เมนูบัญชี').last().click();
   await page.getByText('ออกจากระบบ').click();
   await page.waitForURL('**/auth');
   await page.waitForURL(BASE + '/', { timeout: 10000 }).then(() => check('Face ID signs in on the PIN screen', true), () => check('Face ID signs in on the PIN screen', false));
 
   // without Face ID: the PIN pad, a wrong PIN, then the right one
   await page.evaluate(() => localStorage.removeItem('yodo-passkey'));
-  await page.getByTitle('เมนูโปรไฟล์').click();
+  await page.getByTitle('เมนูบัญชี').last().click();
   await page.getByText('ออกจากระบบ').click();
   await page.waitForURL('**/auth');
   await page.getByText('ใส่ PIN เพื่อเข้าใช้งาน').waitFor();
@@ -199,7 +199,7 @@ try {
   await page.evaluate(() => localStorage.removeItem('yodo-lock'));
 
   // password sign-in is still there
-  await page.getByTitle('เมนูโปรไฟล์').click();
+  await page.getByTitle('เมนูบัญชี').last().click();
   await page.getByText('ออกจากระบบ').click();
   await page.getByText('เข้าด้วยชื่อผู้ใช้และรหัสผ่าน').click();
   await page.fill('#identifier', 'mike');
@@ -245,6 +245,11 @@ try {
   await pp.getByLabel('เปิดเมนู').click();
   await pp.waitForTimeout(500);
   await pp.screenshot({ path: `${SHOTS}/p9-menu.png` });
+  await pp.keyboard.press('Escape');
+  await pp.getByTitle('เมนูบัญชี').first().click();
+  await pp.getByText('ออกจากระบบ').waitFor().then(() => check('phone: account menu at the top right', true), () => check('phone: account menu at the top right', false));
+  await pp.screenshot({ path: `${SHOTS}/p10-account.png` });
+  await pp.keyboard.press('Escape');
 
   // ---------- student form (owner 12/10/2026) ----------
   await page.goto(BASE + '/students');
@@ -266,6 +271,19 @@ try {
   await page.screenshot({ path: `${SHOTS}/24-student-form.png` });
   await page.keyboard.press('Escape');
 
+  // ---------- side menu folds, account menu top right, code under the name (owner 12/10/2026) ----------
+  await page.goto(BASE + '/students');
+  check('student code shows under the name', (await page.locator('tr', { hasText: 'มะลิ' }).locator('td').first().innerText()).includes('YDO00001'));
+  await page.getByRole('button', { name: 'ย่อเมนู' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'ขยายเมนู' }).waitFor().then(() => check('folded side menu is kept after reload', true), () => check('folded side menu is kept after reload', false));
+  check('folded side menu hides the labels', !(await page.locator('aside').getByText('นักเรียน', { exact: true }).isVisible()));
+  await page.getByTitle('เมนูบัญชี').last().click();
+  await page.getByText('ตั้งค่าโปรไฟล์').waitFor();
+  await page.screenshot({ path: `${SHOTS}/27-folded-account.png` });
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'ขยายเมนู' }).click();
+  await page.screenshot({ path: `${SHOTS}/28-students-list.png` });
   // ---------- tap a student row = details; no eye button (owner 12/10/2026) ----------
   {
     const st = (await (await page.request.get(`${BASE}/api/data`)).json()).students.find((x) => x.firstName === 'มะลิ');

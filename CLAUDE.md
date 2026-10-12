@@ -12,7 +12,7 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 - Never ask for or accept secrets (keys, passwords, Google client secret). A Google client ID is not secret.
 - Report tests as a short table. Never say "done" without running them.
 - Merge own PRs into `main` after tests pass (the NAS tracks `main`). Never merge into a live/production branch without asking.
-- After each delivery: say the version to look for (short hash, shown at the bottom of the profile menu) and send screenshots.
+- After each delivery: say the version to look for (short hash, shown at the bottom of the account menu, top right) and send screenshots.
 - Keep this file up to date with every decision the owner makes (with the date).
 
 ## Owner's decisions
@@ -66,6 +66,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   hold Edit / Sign / Print PDF (row action buttons stop the tap). Application page 2 shows the student photo
   portrait 40x53 mm under the logo like the old AppSheet PDF; pictures stored as `/api/files/...` are accepted in the
   print window (`picUrl` in `lib/student-print.ts`, made absolute), signatures too (before, only data URLs showed).
+- 12/10/2026 layout (mockup GpHsdGnLjRgT59gzbGhqrx, "ทำได้เลย"): computer side menu folds to icons with a button beside
+  the logo (`PanelLeftClose/Open`, kept per device in localStorage `yodo-nav-collapsed`); the account menu (name,
+  role, profile settings, import, sign out, version) moved to the top right (`AccountMenu` in AppShell.tsx: name pill
+  on computers, round picture on phones before the hamburger; the hamburger sheet holds only the pages). Student list:
+  25 per page, the code sits under the name (no code column).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
