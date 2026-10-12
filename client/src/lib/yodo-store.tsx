@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { differenceInYears, isValid, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { ApiError, api, errorText, getMe } from "@/lib/api";
+import { L, prefixed, setLang } from "@/lib/i18n";
 
 export const PREFIXES = ["ด.ญ.", "ด.ช.", "นาย", "นางสาว", "นาง"] as const;
 export const TEACHER_PREFIXES = ["นาย", "นาง", "นางสาว"] as const;
@@ -160,7 +161,7 @@ export function ageText(dob: string): string {
   let m = t.getMonth() - b.getMonth();
   if (t.getDate() < b.getDate()) m--;
   if (m < 0) { y--; m += 12; }
-  return y > 0 ? `${y} ปี ${m} เดือน` : `${m} เดือน`;
+  return y > 0 ? L(`${y} ปี ${m} เดือน`, `${y} y ${m} m`) : L(`${m} เดือน`, `${m} m`);
 }
 
 export function nextStudentCode(students: { code: string }[], deletedCodes: string[] = []) {
@@ -169,7 +170,7 @@ export function nextStudentCode(students: { code: string }[], deletedCodes: stri
 }
 
 export const fullName = (p: { prefix: string; firstName: string; lastName: string }) =>
-  `${p.prefix}${p.firstName} ${p.lastName}`;
+  `${prefixed(p.prefix, p.firstName)} ${p.lastName}`;
 
 // ---------- Store ----------
 // Same API the pages always used. Changes show at once (optimistic) and are sent to our server;
@@ -225,10 +226,11 @@ export function YodoProvider({ children }: { children: ReactNode }) {
     try {
       const [m, all] = await Promise.all([getMe(), api<YodoData>("/data")]);
       setMe({ id: m.id, positionId: m.positionId, superadmin: m.superadmin });
+      setLang(m.lang); // the account remembers the language
       setData(all);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) { setData(EMPTY); setMe(null); }
-      else toast.error("โหลดข้อมูลไม่สำเร็จ: " + errorText(e));
+      else toast.error(L("โหลดข้อมูลไม่สำเร็จ: ", "Could not load data: ") + errorText(e));
     }
     setLoading(false);
   }, []);
@@ -238,7 +240,7 @@ export function YodoProvider({ children }: { children: ReactNode }) {
 
   // Send a change; on failure show the error and resync from the server.
   const run = <T,>(p: Promise<T>, then?: (r: T) => void) => {
-    p.then((r) => then?.(r)).catch((e) => { toast.error("บันทึกไม่สำเร็จ: " + errorText(e)); void reload(); });
+    p.then((r) => then?.(r)).catch((e) => { toast.error(L("บันทึกไม่สำเร็จ: ", "Could not save: ") + errorText(e)); void reload(); });
   };
   const runReload = (p: Promise<unknown>) => run(p.then(() => reload()));
 

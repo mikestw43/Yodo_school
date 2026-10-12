@@ -9,17 +9,19 @@ import { useYodo, type MenuKey } from "@/lib/yodo-store";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/yodo/NotificationBell";
+import { LangToggle } from "@/components/yodo/LangToggle";
+import { L } from "@/lib/i18n";
 
 const NAV = [
-  { to: "/", label: "Dashboard", icon: Sparkles, key: "dashboard" },
-  { to: "/students", label: "Students", icon: PersonStanding, key: "students" },
-  { to: "/classes", label: "Classes", icon: Music4, key: "classes" },
-  { to: "/teachers", label: "Teachers", icon: Crown, key: "teachers" },
-  { to: "/calendar", label: "Calendar", icon: CalendarHeart, key: "calendar" },
-  { to: "/users", label: "Users", icon: UserCog, key: "users" },
-  { to: "/permissions", label: "Permissions", icon: ShieldCheck, key: "users" },
-  { to: "/audit-log", label: "Audit Log", icon: History, key: "auditlog" },
-] as const satisfies readonly { to: string; label: string; key: MenuKey; icon: unknown }[];
+  { to: "/", th: "แดชบอร์ด", en: "Dashboard", icon: Sparkles, key: "dashboard" },
+  { to: "/students", th: "นักเรียน", en: "Students", icon: PersonStanding, key: "students" },
+  { to: "/classes", th: "คลาส", en: "Classes", icon: Music4, key: "classes" },
+  { to: "/teachers", th: "ครู", en: "Teachers", icon: Crown, key: "teachers" },
+  { to: "/calendar", th: "ปฏิทิน", en: "Calendar", icon: CalendarHeart, key: "calendar" },
+  { to: "/users", th: "ผู้ใช้", en: "Users", icon: UserCog, key: "users" },
+  { to: "/permissions", th: "สิทธิ์การใช้งาน", en: "Permissions", icon: ShieldCheck, key: "users" },
+  { to: "/audit-log", th: "ประวัติการแก้ไข", en: "Audit Log", icon: History, key: "auditlog" },
+] as const satisfies readonly { to: string; th: string; en: string; key: MenuKey; icon: unknown }[];
 
 function useMe() {
   const [me, setMe] = useState<{ name: string; role: string; image: string } | null>(null);
@@ -64,7 +66,7 @@ function Guarded({ children }: { children: ReactNode }) {
   const path = useLocation({ select: (l) => l.pathname });
   const item = [...NAV].reverse().find((n) => (n.to === "/" ? path === "/" : path.startsWith(n.to)));
   if (loading || !me || !item || can(item.key)) return <>{children}</>;
-  return <EmptyState title="ไม่มีสิทธิ์เข้าถึงหน้านี้" text="ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์การใช้งานเมนูนี้" />;
+  return <EmptyState title={L("ไม่มีสิทธิ์เข้าถึงหน้านี้", "You don't have access to this page")} text={L("ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์การใช้งานเมนูนี้", "Ask an administrator for access to this menu.")} />;
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -92,10 +94,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               activeOptions={{ exact: n.to === "/" }}
               className="flex items-center justify-center gap-3 rounded-full px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground lg:justify-start"
               activeProps={{ className: "!bg-primary !text-primary-foreground shadow-soft" }}
-              title={n.label}
+              title={L(n.th, n.en)}
             >
               <n.icon className="h-4 w-4 shrink-0" />
-              <span className="hidden lg:inline">{n.label}</span>
+              <span className="hidden lg:inline">{L(n.th, n.en)}</span>
             </Link>
           ))}
         </nav>
@@ -103,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {me && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex w-full items-center justify-center gap-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-sidebar-accent lg:justify-start" title="เมนูโปรไฟล์">
+                <button className="flex w-full items-center justify-center gap-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-sidebar-accent lg:justify-start" title={L("เมนูโปรไฟล์", "Profile menu")}>
                   <Avatar src={me.image} name={me.name} className="h-9 w-9" />
                   <div className="hidden min-w-0 flex-1 lg:block">
                     <p className="truncate text-sm font-medium">{me.name}</p>
@@ -120,21 +122,21 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <DropdownMenuSeparator className="lg:hidden" />
                 <DropdownMenuItem asChild>
                   <Link to="/settings" className="flex cursor-pointer items-center gap-2">
-                    <Settings className="h-4 w-4" /> ตั้งค่าโปรไฟล์
+                    <Settings className="h-4 w-4" /> {L("ตั้งค่าโปรไฟล์", "Profile settings")}
                   </Link>
                 </DropdownMenuItem>
                 {who?.superadmin && (
                   <DropdownMenuItem asChild>
                     <Link to="/import" className="flex cursor-pointer items-center gap-2">
-                      <FileUp className="h-4 w-4" /> นำเข้านักเรียน
+                      <FileUp className="h-4 w-4" /> {L("นำเข้านักเรียน", "Import students")}
                     </Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
-                  <LogOut className="h-4 w-4" /> ออกจากระบบ
+                  <LogOut className="h-4 w-4" /> {L("ออกจากระบบ", "Sign out")}
                 </DropdownMenuItem>
-                {version && <p className="px-2 pb-1 pt-2 text-[11px] text-muted-foreground">เวอร์ชัน {version}</p>}
+                {version && <p className="px-2 pb-1 pt-2 text-[11px] text-muted-foreground">{L("เวอร์ชัน", "Version")} {version}</p>}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -148,10 +150,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="font-display text-xl font-bold">YODO</span>
           </Link>
           <div className="flex items-center gap-1">
+          <LangToggle />
           <NotificationBell />
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
-              <button aria-label="เปิดเมนู" className="rounded-full p-2 text-foreground"><Menu className="h-5 w-5" /></button>
+              <button aria-label={L("เปิดเมนู", "Open menu")} className="rounded-full p-2 text-foreground"><Menu className="h-5 w-5" /></button>
             </SheetTrigger>
             <SheetContent side="right" className="flex w-72 flex-col p-0">
               <SheetHeader className="border-b border-border px-5 py-4 text-left">
@@ -168,7 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     activeProps={{ className: "!bg-primary !text-primary-foreground shadow-soft" }}
                   >
                     <n.icon className="h-4 w-4 shrink-0" />
-                    {n.label}
+                    {L(n.th, n.en)}
                   </Link>
                 ))}
               </nav>
@@ -182,24 +185,24 @@ export function AppShell({ children }: { children: ReactNode }) {
                     </div>
                   </div>
                   <Link to="/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted hover:text-foreground">
-                    <Settings className="h-4 w-4" /> ตั้งค่าโปรไฟล์
+                    <Settings className="h-4 w-4" /> {L("ตั้งค่าโปรไฟล์", "Profile settings")}
                   </Link>
                   {who?.superadmin && (
                     <Link to="/import" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted hover:text-foreground">
-                      <FileUp className="h-4 w-4" /> นำเข้านักเรียน
+                      <FileUp className="h-4 w-4" /> {L("นำเข้านักเรียน", "Import students")}
                     </Link>
                   )}
                   <button onClick={() => { setMenuOpen(false); void signOut(); }} className="flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10">
-                    <LogOut className="h-4 w-4" /> ออกจากระบบ
+                    <LogOut className="h-4 w-4" /> {L("ออกจากระบบ", "Sign out")}
                   </button>
-                  {version && <p className="px-4 pt-2 text-[11px] text-muted-foreground">เวอร์ชัน {version}</p>}
+                  {version && <p className="px-4 pt-2 text-[11px] text-muted-foreground">{L("เวอร์ชัน", "Version")} {version}</p>}
                 </div>
               )}
             </SheetContent>
           </Sheet>
           </div>
         </header>
-        <div className="sticky top-0 z-20 hidden justify-end px-8 pt-4 md:flex"><NotificationBell className="border border-border bg-background shadow-soft" /></div>
+        <div className="sticky top-0 z-20 hidden justify-end px-8 pt-4 md:flex"><div className="flex items-center gap-2"><LangToggle className="border border-border bg-background shadow-soft" /><NotificationBell className="border border-border bg-background shadow-soft" /></div></div>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8 md:pt-2"><Guarded>{children}</Guarded></main>
       </div>
     </div>

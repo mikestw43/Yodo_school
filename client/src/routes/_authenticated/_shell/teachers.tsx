@@ -9,15 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, onlyDigits10, usePagination } from "@/components/yodo/ui";
 import { TEACHER_PREFIXES, fullName, useYodo, type Teacher, type TeacherInput } from "@/lib/yodo-store";
+import { L, opt } from "@/lib/i18n";
 
 
 export const Route = createFileRoute("/_authenticated/_shell/teachers")({
   head: () => ({
     meta: [
       { title: "YODO" },
-      { name: "description", content: "จัดการข้อมูลครูผู้สอนของ YODO" },
+      { name: "description", content: L("จัดการข้อมูลครูผู้สอนของ YODO", "Manage YODO teachers") },
       { property: "og:title", content: "YODO" },
-      { property: "og:description", content: "จัดการข้อมูลครูผู้สอนของ YODO" },
+      { property: "og:description", content: L("จัดการข้อมูลครูผู้สอนของ YODO", "Manage YODO teachers") },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -25,13 +26,14 @@ export const Route = createFileRoute("/_authenticated/_shell/teachers")({
   component: TeachersPage,
 });
 
-const schema = z.object({
+// Built on use so the error messages follow the current language.
+const makeSchema = () => z.object({
   prefix: z.string(),
   firstName: z.string().trim().max(100),
   lastName: z.string().trim().max(100),
   nickname: z.string().trim().max(50),
-  phone: z.string().refine((v) => v === "" || /^\d{10}$/.test(v), "เบอร์โทรต้องเป็นตัวเลข 10 หลัก"),
-  email: z.string().trim().max(255).refine((v) => v === "" || z.string().email().safeParse(v).success, "รูปแบบอีเมลไม่ถูกต้อง"),
+  phone: z.string().refine((v) => v === "" || /^\d{10}$/.test(v), L("เบอร์โทรต้องเป็นตัวเลข 10 หลัก", "Phone number must be 10 digits")),
+  email: z.string().trim().max(255).refine((v) => v === "" || z.string().email().safeParse(v).success, L("รูปแบบอีเมลไม่ถูกต้อง", "Invalid email address")),
   lineId: z.string().trim().max(50),
   image: z.string(),
   specializations: z.array(z.string()),
@@ -61,21 +63,21 @@ function TeachersPage() {
 
   return (
     <>
-      <PageHeader title="Teachers" subtitle={`ครูทั้งหมด ${data.teachers.length} คน`} action={can("teachers", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> Add Teacher</Button>} />
+      <PageHeader title={L("ครู", "Teachers")} subtitle={L(`ครูทั้งหมด ${data.teachers.length} คน`, `${data.teachers.length} teachers in total`)} action={can("teachers", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> {L("เพิ่มครู", "Add Teacher")}</Button>} />
       <Card className="mb-6 flex flex-row flex-wrap gap-3 rounded-3xl p-4">
         <div className="relative min-w-60 flex-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาชื่อ, ความถนัด..." className="rounded-full pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("ค้นหาชื่อ, ความถนัด...", "Search name, speciality...")} className="rounded-full pl-9" />
         </div>
         <NativeSelect value={status} onValueChange={setStatus} className="w-44 rounded-full">
-          <option value="all">ทุกสถานะ</option>
-          <option>Active</option>
-          <option>Disabled</option>
+          <option value="all">{L("ทุกสถานะ", "All statuses")}</option>
+          <option value="Active">{opt("Active")}</option>
+          <option value="Disabled">{opt("Disabled")}</option>
         </NativeSelect>
       </Card>
 
       {list.length === 0 ? (
-        <EmptyState title="ไม่พบครู" text="ลองเปลี่ยนคำค้นหา หรือเพิ่มครูใหม่" action={can("teachers", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> Add Teacher</Button>} />
+        <EmptyState title={L("ไม่พบครู", "No teachers found")} text={L("ลองเปลี่ยนคำค้นหา หรือเพิ่มครูใหม่", "Try another search, or add a new teacher")} action={can("teachers", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> {L("เพิ่มครู", "Add Teacher")}</Button>} />
       ) : (
         <>
           <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3">
@@ -98,29 +100,29 @@ function TeachersPage() {
                   </div>
                   <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
                     <Music2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/60" />
-                    <span>สอน {classes.length} คลาส{classes.length ? `: ${classes.map((c) => c.name).join(", ")}` : ""}</span>
+                    <span>{L(`สอน ${classes.length} คลาส`, `Teaches ${classes.length} ${classes.length === 1 ? "class" : "classes"}`)}{classes.length ? `: ${classes.map((c) => c.name).join(", ")}` : ""}</span>
                   </p>
                   <div className="mt-auto flex gap-1 border-t border-border pt-4">
-                    {can("teachers", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title="แก้ไข" aria-label={`แก้ไข ${fullName(t)}`} onClick={() => { setEditing(t); setOpen(true); }}><Pencil strokeWidth={1.6} /></Button>}
+                    {can("teachers", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("แก้ไข", "Edit")} aria-label={L(`แก้ไข ${fullName(t)}`, `Edit ${fullName(t)}`)} onClick={() => { setEditing(t); setOpen(true); }}><Pencil strokeWidth={1.6} /></Button>}
                     {can("teachers", "edit") && (t.status === "Active" ? (
-                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title="ปิดใช้งาน" aria-label={`ปิดใช้งาน ${fullName(t)}`} onClick={() => setDisabling(t)}><Ban strokeWidth={1.6} /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ปิดใช้งาน", "Disable")} aria-label={L(`ปิดใช้งาน ${fullName(t)}`, `Disable ${fullName(t)}`)} onClick={() => setDisabling(t)}><Ban strokeWidth={1.6} /></Button>
                     ) : (
-                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title="เปิดใช้งาน" aria-label={`เปิดใช้งาน ${fullName(t)}`} onClick={() => { setTeacherStatus(t.id, "Active"); toast.success("เปิดใช้งานครูแล้ว"); }}><RotateCcw strokeWidth={1.6} /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เปิดใช้งาน", "Enable")} aria-label={L(`เปิดใช้งาน ${fullName(t)}`, `Enable ${fullName(t)}`)} onClick={() => { setTeacherStatus(t.id, "Active"); toast.success(L("เปิดใช้งานครูแล้ว", "Teacher enabled")); }}><RotateCcw strokeWidth={1.6} /></Button>
                     ))}
-                    {can("teachers", "delete") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title="ลบ" aria-label={`ลบ ${fullName(t)}`} onClick={() => setDeleting(t)}><Trash2 strokeWidth={1.6} /></Button>}
+                    {can("teachers", "delete") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ลบ", "Delete")} aria-label={L(`ลบ ${fullName(t)}`, `Delete ${fullName(t)}`)} onClick={() => setDeleting(t)}><Trash2 strokeWidth={1.6} /></Button>}
                   </div>
                 </Card>
               );
             })}
           </div>
-          <Pagination page={pg.page} totalPages={pg.totalPages} onChange={pg.setPage} from={pg.from} to={pg.to} total={pg.total} unit="คน" />
+          <Pagination page={pg.page} totalPages={pg.totalPages} onChange={pg.setPage} from={pg.from} to={pg.to} total={pg.total} unit={L("คน", "people")} />
         </>
       )}
 
 
       <TeacherForm open={open} onOpenChange={setOpen} editing={editing} />
-      <ConfirmDialog open={!!disabling} onOpenChange={(o) => !o && setDisabling(null)} title="ปิดใช้งานครู?" text={`${disabling?.nickname ?? ""} จะไม่สามารถถูกเลือกในคลาสใหม่ได้`} confirmLabel="Disable" destructive onConfirm={() => { if (disabling) { setTeacherStatus(disabling.id, "Disabled"); toast.success("ปิดใช้งานครูแล้ว"); } }} />
-      <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="ลบครู?" text={deleting ? `ต้องการลบ ${fullName(deleting)} ใช่หรือไม่` : ""} confirmLabel="ลบ" destructive onConfirm={() => { if (deleting) { deleteTeacher(deleting.id); toast.success("ลบครูแล้ว"); } }} />
+      <ConfirmDialog open={!!disabling} onOpenChange={(o) => !o && setDisabling(null)} title={L("ปิดใช้งานครู?", "Disable teacher?")} text={L(`${disabling?.nickname ?? ""} จะไม่สามารถถูกเลือกในคลาสใหม่ได้`, `${disabling?.nickname ?? ""} can no longer be picked for new classes`)} confirmLabel={L("ปิดใช้งาน", "Disable")} destructive onConfirm={() => { if (disabling) { setTeacherStatus(disabling.id, "Disabled"); toast.success(L("ปิดใช้งานครูแล้ว", "Teacher disabled")); } }} />
+      <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title={L("ลบครู?", "Delete teacher?")} text={deleting ? L(`ต้องการลบ ${fullName(deleting)} ใช่หรือไม่`, `Delete ${fullName(deleting)}?`) : ""} confirmLabel={L("ลบ", "Delete")} destructive onConfirm={() => { if (deleting) { deleteTeacher(deleting.id); toast.success(L("ลบครูแล้ว", "Teacher deleted")); } }} />
     </>
   );
 }
@@ -139,7 +141,7 @@ function TeacherForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
   }
   const set = <K extends keyof TeacherInput>(k: K, v: TeacherInput[K]) => setF((p) => ({ ...p, [k]: v }));
   const submit = () => {
-    const r = schema.safeParse(f);
+    const r = makeSchema().safeParse(f);
     if (!r.success) {
       const e: Partial<Record<keyof TeacherInput, string>> = {};
       r.error.issues.forEach((i) => { const k = String(i.path[0]) as keyof TeacherInput; if (!e[k]) e[k] = i.message; });
@@ -147,34 +149,34 @@ function TeacherForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
     }
     const payload = { ...f, specializations: [] };
     if (editing) updateTeacher(editing.id, payload); else addTeacher(payload);
-    toast.success(editing ? "บันทึกข้อมูลครูแล้ว" : "เพิ่มครูแล้ว");
+    toast.success(editing ? L("บันทึกข้อมูลครูแล้ว", "Teacher saved") : L("เพิ่มครูแล้ว", "Teacher added"));
     onOpenChange(false);
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">{editing ? "แก้ไขครู" : "Add Teacher"}</DialogTitle>
-          <DialogDescription>ข้อมูลครูผู้สอน</DialogDescription>
+          <DialogTitle className="font-display text-2xl">{editing ? L("แก้ไขครู", "Edit Teacher") : L("เพิ่มครู", "Add Teacher")}</DialogTitle>
+          <DialogDescription>{L("ข้อมูลครูผู้สอน", "Teacher details")}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Profile Image" className="sm:col-span-2"><ImageUpload value={f.image} onChange={(v) => set("image", v)} /></Field>
-          <Field label="Prefix" error={errors.prefix}>
+          <Field label={L("รูปโปรไฟล์", "Profile Image")} className="sm:col-span-2"><ImageUpload value={f.image} onChange={(v) => set("image", v)} /></Field>
+          <Field label={L("คำนำหน้า", "Prefix")} error={errors.prefix}>
             <NativeSelect value={f.prefix} onValueChange={(value) => set("prefix", value)}>
-              <option value="">เลือก</option>
-              {TEACHER_PREFIXES.map((p) => <option key={p}>{p}</option>)}
+              <option value="">{L("เลือก", "Select")}</option>
+              {TEACHER_PREFIXES.map((p) => <option key={p} value={p}>{opt(p)}</option>)}
             </NativeSelect>
           </Field>
-          <Field label="Nickname" error={errors.nickname}><Input value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></Field>
-          <Field label="First Name" error={errors.firstName}><Input value={f.firstName} onChange={(e) => set("firstName", e.target.value)} /></Field>
-          <Field label="Last Name" error={errors.lastName}><Input value={f.lastName} onChange={(e) => set("lastName", e.target.value)} /></Field>
-          <Field label="Phone" error={errors.phone}><Input inputMode="numeric" value={f.phone} onChange={(e) => set("phone", onlyDigits10(e.target.value))} /></Field>
-          <Field label="Email" error={errors.email}><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
-          <Field label="Line ID" error={errors.lineId} className="sm:col-span-2"><Input value={f.lineId} onChange={(e) => set("lineId", e.target.value)} /></Field>
+          <Field label={L("ชื่อเล่น", "Nickname")} error={errors.nickname}><Input value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></Field>
+          <Field label={L("ชื่อ", "First Name")} error={errors.firstName}><Input value={f.firstName} onChange={(e) => set("firstName", e.target.value)} /></Field>
+          <Field label={L("นามสกุล", "Last Name")} error={errors.lastName}><Input value={f.lastName} onChange={(e) => set("lastName", e.target.value)} /></Field>
+          <Field label={L("เบอร์โทร", "Phone")} error={errors.phone}><Input inputMode="numeric" value={f.phone} onChange={(e) => set("phone", onlyDigits10(e.target.value))} /></Field>
+          <Field label={L("อีเมล", "Email")} error={errors.email}><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
+          <Field label={L("ไลน์ไอดี", "Line ID")} error={errors.lineId} className="sm:col-span-2"><Input value={f.lineId} onChange={(e) => set("lineId", e.target.value)} /></Field>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
-          <Button onClick={submit}>บันทึก</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{L("ยกเลิก", "Cancel")}</Button>
+          <Button onClick={submit}>{L("บันทึก", "Save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

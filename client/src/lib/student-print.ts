@@ -1,18 +1,29 @@
 import { format, parseISO, isValid } from "date-fns";
 import type { Student } from "@/lib/yodo-store";
+import { L, fd, getLang, opt, prefixed } from "@/lib/i18n";
 import logoUrlRaw from "@/assets/yodo-logo.png";
 const logo = { url: logoUrlRaw };
 
-export const terms = [
-  "ข้าพเจ้าขอให้คำรับรองว่า ข้อความรายละเอียดต่างๆ ที่กรอกไว้ในใบสมัครข้างต้นนี้ถูกต้องตามความเป็นจริงทุกประการ หากข้อความใดเป็นเท็จ หรือมีการตรวจพบภายหลัง ข้าพเจ้าจะเป็นผู้รับผิดชอบในทุกกรณี",
-  "ข้าพเจ้าขอยอมรับว่าโรงเรียน You Only Dance Once (Y.O.D.O) มีสิทธิ์ในการพิจารณารับหรือไม่รับในการสมัครแต่ละวิชาหรือถอดสิทธิ์การเป็นนักเรียนหากทำผิดกฎของทางโรงเรียน",
-  "ข้าพเจ้าขอรับรองว่า หากมีอันตรายและหรือความเสียหายใดๆ ที่เกิดขึ้นกับข้าพเจ้าโดยเหตุสุดวิสัย หรืออุปกรณ์ของข้าพเจ้า ผู้ปกครองข้าพเจ้าจะเป็นผู้รับผิดชอบแต่เพียงผู้เดียว",
-  "ข้าพเจ้าอนุญาตให้คุณครูมีสิทธิ์ในการพิจารณาคัดเลือกระดับชั้นเรียนที่เหมาะสมให้กับข้าพเจ้า",
-  "นักเรียนมีความจำเป็นที่จะต้องทำการสอบเพื่อประเมินศักยภาพ สำหรับการเลื่อนระดับชั้นในทุกๆ ปี",
-  "ค่าเรียนในแต่ละ course จะต้องใช้ให้ครบภายในระยะเวลาที่ทางโรงเรียนกำหนดเท่านั้น (ยกเว้นในกรณีที่มีใบรับรองแพทย์)",
-  "ทางโรงเรียนสามารถใช้รูปภาพหรือวิดีโอ (ระหว่างการเรียน แสดง แข่ง) ของนักเรียนในการสื่อสารและโปรโมททางช่องทางออนไลน์และออฟไลน์ (หากไม่สะดวกกรุณาแจ้งทางโรงเรียน)",
-  "ข้าพเจ้าขอยอมรับว่า โรงเรียน You Only Dance Once (Y.O.D.O) มีสิทธิ์ในการไม่คืนเงินในทุกกรณี",
-  "ในกรณีที่เกิดการบาดเจ็บหรือป่วย ทางโรงเรียนสามารถผ่อนปรนระยะเวลาในการเรียนได้เฉพาะในกรณีที่มีใบรับรองแพทย์จากทางโรงพยาบาลเท่านั้น",
+/** The school's terms in the current language (call at render/print time). */
+export const terms = () => [
+  L("ข้าพเจ้าขอให้คำรับรองว่า ข้อความรายละเอียดต่างๆ ที่กรอกไว้ในใบสมัครข้างต้นนี้ถูกต้องตามความเป็นจริงทุกประการ หากข้อความใดเป็นเท็จ หรือมีการตรวจพบภายหลัง ข้าพเจ้าจะเป็นผู้รับผิดชอบในทุกกรณี",
+    "I certify that all the details filled in on this application are true and correct in every respect. If any statement is false or is found to be false later, I will take full responsibility in every case."),
+  L("ข้าพเจ้าขอยอมรับว่าโรงเรียน You Only Dance Once (Y.O.D.O) มีสิทธิ์ในการพิจารณารับหรือไม่รับในการสมัครแต่ละวิชาหรือถอดสิทธิ์การเป็นนักเรียนหากทำผิดกฎของทางโรงเรียน",
+    "I accept that You Only Dance Once (Y.O.D.O) school has the right to accept or refuse each class application, or to withdraw student status if the school's rules are broken."),
+  L("ข้าพเจ้าขอรับรองว่า หากมีอันตรายและหรือความเสียหายใดๆ ที่เกิดขึ้นกับข้าพเจ้าโดยเหตุสุดวิสัย หรืออุปกรณ์ของข้าพเจ้า ผู้ปกครองข้าพเจ้าจะเป็นผู้รับผิดชอบแต่เพียงผู้เดียว",
+    "I certify that if any harm and/or damage happens to me or my belongings by unforeseeable circumstances, my parent or guardian alone will be responsible."),
+  L("ข้าพเจ้าอนุญาตให้คุณครูมีสิทธิ์ในการพิจารณาคัดเลือกระดับชั้นเรียนที่เหมาะสมให้กับข้าพเจ้า",
+    "I allow the teachers to choose the class level that suits me."),
+  L("นักเรียนมีความจำเป็นที่จะต้องทำการสอบเพื่อประเมินศักยภาพ สำหรับการเลื่อนระดับชั้นในทุกๆ ปี",
+    "Students need to take an assessment every year to move up a level."),
+  L("ค่าเรียนในแต่ละ course จะต้องใช้ให้ครบภายในระยะเวลาที่ทางโรงเรียนกำหนดเท่านั้น (ยกเว้นในกรณีที่มีใบรับรองแพทย์)",
+    "The fees for each course must be used within the period set by the school only (except with a medical certificate)."),
+  L("ทางโรงเรียนสามารถใช้รูปภาพหรือวิดีโอ (ระหว่างการเรียน แสดง แข่ง) ของนักเรียนในการสื่อสารและโปรโมททางช่องทางออนไลน์และออฟไลน์ (หากไม่สะดวกกรุณาแจ้งทางโรงเรียน)",
+    "The school may use photos or videos of students (during classes, shows and competitions) to communicate and promote online and offline (please tell the school if you do not agree)."),
+  L("ข้าพเจ้าขอยอมรับว่า โรงเรียน You Only Dance Once (Y.O.D.O) มีสิทธิ์ในการไม่คืนเงินในทุกกรณี",
+    "I accept that You Only Dance Once (Y.O.D.O) school has the right not to give refunds in any case."),
+  L("ในกรณีที่เกิดการบาดเจ็บหรือป่วย ทางโรงเรียนสามารถผ่อนปรนระยะเวลาในการเรียนได้เฉพาะในกรณีที่มีใบรับรองแพทย์จากทางโรงพยาบาลเท่านั้น",
+    "In case of injury or illness, the school can extend the study period only with a medical certificate from a hospital."),
 ];
 
 function escapeHtml(value: string | number | null | undefined) {
@@ -35,7 +46,7 @@ export function ageDetail(dob: string) {
   let months = today.getMonth() - birth.getMonth();
   if (today.getDate() < birth.getDate()) months--;
   if (months < 0) { years--; months += 12; }
-  return years > 0 ? `${years} ปี ${months} เดือน` : `${months} เดือน`;
+  return years > 0 ? L(`${years} ปี ${months} เดือน`, `${years} years ${months} months`) : L(`${months} เดือน`, `${months} months`);
 }
 
 function cell(label: string, value: string | number | null | undefined, labelSpan = 2, valueSpan = 2) {
@@ -43,8 +54,8 @@ function cell(label: string, value: string | number | null | undefined, labelSpa
 }
 
 function signature(date: string, img = "") {
-  const pic = /^data:image\/png;base64,/i.test(img) ? `<img class="sign-img" src="${escapeHtml(img)}" alt="ลายเซ็น" />` : "";
-  return `<div class="signature"><div class="sign-line"><span>ลายเซ็นต์</span><span class="line">${pic}</span></div><div class="sign-date"><span>วันที่</span><span>${escapeHtml(date)}</span></div></div>`;
+  const pic = /^data:image\/png;base64,/i.test(img) ? `<img class="sign-img" src="${escapeHtml(img)}" alt="${escapeHtml(L("ลายเซ็น", "Signature"))}" />` : "";
+  return `<div class="signature"><div class="sign-line"><span>${escapeHtml(L("ลายเซ็นต์", "Signature"))}</span><span class="line">${pic}</span></div><div class="sign-date"><span>${escapeHtml(L("วันที่", "Date"))}</span><span>${escapeHtml(date)}</span></div></div>`;
 }
 
 /** Opens a standalone, print-only A4 document; no student data is sent to a server. */
@@ -52,16 +63,16 @@ export function printStudentDocument(student: Student): boolean {
   const popup = window.open("", "_blank");
   if (!popup) return false;
 
-  const today = student.signedAt ? student.signedAt.split("-").reverse().join("/") : format(new Date(), "dd/MM/yyyy");
+  const today = student.signedAt ? fd(student.signedAt) : fd(new Date());
   const logoUrl = new URL(logo.url, window.location.origin).href;
   const image = student.image && (/^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(student.image) || /^https?:\/\//i.test(student.image))
-    ? `<img class="student-photo" src="${escapeHtml(student.image)}" alt="รูปนักเรียน" />`
+    ? `<img class="student-photo" src="${escapeHtml(student.image)}" alt="${escapeHtml(L("รูปนักเรียน", "Student photo"))}" />`
     : `<div class="student-photo empty-photo"></div>`;
   const interests = student.interested.join(", ");
-  const nationality = student.nationality === "Other" ? student.nationalityOther : student.nationality;
+  const nationality = student.nationality === "Other" ? student.nationalityOther : opt(student.nationality);
 
   popup.document.open();
-  popup.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"/><title>${escapeHtml(student.code)} - YODO</title>
+  popup.document.write(`<!doctype html><html lang="${getLang()}"><head><meta charset="utf-8"/><title>${escapeHtml(student.code)} - YODO</title>
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
@@ -88,21 +99,21 @@ export function printStudentDocument(student: Student): boolean {
   @media print { html, body { width: 210mm; } .sheet { margin: 0; box-shadow: none; } }
 </style></head><body>
 <section class="sheet"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" />
-<div class="terms"><p class="terms-title">ข้อตกลงและเงื่อนไขของโรงเรียน</p><ol>${terms.map((term) => `<li>${escapeHtml(term)}</li>`).join("")}</ol></div>
+<div class="terms"><p class="terms-title">${escapeHtml(L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions"))}</p><ol>${terms().map((term) => `<li>${escapeHtml(term)}</li>`).join("")}</ol></div>
 ${signature(today, student.signature)}</section>
 <section class="sheet"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" />
 ${image}
 <table><colgroup>${Array.from({ length: 12 }, () => "<col/>").join("")}</colgroup><tbody>
-<tr>${cell("ชื่อ", `${student.prefix} ${student.firstName}`)}${cell("นามสกุล", student.lastName)}${cell("ชื่อเล่น", student.nickname)}</tr>
-<tr>${cell("วันเกิด", displayDate(student.dob))}${cell("อายุ", ageDetail(student.dob), 2, 6)}</tr>
-<tr>${cell("เชื้อชาติ", "")}${cell("สัญชาติ", nationality)}${cell("ศาสนา", student.religion)}</tr>
-<tr>${cell("ที่อยู่", student.address, 2, 10)}</tr>
-<tr>${cell("เบอร์โทร", student.phone)}${cell("E-mail", student.email)}${cell("Line ID", student.lineId)}</tr>
-<tr>${cell("ผู้ติดต่อฉุกเฉิน", student.emergencyName, 3, 3)}${cell("เบอร์โทร", student.emergencyPhone, 2, 4)}</tr>
-<tr>${cell("มีความสัมพันธ์เป็น", student.relationship, 3, 9)}</tr>
-<tr>${cell("คลาสเต้นที่สนใจ", interests, 3, 9)}</tr>
-<tr>${cell("เคยเรียนเต้นมาก่อนหรือไม่", student.hasExperience ? "เคย" : "ไม่เคย", 4, 2)}${cell("หากเคย โปรดระบุ", student.hasExperience ? student.experienceDetail : "", 3, 3)}</tr>
-<tr>${cell("รู้จัก Y.O.D.O. จากช่องทางไหน", student.source, 4, 2)}${cell("อื่นๆ โปรดระบุ", student.source === "Other" ? student.sourceOther : "", 3, 3)}</tr>
+<tr>${cell(L("ชื่อ", "First name"), prefixed(student.prefix, student.firstName))}${cell(L("นามสกุล", "Last name"), student.lastName)}${cell(L("ชื่อเล่น", "Nickname"), student.nickname)}</tr>
+<tr>${cell(L("วันเกิด", "Date of birth"), displayDate(student.dob))}${cell(L("อายุ", "Age"), ageDetail(student.dob), 2, 6)}</tr>
+<tr>${cell(L("เชื้อชาติ", "Ethnicity"), "")}${cell(L("สัญชาติ", "Nationality"), nationality)}${cell(L("ศาสนา", "Religion"), student.religion ? opt(student.religion) : "")}</tr>
+<tr>${cell(L("ที่อยู่", "Address"), student.address, 2, 10)}</tr>
+<tr>${cell(L("เบอร์โทร", "Phone"), student.phone)}${cell("E-mail", student.email)}${cell("Line ID", student.lineId)}</tr>
+<tr>${cell(L("ผู้ติดต่อฉุกเฉิน", "Emergency contact"), student.emergencyName, 3, 3)}${cell(L("เบอร์โทร", "Phone"), student.emergencyPhone, 2, 4)}</tr>
+<tr>${cell(L("มีความสัมพันธ์เป็น", "Relationship"), student.relationship, 3, 9)}</tr>
+<tr>${cell(L("คลาสเต้นที่สนใจ", "Interested dance classes"), interests, 3, 9)}</tr>
+<tr>${cell(L("เคยเรียนเต้นมาก่อนหรือไม่", "Danced before?"), student.hasExperience ? L("เคย", "Yes") : L("ไม่เคย", "No"), 4, 2)}${cell(L("หากเคย โปรดระบุ", "If yes, please specify"), student.hasExperience ? student.experienceDetail : "", 3, 3)}</tr>
+<tr>${cell(L("รู้จัก Y.O.D.O. จากช่องทางไหน", "How did you hear about Y.O.D.O.?"), student.source ? opt(student.source) : "", 4, 2)}${cell(L("อื่นๆ โปรดระบุ", "Other, please specify"), student.source === "Other" ? student.sourceOther : "", 3, 3)}</tr>
 </tbody></table>${signature(today, student.signature)}</section>
 <script>
   window.addEventListener('load', async () => {

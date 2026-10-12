@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import defaultAvatar from "@/assets/default-avatar.webp";
+import { L, opt } from "@/lib/i18n";
 
 /** รูปภาพแบบโหลดเมื่อเลื่อนถึง (lazy) + มี placeholder กันจอกระตุก */
 export function LazyImg({ src, alt, className }: { src: string; alt: string; className?: string | undefined }) {
@@ -46,7 +47,7 @@ export function usePagination<T>(items: T[], perPage: number, resetKey: unknown)
   };
 }
 
-export function Pagination({ page, totalPages, onChange, from, to, total, unit = "รายการ" }: {
+export function Pagination({ page, totalPages, onChange, from, to, total, unit }: {
   page: number; totalPages: number; onChange: (p: number) => void; from: number; to: number; total: number; unit?: string;
 }) {
   if (total === 0) return null;
@@ -57,9 +58,9 @@ export function Pagination({ page, totalPages, onChange, from, to, total, unit =
   }
   return (
     <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-      <p className="text-xs text-muted-foreground">แสดง {from}–{to} จาก {total} {unit}</p>
+      <p className="text-xs text-muted-foreground">{L(`แสดง ${from}–${to} จาก ${total} ${unit ?? "รายการ"}`, `Showing ${from}–${to} of ${total} ${unit ?? "items"}`)}</p>
       <div className="flex items-center gap-1.5">
-        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={page <= 1} onClick={() => onChange(page - 1)} aria-label="หน้าก่อนหน้า">
+        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={page <= 1} onClick={() => onChange(page - 1)} aria-label={L("หน้าก่อนหน้า", "Previous page")}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         {pages.map((p, i) =>
@@ -79,7 +80,7 @@ export function Pagination({ page, totalPages, onChange, from, to, total, unit =
             </button>
           ),
         )}
-        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={page >= totalPages} onClick={() => onChange(page + 1)} aria-label="หน้าถัดไป">
+        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={page >= totalPages} onClick={() => onChange(page + 1)} aria-label={L("หน้าถัดไป", "Next page")}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
@@ -123,7 +124,7 @@ export function NativeSelect({ className, children, value, onValueChange }: {
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger className={cn("h-10 min-w-0 rounded-lg border-border bg-background px-4 text-foreground shadow-xs focus:ring-2 focus:ring-ring/40 [&>svg]:mr-1 [&>svg]:text-muted-foreground [&>svg]:opacity-100", className)}>
-        <SelectValue placeholder={placeholder || "เลือก"} />
+        <SelectValue placeholder={placeholder || L("เลือก", "Select")} />
       </SelectTrigger>
       <SelectContent className="rounded-lg border-border bg-popover p-1 shadow-soft">
         {options.filter((o) => o.props.value !== "").map((o) => (
@@ -161,7 +162,7 @@ export function StatusBadge({ status }: { status: string }) {
       )}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {status}
+      {opt(status)}
     </span>
   );
 }
@@ -227,8 +228,8 @@ function ImageEditor({ src, shape, onUse, onCancel }: { src: string; shape: "cir
     <Dialog open onOpenChange={(o) => !o && onCancel()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>ปรับแต่งรูป</DialogTitle>
-          <DialogDescription>ลากรูปเพื่อขยับตำแหน่ง และซูมเข้า–ออกให้พอดีกรอบ</DialogDescription>
+          <DialogTitle>{L("ปรับแต่งรูป", "Adjust picture")}</DialogTitle>
+          <DialogDescription>{L("ลากรูปเพื่อขยับตำแหน่ง และซูมเข้า–ออกให้พอดีกรอบ", "Drag the picture to move it, and zoom in or out to fit the frame.")}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center gap-5 py-2">
           <div
@@ -254,14 +255,14 @@ function ImageEditor({ src, shape, onUse, onCancel }: { src: string; shape: "cir
             />
           </div>
           <div className="flex w-full items-center gap-3 px-2">
-            <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0 rounded-full" onClick={() => changeZoom(zoom - 0.1)} aria-label="ซูมออก"><Minus className="h-4 w-4" /></Button>
-            <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={(e) => changeZoom(Number(e.target.value))} className="w-full accent-primary" aria-label="ระดับการซูม" />
-            <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0 rounded-full" onClick={() => changeZoom(zoom + 0.1)} aria-label="ซูมเข้า"><Plus className="h-4 w-4" /></Button>
+            <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0 rounded-full" onClick={() => changeZoom(zoom - 0.1)} aria-label={L("ซูมออก", "Zoom out")}><Minus className="h-4 w-4" /></Button>
+            <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={(e) => changeZoom(Number(e.target.value))} className="w-full accent-primary" aria-label={L("ระดับการซูม", "Zoom level")} />
+            <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0 rounded-full" onClick={() => changeZoom(zoom + 0.1)} aria-label={L("ซูมเข้า", "Zoom in")}><Plus className="h-4 w-4" /></Button>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>ยกเลิก</Button>
-          <Button onClick={confirm} disabled={!imgSize}>ใช้รูปนี้</Button>
+          <Button variant="outline" onClick={onCancel}>{L("ยกเลิก", "Cancel")}</Button>
+          <Button onClick={confirm} disabled={!imgSize}>{L("ใช้รูปนี้", "Use this picture")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -272,8 +273,8 @@ export function ImageUpload({ value, onChange, shape = "circle" }: { value: stri
   const [editing, setEditing] = useState<string | null>(null);
   const onFile = (f?: File) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) { toast.error("กรุณาเลือกไฟล์รูปภาพ"); return; }
-    if (f.size > 2 * 1024 * 1024) { toast.error("ไฟล์ต้องมีขนาดไม่เกิน 2MB"); return; }
+    if (!f.type.startsWith("image/")) { toast.error(L("กรุณาเลือกไฟล์รูปภาพ", "Please choose a picture file")); return; }
+    if (f.size > 2 * 1024 * 1024) { toast.error(L("ไฟล์ต้องมีขนาดไม่เกิน 2MB", "The file must be 2 MB or smaller")); return; }
     const r = new FileReader();
     r.onload = () => setEditing(String(r.result));
     r.readAsDataURL(f);
@@ -299,16 +300,16 @@ export function ImageUpload({ value, onChange, shape = "circle" }: { value: stri
         <input type="file" accept="image/*" className="hidden" onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }} />
       </label>
       <div className="text-xs text-muted-foreground">
-        <p>JPG / PNG ไม่เกิน 2MB</p>
+        <p>{L("JPG / PNG ไม่เกิน 2MB", "JPG / PNG up to 2 MB")}</p>
         <div className="mt-1 flex flex-col gap-1">
           {value && (
             <button type="button" onClick={() => setEditing(value)} className="inline-flex items-center gap-1 text-primary hover:underline">
-              <Pencil className="h-3 w-3" /> ปรับแต่งรูป
+              <Pencil className="h-3 w-3" /> {L("ปรับแต่งรูป", "Adjust picture")}
             </button>
           )}
           {value && (
             <button type="button" onClick={() => onChange("")} className="inline-flex items-center gap-1 text-destructive hover:underline">
-              <X className="h-3 w-3" /> ลบรูป
+              <X className="h-3 w-3" /> {L("ลบรูป", "Remove picture")}
             </button>
           )}
         </div>
@@ -341,7 +342,7 @@ export function ChipSelect({ options, value, onChange }: { options: readonly str
   );
 }
 
-export function ConfirmDialog({ open, onOpenChange, title, text, confirmLabel = "ยืนยัน", onConfirm, destructive }: {
+export function ConfirmDialog({ open, onOpenChange, title, text, confirmLabel, onConfirm, destructive }: {
   open: boolean; onOpenChange: (o: boolean) => void; title: string; text: string; confirmLabel?: string; onConfirm: () => void; destructive?: boolean;
 }) {
   return (
@@ -352,8 +353,8 @@ export function ConfirmDialog({ open, onOpenChange, title, text, confirmLabel = 
           <DialogDescription>{text}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
-          <Button variant={destructive ? "destructive" : "default"} onClick={() => { onConfirm(); onOpenChange(false); }}>{confirmLabel}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{L("ยกเลิก", "Cancel")}</Button>
+          <Button variant={destructive ? "destructive" : "default"} onClick={() => { onConfirm(); onOpenChange(false); }}>{confirmLabel ?? L("ยืนยัน", "Confirm")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -382,7 +383,7 @@ export function ClassCover({ src, name, color }: { src?: string | undefined; nam
 }
 
 /** ช่องเลือกวันที่ แสดง dd/MM/yyyy ค่าเป็น yyyy-MM-dd */
-export function DateField({ value, onChange, min, max, placeholder = "dd/mm/yyyy" }: { value: string; onChange: (v: string) => void; min?: string | undefined; max?: string | undefined; placeholder?: string }) {
+export function DateField({ value, onChange, min, max, placeholder }: { value: string; onChange: (v: string) => void; min?: string | undefined; max?: string | undefined; placeholder?: string }) {
   const [open, setOpen] = useState(false);
   const sel = value ? parseISO(value) : undefined;
   const minD = min ? parseISO(min) : undefined;
@@ -392,8 +393,8 @@ export function DateField({ value, onChange, min, max, placeholder = "dd/mm/yyyy
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" className={cn("h-10 w-full justify-start gap-2 rounded-xl font-normal", !value && "text-muted-foreground")}>
           <CalendarIcon className="h-4 w-4" />
-          {sel ? format(sel, "dd/MM/yyyy") : placeholder}
-          {value && <span role="button" aria-label="ล้างวันที่" className="ml-auto" onClick={(e) => { e.stopPropagation(); onChange(""); }}><X className="h-3.5 w-3.5" /></span>}
+          {sel ? format(sel, "dd/MM/yyyy") : placeholder ?? L("วว/ดด/ปปปป", "dd/mm/yyyy")}
+          {value && <span role="button" aria-label={L("ล้างวันที่", "Clear date")} className="ml-auto" onClick={(e) => { e.stopPropagation(); onChange(""); }}><X className="h-3.5 w-3.5" /></span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -419,8 +420,8 @@ export function ReceiptUpload({ value, onChange }: { value: string; onChange: (v
   const [viewing, setViewing] = useState(false);
   const onFile = (file?: File) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("กรุณาเลือกไฟล์รูปภาพ"); return; }
-    if (file.size > 2 * 1024 * 1024) { toast.error("ไฟล์ต้องมีขนาดไม่เกิน 2MB"); return; }
+    if (!file.type.startsWith("image/")) { toast.error(L("กรุณาเลือกไฟล์รูปภาพ", "Please choose a picture file")); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error(L("ไฟล์ต้องมีขนาดไม่เกิน 2MB", "The file must be 2 MB or smaller")); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
@@ -440,26 +441,26 @@ export function ReceiptUpload({ value, onChange }: { value: string; onChange: (v
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }} />
       {value ? (
         <div className="flex items-start gap-3">
-          <button type="button" onClick={() => setViewing(true)} title="ดูใบเสร็จ" className="overflow-hidden rounded-xl border border-border bg-muted/40">
-            <img src={value} alt="ใบเสร็จ" className="h-40 w-32 object-contain" />
+          <button type="button" onClick={() => setViewing(true)} title={L("ดูใบเสร็จ", "View receipt")} className="overflow-hidden rounded-xl border border-border bg-muted/40">
+            <img src={value} alt={L("ใบเสร็จ", "Receipt")} className="h-40 w-32 object-contain" />
           </button>
           <div className="flex flex-col gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setViewing(true)}>ดูรูปใหญ่</Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>เปลี่ยนรูป</Button>
-            <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onChange("")}>ลบ</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setViewing(true)}>{L("ดูรูปใหญ่", "View large")}</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>{L("เปลี่ยนรูป", "Change picture")}</Button>
+            <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onChange("")}>{L("ลบ", "Remove")}</Button>
           </div>
         </div>
       ) : (
         <button type="button" onClick={() => inputRef.current?.click()} className="flex w-full flex-col items-center gap-1 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-sm text-muted-foreground hover:bg-muted/60">
           <ImagePlus className="h-6 w-6 text-primary" />
-          <span className="font-medium text-foreground">แนบใบเสร็จ</span>
-          <span className="text-xs">JPG / PNG ไม่เกิน 2MB</span>
+          <span className="font-medium text-foreground">{L("แนบใบเสร็จ", "Attach receipt")}</span>
+          <span className="text-xs">{L("JPG / PNG ไม่เกิน 2MB", "JPG / PNG up to 2 MB")}</span>
         </button>
       )}
       <Dialog open={viewing} onOpenChange={setViewing}>
         <DialogContent className="sm:max-w-3xl">
-          <DialogHeader><DialogTitle>ใบเสร็จ</DialogTitle><DialogDescription>รูปสลิป/ใบเสร็จที่แนบไว้</DialogDescription></DialogHeader>
-          <img src={value} alt="ใบเสร็จ" className="max-h-[75vh] w-full rounded-xl object-contain" />
+          <DialogHeader><DialogTitle>{L("ใบเสร็จ", "Receipt")}</DialogTitle><DialogDescription>{L("รูปสลิป/ใบเสร็จที่แนบไว้", "The attached slip or receipt")}</DialogDescription></DialogHeader>
+          <img src={value} alt={L("ใบเสร็จ", "Receipt")} className="max-h-[75vh] w-full rounded-xl object-contain" />
         </DialogContent>
       </Dialog>
     </div>
@@ -487,9 +488,9 @@ export function SignaturePad({ onSave, onCancel }: { onSave: (dataUrl: string) =
         onPointerMove={(e) => { if (!drawing.current) return; const ctx = e.currentTarget.getContext("2d")!; const [x, y] = pos(e); ctx.lineTo(x, y); ctx.stroke(); }}
         onPointerUp={() => { drawing.current = false; }} onPointerLeave={() => { drawing.current = false; }} />
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={clear}>ล้าง</Button>
-        <Button variant="outline" onClick={onCancel}>ยกเลิก</Button>
-        <Button disabled={!dirty} onClick={() => onSave(ref.current!.toDataURL("image/png"))}>บันทึกลายเซ็น</Button>
+        <Button variant="outline" onClick={clear}>{L("ล้าง", "Clear")}</Button>
+        <Button variant="outline" onClick={onCancel}>{L("ยกเลิก", "Cancel")}</Button>
+        <Button disabled={!dirty} onClick={() => onSave(ref.current!.toDataURL("image/png"))}>{L("บันทึกลายเซ็น", "Save signature")}</Button>
       </div>
     </div>
   );
