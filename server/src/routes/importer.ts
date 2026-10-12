@@ -97,14 +97,16 @@ router.post('/import/students', requireAuth, express.text({ type: '*/*', limit: 
     const rid = /^[0-9a-f-]{36}$/i.test(str(r.id)) ? str(r.id) : undefined;
     const existing = await prisma.student.findFirst({ where: { OR: [{ code }, ...(rid ? [{ id: rid }] : [])] } });
     if (existing) {
-      // Already here (e.g. imported from a CSV without pictures): only fill in a missing photo / signature.
+      // Already here (e.g. imported from a CSV without pictures): only fill in a missing photo / signature / ethnicity.
       const hasImg = str(r.image).startsWith('data:image/') && !existing.image;
       const hasSig = str(r.signature).startsWith('data:image/') && !existing.signature;
-      if (hasImg || hasSig) {
+      const eth = !existing.ethnicity && str(r.ethnicity) ? str(r.ethnicity) : '';
+      if (hasImg || hasSig || eth) {
         out.pictures++;
         if (!dryRun) {
           const after = await prisma.student.update({ where: { id: existing.id }, data: {
             ...(hasImg ? { image: picture(r.image) } : {}),
+            ...(eth ? { ethnicity: eth, ethnicityOther: str(r.ethnicityOther) } : {}),
             ...(hasSig ? { signature: picture(r.signature), ...(existing.signedAt ? {} : { signedAt: day(r.signedAt) }) } : {}),
           } });
           await audit(req, 'update', 'students', after.id, [after.code, after.firstName, after.lastName].join(' '), existing, after);

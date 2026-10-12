@@ -307,7 +307,7 @@ describe('notification settings and the bell', () => {
 
 describe('import: pictures for students already there', () => {
   it('fills in a missing photo and signature, never overwrites one', async () => {
-    const json = JSON.stringify([{ code: 'YDO00101', first_name: 'ทดลอง', image: PNG, signature: PNG, signed_at: '2026-10-01' }, { code: 'YDO00050', first_name: 'ต้นกล้า', image: PNG }]);
+    const json = JSON.stringify([{ code: 'YDO00101', first_name: 'ทดลอง', image: PNG, signature: PNG, signed_at: '2026-10-01', ethnicity: 'ไทย' }, { code: 'YDO00050', first_name: 'ต้นกล้า', image: PNG }]);
     const dry = await admin.post('/api/import/students?dry=1').set({ ...H, 'content-type': 'text/plain' }).send(json);
     const s50 = (await admin.get('/api/data')).body.students.find((x: { code: string }) => x.code === 'YDO00050');
     expect(s50?.image, JSON.stringify(s50)).toMatch(/files/);
@@ -315,7 +315,7 @@ describe('import: pictures for students already there', () => {
     await admin.post('/api/import/students').set({ ...H, 'content-type': 'text/plain' }).send(json).expect(200);
     const s = (await admin.get('/api/data')).body.students.find((x: { code: string }) => x.code === 'YDO00101');
     expect(s.image).toMatch(/^\/api\/files\//);
-    expect(s).toMatchObject({ signedAt: '2026-10-01', firstName: 'ทดลอง' });
+    expect(s).toMatchObject({ signedAt: '2026-10-01', firstName: 'ทดลอง', ethnicity: 'ไทย' });
     expect((await admin.post('/api/import/students').set({ ...H, 'content-type': 'text/plain' }).send(json)).body.pictures).toBe(0);
   });
 });
