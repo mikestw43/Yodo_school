@@ -578,7 +578,15 @@ try {
   await page.getByTestId('class-students').waitFor({ timeout: 5000 }).then(() => check('class: who bought it and when it ends', true), () => check('class: who bought it and when it ends', false));
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOTS}/44-class.png` });
-  await page.keyboard.press('Escape');
+  await page.getByTestId('class-back').click();
+  await page.getByTestId('class-students').waitFor({ state: 'detached', timeout: 5000 }).then(() => check('class panel has a Back button', true), () => check('class panel has a Back button', false));
+  await pp.goto(BASE + '/classes');
+  await pp.getByRole('button', { name: 'ดูนักเรียนใน Ballet Course' }).click();
+  await pp.getByTestId('class-back').waitFor();
+  await pp.waitForTimeout(500);
+  check('phone: the Back button shows on the class panel', await pp.getByTestId('class-back').isVisible());
+  await pp.screenshot({ path: `${SHOTS}/p15-class.png` });
+  await pp.getByTestId('class-back').click();
   await pp.goto(BASE + '/courses');
   await pp.getByTestId('filter-all').click();
   await pp.waitForTimeout(400);

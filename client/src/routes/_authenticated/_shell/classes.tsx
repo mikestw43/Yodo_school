@@ -2,13 +2,13 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { Ban, Eye, Pencil, Plus, RotateCcw, Search } from "lucide-react";
+import { Ban, ChevronLeft, Eye, Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, ClassCover, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, usePagination } from "@/components/yodo/ui";
 
 import { ageText, classColor, fullName, useYodo, type ClassInput, type DanceClass } from "@/lib/yodo-store";
@@ -223,7 +223,13 @@ function ClassDetail({ classId, onClose }: { classId: string | null; onClose: ()
       <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         {c && (
           <>
-             <div className="-mx-6 -mt-6 aspect-[12/5]"><ClassCover src={c.image} name={c.name} color={classColor(data.classes, c.id)} /></div>
+             <div className="relative -mx-6 -mt-6 aspect-[12/5]">
+               <ClassCover src={c.image} name={c.name} color={classColor(data.classes, c.id)} />
+               {/* Back button over the cover (owner 12/10/2026: on a phone the panel had no way back) */}
+               <SheetClose asChild>
+                 <Button variant="outline" className="absolute left-3 top-3 z-20 rounded-full bg-background/90 shadow-soft" data-testid="class-back"><ChevronLeft className="h-4 w-4" /> {L("กลับ", "Back")}</Button>
+               </SheetClose>
+             </div>
             <SheetHeader className="px-0">
               <SheetTitle className="font-display text-2xl">{c.name}</SheetTitle>
               <div><StatusBadge status={statusOf(c)} /></div>
