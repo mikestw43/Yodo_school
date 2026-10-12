@@ -47,6 +47,8 @@ export interface Student {
   signature: string;
   signedAt: string;
 }
+/** A signature drawn in the student form, saved right after the student (owner 12/10/2026). */
+export type Sign = { signature: string; signedAt: string };
 export type StudentInput = Omit<Student, "id" | "code" | "status" | "createdAt" | "signature" | "signedAt">;
 
 export interface Teacher {
@@ -187,8 +189,8 @@ interface Ctx {
   loading: boolean;
   reload: () => Promise<void>;
   clear: () => void;
-  addStudent: (s: StudentInput) => Student;
-  updateStudent: (id: string, s: StudentInput) => void;
+  addStudent: (s: StudentInput, sign?: Sign) => Student;
+  updateStudent: (id: string, s: StudentInput, sign?: Sign) => void;
   setStudentStatus: (id: string, status: Status) => void;
   signStudent: (id: string, signature: string, signedAt: string) => void;
   enroll: (studentId: string, input: EnrollmentInput) => void;
@@ -260,15 +262,16 @@ export function YodoProvider({ children }: { children: ReactNode }) {
     loading,
     reload,
     clear,
-    addStudent: (input) => {
-      const s: Student = { ...input, id: newId(), code: nextStudentCode(data.students, data.deletedStudentCodes), status: "Active", createdAt: new Date().toISOString(), signature: "", signedAt: "" };
+    addStudent: (input, sign) => {
+      const s: Student = { ...input, id: newId(), code: nextStudentCode(data.students, data.deletedStudentCodes), status: "Active", createdAt: new Date().toISOString(), signature: sign?.signature ?? "", signedAt: sign?.signedAt ?? "" };
       setData((d) => ({ ...d, students: [...d.students, s] }));
-      run(api<Student>("/students", { body: { id: s.id, ...input } }), patchStudent);
+      run(api<Student>("/students", { body: { id: s.id, ...input, ...sign } }), patchStudent);
       return s;
     },
-    updateStudent: (id, input) => {
-      setData((d) => ({ ...d, students: d.students.map((s) => (s.id === id ? { ...s, ...input } : s)) }));
-      run(api<Student>(`/students/${id}`, { method: "PUT", body: input }), patchStudent);
+    updateStudent: (id, input, sign) => {
+      setData((d) => ({ ...d, students: d.students.map((s) => (s.id === id ? { ...s, ...input, ...sign } : s)) }));
+      const saved = api<Student>(`/students/${id}`, { method: "PUT", body: input });
+      run(sign ? saved.then(() => api<Student>(`/students/${id}/sign`, { body: sign })) : saved, patchStudent);
     },
     signStudent: (id, signature, signedAt) => {
       setData((d) => ({ ...d, students: d.students.map((s) => (s.id === id ? { ...s, signature, signedAt } : s)) }));

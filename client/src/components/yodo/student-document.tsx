@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { Student } from "@/lib/yodo-store";
-import { ageDetail, displayDate, terms } from "@/lib/student-print";
-import { L, fd, opt, prefixed, optOr, splitList } from "@/lib/i18n";
+import { appliedOn, formSections, signerLabel, terms } from "@/lib/student-print";
+import { L, fd } from "@/lib/i18n";
 import logoUrlRaw from "@/assets/yodo-logo.png";
 const logo = { url: logoUrlRaw };
 
@@ -32,42 +32,39 @@ export const SignCanvas = forwardRef<SignCanvasHandle, { onDirty: () => void }>(
   );
 });
 
-function SignatureBlock({ student, signMode, canvasRef, onDirty, showOld = false }: {
-  student: Student; showOld?: boolean; signMode: boolean; canvasRef?: React.Ref<SignCanvasHandle> | undefined; onDirty?: (() => void) | undefined;
+/** The one signature: drawn once (on page 2) and shown on both pages (owner 12/10/2026). */
+function SignatureBlock({ student, signMode, canvasRef, onDirty, showOld = false, mirror = false }: {
+  student: Student; showOld?: boolean; signMode: boolean; mirror?: boolean; canvasRef?: React.Ref<SignCanvasHandle> | undefined; onDirty?: (() => void) | undefined;
 }) {
   const date = student.signedAt ? fd(student.signedAt) : fd(new Date());
+  const old = student.signature ? <img className="ydoc-sign-img" src={student.signature} alt={L("ลายเซ็น", "Signature")} /> : null;
   return (
     <div className="ydoc-signature">
-      <div className="ydoc-sign-line">
-        <span>{L("ลายเซ็นต์", "Signature")}</span>
-        <span className="ydoc-line">
-          {signMode ? (
-            <>
-              {showOld && student.signature
-                ? <img className="ydoc-sign-img" src={student.signature} alt={L("ลายเซ็นเดิม", "Previous signature")} />
-                : <span className="ydoc-sign-hint">{L("เซ็นที่นี่", "Sign here")}</span>}
-              <SignCanvas ref={canvasRef} onDirty={onDirty ?? (() => {})} />
-            </>
-          ) : student.signature ? (
-            <img className="ydoc-sign-img" src={student.signature} alt={L("ลายเซ็น", "Signature")} />
-          ) : null}
-        </span>
-      </div>
+      <span className="ydoc-line">
+        {signMode && !mirror ? (
+          <>
+            {showOld && old ? old : <span className="ydoc-sign-hint">{L("เซ็นที่นี่", "Sign here")}</span>}
+            <SignCanvas ref={canvasRef} onDirty={onDirty ?? (() => {})} />
+          </>
+        ) : signMode ? (
+          <span className="ydoc-sign-hint">{L("ใช้ลายเซ็นเดียวกับหน้า 2", "Uses the signature from page 2")}</span>
+        ) : old}
+      </span>
+      <div className="ydoc-sign-who">{signerLabel()}</div>
       <div className="ydoc-sign-date"><span>{L("วันที่", "Date")}</span><span>{date}</span></div>
     </div>
   );
 }
 
 /** On-screen mirror of the printable A4 document (terms page + registration form page). */
-export function StudentDocument({ student, signMode = false, canvasRefs, onDirty, resetKey = 0, showOld = false }: {
+export function StudentDocument({ student, signMode = false, canvasRef, onDirty, resetKey = 0, showOld = false }: {
   student: Student;
   showOld?: boolean;
   resetKey?: number;
   signMode?: boolean;
-  canvasRefs?: [React.Ref<SignCanvasHandle>, React.Ref<SignCanvasHandle>] | undefined;
-  onDirty?: ((index: number) => void) | undefined;
+  canvasRef?: React.Ref<SignCanvasHandle> | undefined;
+  onDirty?: (() => void) | undefined;
 }) {
-  const nationality = student.nationality === "Other" ? student.nationalityOther : opt(student.nationality);
   const photo = student.image && (/^data:image\//i.test(student.image) || /^https?:\/\//i.test(student.image) || student.image.startsWith("/api/files/"));
   return (
     <div className="ydoc-root">
@@ -79,16 +76,27 @@ export function StudentDocument({ student, signMode = false, canvasRefs, onDirty
         .ydoc-terms-title { margin: 0 0 5mm; font-size: 10.6pt; }
         .ydoc-terms ol { margin: 0; padding-left: 10mm; }
         .ydoc-terms li { padding-left: 3mm; margin-bottom: 3.1mm; }
-        .ydoc-signature { width: 78mm; margin: auto 0 0 auto; font-size: 10pt; padding-top: 8mm; }
-        .ydoc-sign-line, .ydoc-sign-date { display: flex; align-items: flex-end; gap: 2mm; }
-        .ydoc-line { flex: 1; height: 16mm; border-bottom: 1px solid #111; position: relative; }
-        .ydoc-sign-img { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); max-height: 16mm; max-width: 100%; object-fit: contain; }
+        .ydoc-signature { width: 72mm; margin: auto 0 0 auto; font-size: 10pt; padding-top: 8mm; text-align: center; }
+        .ydoc-line { display: block; height: 16mm; border-bottom: 1px solid #111; position: relative; }
+        .ydoc-sign-img { position: absolute; left: 50%; bottom: 1mm; transform: translateX(-50%); max-height: 15mm; max-width: 100%; object-fit: contain; }
         .ydoc-sign-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #b3b3b3; font-size: 9pt; pointer-events: none; }
-        .ydoc-sign-date { justify-content: center; gap: 3mm; padding: 1mm 0 0; }
-        .ydoc-photo { display: block; width: 40mm; height: 53mm; object-fit: cover; margin: 5mm auto 7mm; }
-        .ydoc-photo-empty { width: 40mm; height: 53mm; margin: 5mm auto 7mm; }
-        .ydoc-table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 9pt; line-height: 1.4; }
-        .ydoc-table th, .ydoc-table td { border: 1px solid #171717; padding: 1.8mm 1.4mm; text-align: left; vertical-align: middle; font-weight: 400; word-break: break-word; }
+        .ydoc-sign-who { padding-top: 1.5mm; }
+        .ydoc-sign-date { display: flex; justify-content: center; gap: 2mm; color: #5f4b52; padding-top: 0.5mm; }
+        .ydoc-p2 { padding: 12mm 15mm 11mm; gap: 5mm; font-family: 'Noto Sans Thai', Tahoma, sans-serif; color: #2b2024; }
+        .ydoc-head { display: flex; align-items: flex-start; gap: 6mm; }
+        .ydoc-head-text { flex: 1; display: flex; flex-direction: column; gap: 2.5mm; min-width: 0; }
+        .ydoc-p2 .ydoc-logo { width: 50mm; height: 26mm; object-position: left center; margin: 0; }
+        .ydoc-title { margin: 0; font-family: 'Noto Serif Thai', serif; font-size: 22pt; font-weight: 700; color: #8e2d4c; line-height: 1.1; }
+        .ydoc-meta { display: flex; flex-wrap: wrap; gap: 1mm 5mm; font-size: 9.5pt; color: #6b5a60; }
+        .ydoc-meta b { color: #2b2024; font-weight: 600; }
+        .ydoc-photo { display: block; width: 35mm; height: 45mm; object-fit: cover; border-radius: 2.5mm; border: 1px solid #ead7dd; flex-shrink: 0; }
+        .ydoc-photo-empty { width: 35mm; height: 45mm; border-radius: 2.5mm; border: 1px dashed #ead7dd; flex-shrink: 0; }
+        .ydoc-sec { display: flex; flex-direction: column; gap: 2mm; }
+        .ydoc-sec-title { display: flex; align-items: center; gap: 2.5mm; font-size: 10pt; font-weight: 600; color: #8e2d4c; white-space: nowrap; }
+        .ydoc-sec-title i { flex: 1; height: 1px; background: #e6c9d2; }
+        .ydoc-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 4.5mm; row-gap: 2.6mm; }
+        .ydoc-lbl { font-size: 8.3pt; color: #7a666c; }
+        .ydoc-val { font-size: 10.5pt; min-height: 6mm; padding-bottom: 0.8mm; border-bottom: 1px dotted #b9a2a9; word-break: break-word; }
       `}</style>
       <section className="ydoc-sheet">
         <img className="ydoc-logo" src={logo.url} alt="YODO You Only Dance Once" />
@@ -96,42 +104,51 @@ export function StudentDocument({ student, signMode = false, canvasRefs, onDirty
           <p className="ydoc-terms-title">{L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions")}</p>
           <ol>{terms().map((term, i) => <li key={i}>{term}</li>)}</ol>
         </div>
-        <SignatureBlock key={resetKey} showOld={showOld} student={student} signMode={signMode} canvasRef={canvasRefs?.[0]} onDirty={() => onDirty?.(0)} />
+        <SignatureBlock key={resetKey} student={student} signMode={signMode} mirror />
       </section>
-      <section className="ydoc-sheet">
-        <img className="ydoc-logo" src={logo.url} alt="YODO You Only Dance Once" />
-        {photo
-          ? <img className="ydoc-photo" src={student.image!} alt={L("รูปนักเรียน", "Student photo")} />
-          : <div className="ydoc-photo-empty" />}
-        <table className="ydoc-table"><tbody>
-          <tr><th>{L("ชื่อ", "First name")}</th><td>{prefixed(student.prefix, student.firstName)}</td><th>{L("นามสกุล", "Last name")}</th><td>{student.lastName}</td><th>{L("ชื่อเล่น", "Nickname")}</th><td>{student.nickname}</td></tr>
-          <tr><th>{L("วันเกิด", "Date of birth")}</th><td>{displayDate(student.dob)}</td><th>{L("อายุ", "Age")}</th><td colSpan={3}>{ageDetail(student.dob)}</td></tr>
-          <tr><th>{L("เชื้อชาติ", "Ethnicity")}</th><td>{optOr(student.ethnicity, student.ethnicityOther)}</td><th>{L("สัญชาติ", "Nationality")}</th><td>{nationality}</td><th>{L("ศาสนา", "Religion")}</th><td>{optOr(student.religion, student.religionOther)}</td></tr>
-          <tr><th>{L("ที่อยู่", "Address")}</th><td colSpan={5}>{student.address}</td></tr>
-          <tr><th>{L("เบอร์โทร", "Phone")}</th><td>{student.phone}</td><th>E-mail</th><td>{student.email}</td><th>Line ID</th><td>{student.lineId}</td></tr>
-          <tr><th>{L("ผู้ติดต่อฉุกเฉิน", "Emergency contact")}</th><td colSpan={2}>{student.emergencyName}</td><th>{L("เบอร์โทร", "Phone")}</th><td colSpan={2}>{student.emergencyPhone}</td></tr>
-          <tr><th>{L("มีความสัมพันธ์เป็น", "Relationship")}</th><td colSpan={5}>{student.relationship}</td></tr>
-          <tr><th>{L("คลาสเต้นที่สนใจ", "Interested dance classes")}</th><td colSpan={5}>{student.interested.map(opt).join(", ")}</td></tr>
-          <tr><th>{L("เคยเรียนเต้นมาก่อนหรือไม่", "Danced before?")}</th><td colSpan={2}>{student.hasExperience ? L("เคย", "Yes") : L("ไม่เคย", "No")}</td><th>{L("หากเคย โปรดระบุ", "If yes, please specify")}</th><td colSpan={2}>{student.hasExperience ? student.experienceDetail : ""}</td></tr>
-          <tr><th>{L("รู้จัก Y.O.D.O. จากช่องทางไหน", "How did you hear about Y.O.D.O.?")}</th><td colSpan={2}>{splitList(student.source).map(opt).join(", ")}</td><th>{L("อื่นๆ โปรดระบุ", "Other, please specify")}</th><td colSpan={2}>{splitList(student.source).includes("Other") ? student.sourceOther : ""}</td></tr>
-        </tbody></table>
-        <SignatureBlock key={resetKey} showOld={showOld} student={student} signMode={signMode} canvasRef={canvasRefs?.[1]} onDirty={() => onDirty?.(1)} />
+      <section className="ydoc-sheet ydoc-p2">
+        <div className="ydoc-head">
+          <div className="ydoc-head-text">
+            <img className="ydoc-logo" src={logo.url} alt="YODO You Only Dance Once" />
+            <h1 className="ydoc-title">{L("ใบสมัครเรียน", "Application form")}</h1>
+            <div className="ydoc-meta">
+              <span>{L("รหัสนักเรียน", "Student ID")} <b>{student.code}</b></span>
+              <span>{L("วันที่สมัคร", "Applied on")} <b>{appliedOn(student)}</b></span>
+            </div>
+          </div>
+          {photo
+            ? <img className="ydoc-photo" src={student.image!} alt={L("รูปนักเรียน", "Student photo")} />
+            : <div className="ydoc-photo-empty" />}
+        </div>
+        {formSections(student).map((sec) => (
+          <div key={sec.title} className="ydoc-sec">
+            <div className="ydoc-sec-title"><span>{sec.title}</span><i /></div>
+            <div className="ydoc-grid">
+              {sec.fields.map((x) => (
+                <div key={x.label} style={{ gridColumn: `span ${x.span}` }}>
+                  <div className="ydoc-lbl">{x.label}</div>
+                  <div className="ydoc-val">{x.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <SignatureBlock key={resetKey} showOld={showOld} student={student} signMode={signMode} canvasRef={canvasRef} onDirty={onDirty} />
       </section>
     </div>
   );
 }
 
-/** Dialog: read the document and sign directly on each page's signature line. */
-export function useSignCanvases() {
-  const refs = [useRef<SignCanvasHandle>(null), useRef<SignCanvasHandle>(null)] as const;
-  const [active, setActive] = useState<number>(-1);
+/** One signature canvas for the sign dialog and the student form. */
+export function useSignCanvas() {
+  const ref = useRef<SignCanvasHandle>(null);
+  const [drawn, setDrawn] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [cleared, setCleared] = useState(false);
-  const clear = () => { refs.forEach((r) => r.current?.clear()); setActive(-1); setCleared(true); setResetKey((k) => k + 1); };
-  const markActive = (i: number) => { setCleared(true); setActive(i); };
-  const exportSignature = (): string | null => {
-    const pick = active >= 0 && refs[active]?.current?.isDirty() ? refs[active] : refs.find((r) => r.current?.isDirty());
-    return pick?.current?.toDataURL() ?? null;
-  };
-  return { refs, clear, exportSignature, markActive, hasSignature: active >= 0, resetKey, showOld: !cleared };
+  const clear = () => { ref.current?.clear(); setDrawn(false); setCleared(true); setResetKey((k) => k + 1); };
+  const markDrawn = () => { setCleared(true); setDrawn(true); };
+  /** Back to "nothing drawn yet, show the saved signature" (a form opening again). */
+  const reset = () => { setDrawn(false); setCleared(false); setResetKey((k) => k + 1); };
+  const exportSignature = (): string | null => (ref.current?.isDirty() ? ref.current.toDataURL() : null);
+  return { ref, clear, reset, exportSignature, markDrawn, hasSignature: drawn, resetKey, showOld: !cleared };
 }

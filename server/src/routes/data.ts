@@ -112,11 +112,13 @@ export const studentBody = z.object({
 const studentData = (b: z.infer<typeof studentBody>) => ({ ...b, image: storeImage(b.image), interested: JSON.stringify(b.interested) });
 
 router.post('/students', requirePerm('students', 'add'), async (req, res) => {
-  const b = studentBody.extend({ id: id.optional() }).parse(req.body);
-  const { id: sid, ...rest } = b;
+  // A signature drawn in the add form comes with the student (owner 12/10/2026).
+  const b = studentBody.extend({ id: id.optional(), signature: img.optional(), signedAt: date.optional() }).parse(req.body);
+  const { id: sid, signature, signedAt, ...rest } = b;
+  const signed = signature && signedAt ? { signature: storeImage(signature), signedAt } : {};
   const s = await prisma.$transaction(async (db) => {
     const codes = (await db.student.findMany({ select: { code: true } })).map((x) => x.code);
-    return db.student.create({ data: { ...(sid ? { id: sid } : {}), code: nextStudentCode(codes), ...studentData(rest) } });
+    return db.student.create({ data: { ...(sid ? { id: sid } : {}), code: nextStudentCode(codes), ...studentData(rest), ...signed } });
   });
   await audit(req, 'insert', 'students', s.id, studentLabel(s), null, s);
   res.status(201).json(studentOut(s));

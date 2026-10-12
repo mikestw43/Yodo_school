@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, ChipSelect, ConfirmDialog, DateField, EmptyState, Field, ImageUpload, NativeSelect, ReceiptUpload, PageHeader, Pagination, SectionTitle, StatusBadge, onlyDigits10, usePagination } from "@/components/yodo/ui";
 
 import { printReceipt } from "@/lib/receipt-print";
-import { StudentDocument, useSignCanvases } from "@/components/yodo/student-document";
+import { SignCanvas, StudentDocument, useSignCanvas } from "@/components/yodo/student-document";
 import {
   DANCE_TYPES, ETHNICITIES, NATIONALITIES, PREFIXES, RELIGIONS, SOURCES, ageText, fullName, nextStudentCode, useYodo,
   type Enrollment, type EnrollmentInput, type Student, type StudentInput,
@@ -227,6 +227,7 @@ function StudentsPage() {
 
 function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (o: boolean) => void; editing: Student | null }) {
   const { data, addStudent, updateStudent } = useYodo();
+  const sig = useSignCanvas();
   const [f, setF] = useState<StudentInput>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof StudentInput, string>>>({});
   const [lastOpen, setLastOpen] = useState(false);
@@ -237,6 +238,7 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
     setLastOpen(open);
     if (open) {
       setErrors({});
+      sig.reset();
       if (editing) {
         const { id: _i, code: _c, status: _s, createdAt: _d, ...rest } = editing;
         const typed = rest.interested.filter((x) => !(DANCE_TYPES as readonly string[]).includes(x));
@@ -258,8 +260,10 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
       toast.error(L("กรุณาตรวจสอบข้อมูลให้ครบถ้วน", "Please check that everything is filled in"));
       return;
     }
-    if (editing) { updateStudent(editing.id, f); toast.success(L("บันทึกข้อมูลแล้ว", "Saved")); }
-    else { const s = addStudent(f); toast.success(L(`เพิ่มนักเรียนแล้ว (${s.code})`, `Student added (${s.code})`)); }
+    const img = sig.exportSignature();
+    const sign = img ? { signature: img, signedAt: format(new Date(), "yyyy-MM-dd") } : undefined;
+    if (editing) { updateStudent(editing.id, f, sign); toast.success(L("บันทึกข้อมูลแล้ว", "Saved")); }
+    else { const s = addStudent(f, sign); toast.success(L(`เพิ่มนักเรียนแล้ว (${s.code})`, `Student added (${s.code})`)); }
     onOpenChange(false);
   };
 
@@ -273,7 +277,7 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={L("รูปโปรไฟล์", "Profile Image")} className="sm:col-span-2"><ImageUpload value={f.image} onChange={(v) => set("image", v)} /></Field>
           <SectionTitle>{L("ข้อมูลส่วนตัว", "Personal Information")}</SectionTitle>
-          <Field label={L("รหัสนักเรียน (สร้างอัตโนมัติ)", "Student ID (automatic)")}>
+          <Field label={L("รหัสนักเรียน", "Student ID")}>
             <Input value={editing ? editing.code : nextStudentCode(data.students, data.deletedStudentCodes)} readOnly disabled className="font-mono" />
           </Field>
           <Field label={L("คำนำหน้า", "Prefix")} required error={errors.prefix}>
@@ -286,7 +290,7 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
           <Field label={L("ชื่อ", "First Name")} required error={errors.firstName}><Input value={f.firstName} onChange={(e) => set("firstName", e.target.value)} /></Field>
           <Field label={L("นามสกุล", "Last Name")} required error={errors.lastName}><Input value={f.lastName} onChange={(e) => set("lastName", e.target.value)} /></Field>
           <Field label={L("วันเกิด", "Date of Birth")} required error={errors.dob}><DateField value={f.dob} max={new Date().toISOString().slice(0, 10)} onChange={(v) => set("dob", v)} /></Field>
-          <Field label={L("อายุ (คำนวณอัตโนมัติ)", "Age (automatic)")}><Input value={age !== null ? age : ""} placeholder={L("เลือกวันเกิด", "Choose the date of birth")} readOnly disabled /></Field>
+          <Field label={L("อายุ", "Age")}><Input value={age !== null ? age : ""} placeholder={L("เลือกวันเกิด", "Choose the date of birth")} readOnly disabled /></Field>
           <Field label={L("สัญชาติ", "Nationality")} required error={errors.nationality}>
             <NativeSelect value={f.nationality} onValueChange={(value) => set("nationality", value)}>
               {NATIONALITIES.map((n) => <option key={n} value={n}>{opt(n)}</option>)}
@@ -347,6 +351,19 @@ function StudentForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
             <ChipSelect options={SOURCES} label={opt} value={splitList(f.source)} onChange={(v) => set("source", SOURCES.filter((x) => v.includes(x)).join(", "))} />
           </Field>
           {splitList(f.source).includes("Other") && <Field label={L("ระบุช่องทาง", "Specify")} required error={errors.sourceOther} className="sm:col-span-2"><Input value={f.sourceOther} onChange={(e) => set("sourceOther", e.target.value)} /></Field>}
+          <div className="space-y-2 border-t border-border/60 pt-4 sm:col-span-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold">{L("ลายเซ็นผู้สมัคร / ผู้ปกครอง", "Applicant / Parent signature")}</p>
+              <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={sig.clear}><RotateCcw className="h-3.5 w-3.5" /> {L("เซ็นใหม่", "Sign again")}</Button>
+            </div>
+            <div key={sig.resetKey} className="relative h-36 rounded-2xl border-[1.5px] border-dashed border-primary/30 bg-background" data-testid="form-sign">
+              {sig.showOld && editing?.signature
+                ? <img src={editing.signature} alt={L("ลายเซ็น", "Signature")} className="pointer-events-none absolute inset-0 m-auto max-h-28 max-w-[80%] object-contain" />
+                : !sig.hasSignature && <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{L("เซ็นที่นี่", "Sign here")}</span>}
+              <SignCanvas ref={sig.ref} onDirty={sig.markDrawn} />
+            </div>
+            <p className="text-xs text-muted-foreground">{L("เซ็นครั้งเดียว ใช้ทั้งหน้า 1 และหน้า 2 ของใบสมัคร", "Sign once; it is used on both pages of the application")}</p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{L("ยกเลิก", "Cancel")}</Button>
@@ -443,7 +460,7 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
     <EnrollDialog student={editEn ? s : null} enrollment={editEn} onClose={() => setEditEn(null)} />
     <Dialog open={signing} onOpenChange={setSigning}>
       <DialogContent className="flex max-h-[92vh] max-w-3xl flex-col overflow-hidden">
-        <DialogHeader><DialogTitle>{L("เซ็นเอกสาร", "Sign document")}</DialogTitle><DialogDescription>{L("เลื่อนอ่านเอกสารแล้วเซ็นลงบนเส้นลายเซ็นของแต่ละหน้าได้เลย ลายเซ็นและวันที่จะถูกบันทึกลงเอกสาร PDF", "Scroll through the document and sign on the signature line of any page. The signature and date are saved to the PDF.")}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{L("เซ็นเอกสาร", "Sign document")}</DialogTitle><DialogDescription>{L("เลื่อนอ่านเอกสารแล้วเซ็นครั้งเดียวที่ท้ายหน้า 2 ลายเซ็นนี้จะใช้ทั้งสองหน้า", "Scroll through the document and sign once at the end of page 2. The signature is used on both pages.")}</DialogDescription></DialogHeader>
         {signing && s && <SignDocumentBody student={s} onDone={() => setSigning(false)} />}
       </DialogContent>
     </Dialog>
@@ -453,7 +470,7 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
 
 function SignDocumentBody({ student, onDone }: { student: Student; onDone: () => void }) {
   const { signStudent } = useYodo();
-  const { refs, clear, exportSignature, markActive, hasSignature, resetKey, showOld } = useSignCanvases();
+  const { ref, clear, exportSignature, markDrawn, hasSignature, resetKey, showOld } = useSignCanvas();
   const save = () => {
     const img = exportSignature();
     if (!img) return;
@@ -464,7 +481,7 @@ function SignDocumentBody({ student, onDone }: { student: Student; onDone: () =>
   return (
     <>
       <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl bg-muted/60 p-3 sm:p-5">
-        <StudentDocument student={student} signMode resetKey={resetKey} showOld={showOld} canvasRefs={[refs[0], refs[1]]} onDirty={markActive} />
+        <StudentDocument student={student} signMode resetKey={resetKey} showOld={showOld} canvasRef={ref} onDirty={markDrawn} />
       </div>
       <DialogFooter className="pt-3">
         <Button variant="outline" onClick={clear}>{L("ล้างลายเซ็น", "Clear signature")}</Button>

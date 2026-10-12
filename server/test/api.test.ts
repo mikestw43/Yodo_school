@@ -80,6 +80,11 @@ describe('school data', () => {
     expect(d.deletedStudentCodes).toEqual(['YDO00002']);
     expect((await admin.put(`/api/students/${b.body.id}`).set(H).send(student())).status).toBe(404);
     expect((await admin.post('/api/students').set(H).send(student({ dob: '01/05/2018' }))).status).toBe(400);
+    // a signature drawn in the add form is saved with the student
+    const g = await admin.post('/api/students').set(H).send({ ...student({ firstName: 'เซ็น' }), signature: PNG, signedAt: '2026-10-12' });
+    expect(g.status).toBe(201);
+    expect(g.body.signature).toMatch(/^\/api\/files\//);
+    expect(g.body.signedAt).toBe('2026-10-12');
   });
 
   it('enrollments, sessions and who can be put on them', async () => {

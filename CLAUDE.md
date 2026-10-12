@@ -71,6 +71,14 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   role, profile settings, import, sign out, version) moved to the top right (`AccountMenu` in AppShell.tsx: name pill
   on computers, round picture on phones before the hamburger; the hamburger sheet holds only the pages). Student list:
   25 per page, the code sits under the name (no code column).
+- 12/10/2026 application form (mockup MPUpN3ejrfCaTGXUy96eHy, owner chose design A, "ทำได้เลย"): page 2 = logo +
+  "ใบสมัครเรียน" + student code + applied-on date (createdAt, Bangkok) on the left, photo 35x45 mm on the right, then 4
+  sections (student, contact, emergency contact, dance) of label-over-value fields with dotted lines on a 6-column grid
+  (`formSections()` in `lib/student-print.ts`, used by both the print window and `student-document.tsx`); fonts Noto
+  Sans/Serif Thai. ONE signature for both pages, label under the line "ผู้สมัคร / ผู้ปกครอง" (`signerLabel`). It is drawn
+  either at the end of the student form (`useSignCanvas`, add form sends `signature`/`signedAt` with `POST /students`,
+  edit form calls `/students/:id/sign` after the save) or in the details' sign dialog (one box, at the end of page 2;
+  page 1 shows the same one). Form labels no longer say "(automatic)" (student ID, age).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

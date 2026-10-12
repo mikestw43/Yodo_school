@@ -306,6 +306,40 @@ try {
   await pop.close();
   await view.getByRole('button', { name: 'แก้ไข' }).click();
   await page.getByRole('dialog').getByText('คลาสที่สนใจ (เลือกได้หลายอัน)').waitFor().then(() => check('Edit opens the student form', true), () => check('Edit opens the student form', false));
+  // ---------- one signature in the form, used on both pages; no "automatic" notes (owner 12/10/2026) ----------
+  const fdlg = page.getByRole('dialog');
+  check('form has no "automatic" notes', (await fdlg.getByText('อัตโนมัติ').count()) === 0);
+  const box = (t) => fdlg.locator('label', { hasText: new RegExp('^' + t) }).first().locator('xpath=ancestor::div[1]').locator('input').first();
+  await box('อีเมล').fill('mali@example.com');
+  await box('ชื่อผู้ติดต่อฉุกเฉิน').fill('คุณแม่');
+  await box('เบอร์โทรผู้ติดต่อฉุกเฉิน').fill('0899999999');
+  await fdlg.getByPlaceholder('เช่น แม่, พ่อ').fill('แม่');
+  const pad = fdlg.getByTestId('form-sign');
+  await pad.scrollIntoViewIfNeeded();
+  const bx = await pad.boundingBox();
+  await page.mouse.move(bx.x + 40, bx.y + 90); await page.mouse.down();
+  for (let i = 1; i <= 12; i++) await page.mouse.move(bx.x + 40 + i * 25, bx.y + 90 + (i % 2 ? -30 : 20));
+  await page.mouse.up();
+  await page.screenshot({ path: `${SHOTS}/29-form-sign.png` });
+  await fdlg.getByRole('button', { name: 'บันทึก', exact: true }).click();
+  await page.waitForTimeout(1200);
+  const signed = (await (await page.request.get(`${BASE}/api/data`)).json()).students.find((x) => x.firstName === 'มะลิ');
+  check('signature drawn in the form is saved', /^\/api\/files\//.test(signed.signature) && /^\d{4}-\d{2}-\d{2}$/.test(signed.signedAt), signed.signature);
+  await page.locator('tr', { hasText: 'มะลิ' }).click();
+  const v2 = page.getByRole('dialog');
+  const [pop2] = await Promise.all([page.waitForEvent('popup'), v2.getByRole('button', { name: 'พิมพ์ PDF' }).click()]);
+  await pop2.waitForLoadState();
+  await pop2.locator('img.sign-img').first().waitFor({ timeout: 5000 }).catch(() => null);
+  check('the same signature prints on both pages', (await pop2.locator('img.sign-img').count()) === 2);
+  check('PDF page 2: code, applied date and "applicant / parent"', (await pop2.locator('section.p2').innerText()).includes('YDO00001') && (await pop2.locator('section.p2').innerText()).includes('วันที่สมัคร') && (await pop2.locator('section.p2').innerText()).includes('ผู้สมัคร / ผู้ปกครอง'));
+  await pop2.setViewportSize({ width: 800, height: 1131 });
+  await pop2.waitForTimeout(500);
+  await pop2.locator('section.sheet').nth(1).screenshot({ path: `${SHOTS}/26-pdf-page2.png` }).catch(() => null);
+  await pop2.close();
+  await v2.getByRole('button', { name: 'เซ็นใหม่' }).click();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${SHOTS}/30-sign-dialog.png` });
+  check('sign dialog has one place to sign', (await page.getByRole('dialog').locator('canvas').count()) === 1);
   await page.keyboard.press('Escape');
 
   // ---------- notification settings and bell (owner 12/10/2026) ----------

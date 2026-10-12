@@ -49,8 +49,41 @@ export function ageDetail(dob: string) {
   return years > 0 ? L(`${years} ปี ${months} เดือน`, `${years} years ${months} months`) : L(`${months} เดือน`, `${months} months`);
 }
 
-function cell(label: string, value: string | number | null | undefined, labelSpan = 2, valueSpan = 2) {
-  return `<th colspan="${labelSpan}"><span>${escapeHtml(label)}</span></th><td colspan="${valueSpan}"><span>${escapeHtml(value)}</span></td>`;
+/** The applicant's label under the signature line (owner 12/10/2026). */
+export const signerLabel = () => L("ผู้สมัคร / ผู้ปกครอง", "Applicant / Parent");
+
+/** Date the student applied (when the record was made), dd/mm/yyyy in Bangkok. */
+export function appliedOn(student: Student) {
+  const d = new Date(student.createdAt);
+  return isNaN(d.getTime()) ? "" : fd(d.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }));
+}
+
+export type FormField = { label: string; value: string; span: number };
+/** Page 2 of the application, design A (owner 12/10/2026): four sections of label-over-value fields on a 6-column grid. */
+export function formSections(student: Student): { title: string; fields: FormField[] }[] {
+  const nationality = student.nationality === "Other" ? student.nationalityOther : opt(student.nationality);
+  const sources = splitList(student.source);
+  const f = (label: string, value: string | null | undefined, span = 2): FormField => ({ label, value: String(value ?? ""), span });
+  return [
+    { title: L("ข้อมูลนักเรียน", "Student"), fields: [
+      f(L("ชื่อ", "First name"), prefixed(student.prefix, student.firstName)), f(L("นามสกุล", "Last name"), student.lastName), f(L("ชื่อเล่น", "Nickname"), student.nickname),
+      f(L("วันเกิด", "Date of birth"), displayDate(student.dob)), f(L("อายุ", "Age"), ageDetail(student.dob)), f(L("เชื้อชาติ", "Ethnicity"), optOr(student.ethnicity, student.ethnicityOther)),
+      f(L("สัญชาติ", "Nationality"), nationality), f(L("ศาสนา", "Religion"), optOr(student.religion, student.religionOther), 4),
+    ] },
+    { title: L("ข้อมูลติดต่อ", "Contact"), fields: [
+      f(L("ที่อยู่", "Address"), student.address, 6),
+      f(L("เบอร์โทร", "Phone"), student.phone), f("E-mail", student.email), f("Line ID", student.lineId),
+    ] },
+    { title: L("ผู้ติดต่อฉุกเฉิน", "Emergency contact"), fields: [
+      f(L("ชื่อ", "Name"), student.emergencyName), f(L("ความสัมพันธ์", "Relationship"), student.relationship), f(L("เบอร์โทร", "Phone"), student.emergencyPhone),
+    ] },
+    { title: L("การเรียนเต้น", "Dance"), fields: [
+      f(L("คลาสที่สนใจ", "Interested classes"), student.interested.map(opt).join(", "), 6),
+      f(L("เคยเรียนเต้นมาก่อน", "Danced before"), student.hasExperience ? L("เคย", "Yes") : L("ไม่เคย", "No")), f(L("โปรดระบุ", "Please specify"), student.hasExperience ? student.experienceDetail : "", 4),
+      f(L("รู้จัก Y.O.D.O. จาก", "Heard about Y.O.D.O. from"), sources.map(opt).join(", "), sources.includes("Other") ? 3 : 6),
+      ...(sources.includes("Other") ? [f(L("อื่นๆ โปรดระบุ", "Other, please specify"), student.sourceOther, 3)] : []),
+    ] },
+  ];
 }
 
 /** A picture the document may show: a data URL or one of our stored files (made absolute for the print window). */
@@ -63,7 +96,7 @@ function picUrl(v = "") {
 function signature(date: string, raw = "") {
   const img = picUrl(raw);
   const pic = img ? `<img class="sign-img" src="${escapeHtml(img)}" alt="${escapeHtml(L("ลายเซ็น", "Signature"))}" />` : "";
-  return `<div class="signature"><div class="sign-line"><span>${escapeHtml(L("ลายเซ็นต์", "Signature"))}</span><span class="line">${pic}</span></div><div class="sign-date"><span>${escapeHtml(L("วันที่", "Date"))}</span><span>${escapeHtml(date)}</span></div></div>`;
+  return `<div class="signature"><div class="sign-line"><span class="line">${pic}</span></div><div class="sign-who">${escapeHtml(signerLabel())}</div><div class="sign-date"><span>${escapeHtml(L("วันที่", "Date"))}</span><span>${escapeHtml(date)}</span></div></div>`;
 }
 
 /** Opens a standalone, print-only A4 document; no student data is sent to a server. */
@@ -77,11 +110,10 @@ export function printStudentDocument(student: Student): boolean {
   const image = photo
     ? `<img class="student-photo" src="${escapeHtml(photo)}" alt="${escapeHtml(L("รูปนักเรียน", "Student photo"))}" />`
     : `<div class="student-photo empty-photo"></div>`;
-  const interests = student.interested.map(opt).join(", ");
-  const nationality = student.nationality === "Other" ? student.nationalityOther : opt(student.nationality);
+  const sections = formSections(student).map((sec) => `<div class="sec"><div class="sec-title"><span>${escapeHtml(sec.title)}</span><i></i></div><div class="grid">${sec.fields.map((x) => `<div class="fld" style="grid-column: span ${x.span}"><div class="lbl">${escapeHtml(x.label)}</div><div class="val">${escapeHtml(x.value)}</div></div>`).join("")}</div></div>`).join("");
 
   popup.document.open();
-  popup.document.write(`<!doctype html><html lang="${getLang()}"><head><meta charset="utf-8"/><title>${escapeHtml(student.code)} - YODO</title>
+  popup.document.write(`<!doctype html><html lang="${getLang()}"><head><meta charset="utf-8"/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600&family=Noto+Serif+Thai:wght@600;700&display=swap"/><title>${escapeHtml(student.code)} - YODO</title>
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
@@ -93,54 +125,43 @@ export function printStudentDocument(student: Student): boolean {
   .terms-title { margin: 0 0 5mm; font-size: 10.6pt; font-weight: 400; }
   .terms ol { margin: 0; padding-left: 10mm; }
   .terms li { padding-left: 3mm; margin-bottom: 3.1mm; }
-  .signature { width: 78mm; margin: auto 0 0 auto; font-size: 10pt; font-weight: 400; }
-  .sign-line, .sign-date { display: flex; align-items: end; gap: 2mm; }
-  .sign-line .line { flex: 1; height: 14mm; border-bottom: 1px solid #111; position: relative; }
-  .sign-img { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); max-height: 16mm; max-width: 100%; object-fit: contain; }
-  .sign-date { justify-content: center; gap: 3mm; padding: 1mm 0 0; }
-  .student-photo { display: block; width: 40mm; height: 53mm; object-fit: cover; margin: 5mm auto 7mm; }
-  .empty-photo { background: transparent; }
-  table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 9pt; line-height: 1.4; }
-  col { width: 8.333333%; }
-  th, td { border: 1px solid #171717; padding: 1.8mm 1.4mm; text-align: left; vertical-align: middle; font-weight: 400; }
-  th span, td span { display: inline-block; white-space: nowrap; vertical-align: middle; transform-origin: left center; }
+  .signature { width: 72mm; margin: auto 0 0 auto; font-size: 10pt; font-weight: 400; text-align: center; }
+  .sign-line .line { display: block; height: 16mm; border-bottom: 1px solid #111; position: relative; }
+  .sign-img { position: absolute; left: 50%; bottom: 1mm; transform: translateX(-50%); max-height: 15mm; max-width: 100%; object-fit: contain; }
+  .sign-who { padding-top: 1.5mm; }
+  .sign-date { display: flex; justify-content: center; gap: 2mm; color: #5f4b52; padding-top: 0.5mm; }
+  .p2 { padding: 12mm 15mm 11mm; gap: 5mm; font-family: 'Noto Sans Thai', Tahoma, sans-serif; color: #2b2024; }
+  .p2 .head { display: flex; align-items: flex-start; gap: 6mm; }
+  .p2 .head-text { flex: 1; display: flex; flex-direction: column; gap: 2.5mm; }
+  .p2 .logo { width: 50mm; height: 26mm; object-position: left center; margin: 0; }
+  .p2 h1 { margin: 0; font-family: 'Noto Serif Thai', serif; font-size: 22pt; font-weight: 700; color: #8e2d4c; line-height: 1.1; }
+  .p2 .meta { display: flex; gap: 5mm; font-size: 9.5pt; color: #6b5a60; }
+  .p2 .meta b { color: #2b2024; font-weight: 600; }
+  .student-photo { display: block; width: 35mm; height: 45mm; object-fit: cover; border-radius: 2.5mm; border: 1px solid #ead7dd; flex-shrink: 0; }
+  .empty-photo { background: transparent; border-style: dashed; }
+  .sec { display: flex; flex-direction: column; gap: 2mm; }
+  .sec-title { display: flex; align-items: center; gap: 2.5mm; font-size: 10pt; font-weight: 600; color: #8e2d4c; white-space: nowrap; }
+  .sec-title i { flex: 1; height: 1px; background: #e6c9d2; }
+  .grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 4.5mm; row-gap: 2.6mm; }
+  .lbl { font-size: 8.3pt; color: #7a666c; }
+  .val { font-size: 10.5pt; min-height: 6mm; padding-bottom: 0.8mm; border-bottom: 1px dotted #b9a2a9; word-break: break-word; }
   @media screen { body { background: #eee; } .sheet { background: #fff; box-shadow: 0 2px 15px #bbb; margin: 10mm auto; } }
   @media print { html, body { width: 210mm; } .sheet { margin: 0; box-shadow: none; } }
 </style></head><body>
 <section class="sheet"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" />
 <div class="terms"><p class="terms-title">${escapeHtml(L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions"))}</p><ol>${terms().map((term) => `<li>${escapeHtml(term)}</li>`).join("")}</ol></div>
 ${signature(today, student.signature)}</section>
-<section class="sheet"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" />
-${image}
-<table><colgroup>${Array.from({ length: 12 }, () => "<col/>").join("")}</colgroup><tbody>
-<tr>${cell(L("ชื่อ", "First name"), prefixed(student.prefix, student.firstName))}${cell(L("นามสกุล", "Last name"), student.lastName)}${cell(L("ชื่อเล่น", "Nickname"), student.nickname)}</tr>
-<tr>${cell(L("วันเกิด", "Date of birth"), displayDate(student.dob))}${cell(L("อายุ", "Age"), ageDetail(student.dob), 2, 6)}</tr>
-<tr>${cell(L("เชื้อชาติ", "Ethnicity"), optOr(student.ethnicity, student.ethnicityOther))}${cell(L("สัญชาติ", "Nationality"), nationality)}${cell(L("ศาสนา", "Religion"), optOr(student.religion, student.religionOther))}</tr>
-<tr>${cell(L("ที่อยู่", "Address"), student.address, 2, 10)}</tr>
-<tr>${cell(L("เบอร์โทร", "Phone"), student.phone)}${cell("E-mail", student.email)}${cell("Line ID", student.lineId)}</tr>
-<tr>${cell(L("ผู้ติดต่อฉุกเฉิน", "Emergency contact"), student.emergencyName, 3, 3)}${cell(L("เบอร์โทร", "Phone"), student.emergencyPhone, 2, 4)}</tr>
-<tr>${cell(L("มีความสัมพันธ์เป็น", "Relationship"), student.relationship, 3, 9)}</tr>
-<tr>${cell(L("คลาสเต้นที่สนใจ", "Interested dance classes"), interests, 3, 9)}</tr>
-<tr>${cell(L("เคยเรียนเต้นมาก่อนหรือไม่", "Danced before?"), student.hasExperience ? L("เคย", "Yes") : L("ไม่เคย", "No"), 4, 2)}${cell(L("หากเคย โปรดระบุ", "If yes, please specify"), student.hasExperience ? student.experienceDetail : "", 3, 3)}</tr>
-<tr>${cell(L("รู้จัก Y.O.D.O. จากช่องทางไหน", "How did you hear about Y.O.D.O.?"), splitList(student.source).map(opt).join(", "), 4, 2)}${cell(L("อื่นๆ โปรดระบุ", "Other, please specify"), splitList(student.source).includes("Other") ? student.sourceOther : "", 3, 3)}</tr>
-</tbody></table>${signature(today, student.signature)}</section>
+<section class="sheet p2"><div class="head"><div class="head-text"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" />
+<h1>${escapeHtml(L("ใบสมัครเรียน", "Application form"))}</h1>
+<div class="meta"><span>${escapeHtml(L("รหัสนักเรียน", "Student ID"))} <b>${escapeHtml(student.code)}</b></span><span>${escapeHtml(L("วันที่สมัคร", "Applied on"))} <b>${escapeHtml(appliedOn(student))}</b></span></div></div>
+${image}</div>
+${sections}
+${signature(today, student.signature)}</section>
 <script>
   window.addEventListener('load', async () => {
     try {
       await document.fonts.ready;
       await Promise.all(Array.from(document.images, img => img.decode().catch(() => {})));
-      document.querySelectorAll('table th, table td').forEach(cell => {
-        const text = cell.querySelector('span');
-        if (!text) return;
-        const available = cell.clientWidth - parseFloat(getComputedStyle(cell).paddingLeft) - parseFloat(getComputedStyle(cell).paddingRight);
-        let size = 12;
-        while (text.getBoundingClientRect().width > available && size > 8) {
-          size -= 0.5;
-          text.style.fontSize = size + 'px';
-        }
-        const width = text.getBoundingClientRect().width;
-        if (width > available && available > 0) text.style.transform = 'scaleX(' + available / width + ')';
-      });
     } finally { window.focus(); window.print(); }
   });
 </script>
