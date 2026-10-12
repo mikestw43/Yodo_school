@@ -240,6 +240,14 @@ try {
   await pp.getByText('มะลิ').first().click();
   await pp.getByRole('dialog').getByRole('button', { name: 'แก้ไข' }).waitFor().then(() => check('phone: tapping a student card opens the details', true), () => check('phone: tapping a student card opens the details', false));
   await pp.screenshot({ path: `${SHOTS}/p9-student-details.png` });
+  await pp.getByRole('dialog').getByRole('button', { name: 'ดู PDF' }).click();
+  await pp.getByTestId('pdf-view').locator('.ydoc-p2').waitFor();
+  await pp.waitForTimeout(500);
+  const sheetW = await pp.getByTestId('pdf-view').locator('.ydoc-sheet').first().evaluate((e) => e.getBoundingClientRect().width);
+  const scrollW = await pp.getByTestId('pdf-view').evaluate((e) => e.scrollWidth - e.clientWidth);
+  check('phone: "View PDF" shrinks the A4 page to fit (no sideways scroll)', sheetW <= 390 && scrollW <= 1, `sheet ${Math.round(sheetW)}px, extra ${scrollW}px`);
+  await pp.screenshot({ path: `${SHOTS}/p11-view-pdf.png` });
+  await pp.getByRole('button', { name: 'กลับ' }).click();
   await pp.keyboard.press('Escape');
   await pp.goto(BASE + '/');
   await pp.getByLabel('เปิดเมนู').click();

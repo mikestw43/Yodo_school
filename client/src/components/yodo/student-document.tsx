@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Student } from "@/lib/yodo-store";
 import { agreeText, appliedOn, correctText, formSections, signerLabel, terms } from "@/lib/student-print";
 import { Square, SquareCheck } from "lucide-react";
@@ -64,6 +64,9 @@ function Tick({ on, text }: { on: boolean; text: string }) {
   return <div className="ydoc-tick" data-on={on ? "1" : "0"}><Icon className="h-[15px] w-[15px] shrink-0" strokeWidth={2} aria-hidden="true" /><span>{text}</span></div>;
 }
 
+/** 210 mm at 96 dpi. */
+const A4_PX = 794;
+
 /** On-screen mirror of the printable A4 document (terms page + registration form page). */
 export function StudentDocument({ student, signMode = false, canvasRef, onDirty, resetKey = 0, showOld = false }: {
   student: Student;
@@ -74,15 +77,27 @@ export function StudentDocument({ student, signMode = false, canvasRef, onDirty,
   onDirty?: (() => void) | undefined;
 }) {
   const photo = student.image && (/^data:image\//i.test(student.image) || /^https?:\/\//i.test(student.image) || student.image.startsWith("/api/files/"));
+  // Phones: keep the A4 layout and shrink the whole page to the screen width (owner 12/10/2026: it wrapped badly).
+  const box = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const el = box.current?.parentElement;
+    if (!el) return;
+    const fit = () => { const w = el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight); setScale(Math.min(1, w / A4_PX)); };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className="ydoc-root">
+    <div ref={box} className="ydoc-root" style={scale < 1 ? { zoom: scale } : undefined}>
       <style>{`
         .ydoc-root { color: #171717; font-family: Tahoma, Arial, sans-serif; }
-        .ydoc-sheet { width: 210mm; max-width: 100%; min-height: 297mm; padding: 12mm 14mm 11mm; margin: 0 auto 8mm; background: #fff; box-shadow: 0 2px 15px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; }
+        .ydoc-sheet { width: 210mm; min-height: 297mm; padding: 12mm 14mm 11mm; margin: 0 auto 8mm; background: #fff; box-shadow: 0 2px 15px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; }
         .ydoc-logo { width: 66mm; height: 34mm; object-fit: contain; display: block; margin: 0 auto; }
         .ydoc-terms { margin-top: 8mm; font-size: 10.2pt; line-height: 1.55; }
         .ydoc-terms-title { margin: 0 0 5mm; font-size: 10.6pt; }
-        .ydoc-terms ol { margin: 0; padding-left: 10mm; }
+        .ydoc-terms ol { margin: 0; padding-left: 10mm; list-style: decimal; }
         .ydoc-terms li { padding-left: 3mm; margin-bottom: 3.1mm; }
         .ydoc-signature { width: 72mm; margin: auto 0 0 auto; font-size: 10pt; padding-top: 8mm; text-align: center; }
         .ydoc-line { display: block; height: 16mm; border-bottom: 1px solid #111; position: relative; }

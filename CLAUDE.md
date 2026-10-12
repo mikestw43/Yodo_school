@@ -97,6 +97,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   only, starts in the app's language, not saved; `terms(lang)`/`agreeText(lang)`/`correctText(lang)`), and its clear
   button reads "Sign" in English (Thai stays "เซ็นใหม่"); the details button and window title too ("Sign"). The
   terms switch changes only the terms and the two statements (owner: the rest stays in the app's language).
+  Phones (owner 12/10/2026, layout broke): the in-app application keeps its A4 layout and is shrunk to the screen width
+  (CSS `zoom` from a ResizeObserver in `StudentDocument`); the on-screen terms are numbered like the print.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
