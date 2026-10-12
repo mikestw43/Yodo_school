@@ -66,8 +66,8 @@ const OPTIONS: Record<string, [string, string]> = {
 };
 /** Label of a stored choice (prefix, nationality, religion, source, status). Unknown values are shown as typed. */
 export const opt = (v: string) => { const o = OPTIONS[v]; return o ? (current === "en" ? o[1] : o[0]) : v; };
-/** English prefixes are followed by a space ("Ms. Mali"), Thai ones are not ("นางสาวมะลิ"). */
-export const prefixed = (prefix: string, first: string) => { if (!prefix) return first; const p = opt(prefix); return current === "en" && p !== prefix ? `${p} ${first}` : `${p}${first}`; };
+/** Prefix, a space, then the first name, in both languages ("ด.ญ. มะลิ", "Miss Mali"; owner 12/10/2026). */
+export const prefixed = (prefix: string, first: string) => (prefix ? `${opt(prefix)} ${first}` : first);
 
 /** "Facebook, Friends" <-> ["Facebook", "Friends"] (the "how did you hear about us" choices). */
 export const splitList = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);

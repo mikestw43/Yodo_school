@@ -58,7 +58,10 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   with typed classes kept as extra items in `interested` (no longer taken from the class list); experience "yes"
   shows a "Please specify" box; how did you hear = several choices stored joined ", " in `source` (+ `sourceOther`
   when Other). Import also fills in a missing photo/signature for students already there (Lovable JSON export
-  with image/signature; owner was given the Lovable prompt).
+  with image/signature; owner was given the Lovable prompt). Photos/signatures/ethnicity of the 37 real students came
+  from the owner's old AppSheet export (register.xlsx + images zip): converted to a JSON import file in the scratchpad
+  and handed to the owner (signature = AppSheet `sign`, owner OK'd; AppSheet classes/teachers/timetable NOT imported,
+  owner's decision). Names show "prefix + space + first name" in both languages ("ด.ญ. มะลิ"), owner 12/10/2026.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
