@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
+import type { User } from '@prisma/client';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -10,6 +11,7 @@ import { bad, forbidden, HttpError } from '../lib/http.js';
 import { clearSession, displayName, requireAuth, setSession } from '../lib/auth.js';
 import { audit } from '../lib/audit.js';
 import { storeImage } from '../lib/images.js';
+import { dropPins } from './pin.js';
 
 export const router = Router();
 
@@ -79,13 +81,19 @@ router.post('/auth/login', async (req, res) => {
   if (u.status !== 'Active') throw forbidden('account_disabled');
   attempts.delete(`${req.ip}|${body.identifier}`);
   attempts.delete(`acct|${body.identifier}`);
+  await finishLogin(req, res, u, body.remember, 'password');
+});
+
+// Every way of signing in ends here: session cookie + a login row in the history.
+export async function finishLogin(req: Request, res: Response, u: User, remember: boolean, method: string) {
+  if (u.status !== 'Active' || u.deletedAt) throw forbidden('account_disabled');
   await prisma.user.update({ where: { id: u.id }, data: { lastLoginAt: new Date() } });
-  setSession(req, res, u, body.remember);
+  setSession(req, res, u, remember);
   req.user = { id: u.id, username: u.username, name: displayName(u), role: u.role, positionId: u.positionId };
   const full = [u.firstName, u.lastName].filter(Boolean).join(' ');
-  await audit(req, 'login', 'auth', u.id, full, null, { full_name: full, logged_in_at: new Date().toISOString() }, true);
+  await audit(req, 'login', 'auth', u.id, full, null, { full_name: full, logged_in_at: new Date().toISOString(), method }, true);
   res.json({ ok: true });
-});
+}
 
 router.post('/auth/logout', async (req, res) => {
   if (req.user) {
@@ -104,7 +112,7 @@ router.get('/me', requireAuth, async (req, res) => {
   res.json({
     id: u.id, username: u.username, firstName: u.firstName, lastName: u.lastName, nickname: u.nickname, email: u.email, phone: u.phone,
     image: u.image, positionId: u.positionId ?? '', positionName: pos?.name ?? '', role: u.role, superadmin: u.role === 'superadmin',
-    name: displayName(u),
+    name: displayName(u), googleLinked: !!u.googleSub,
   });
 });
 
@@ -131,6 +139,7 @@ router.post('/me/password', requireAuth, async (req, res) => {
   if (!(await bcrypt.compare(body.current, u.passwordHash))) throw bad('wrong_password');
   if (body.next === body.current) throw bad('same_password');
   const updated = await prisma.user.update({ where: { id: u.id }, data: { passwordHash: await bcrypt.hash(body.next, 12), tokenVersion: { increment: 1 } } });
+  await dropPins(u.id, req); // other devices' PINs go; this device keeps its own
   await audit(req, 'update', 'profiles', u.id, u.username, null, { password: '********' }, true);
   setSession(req, res, updated); // stay signed in here, signed out everywhere else
   res.json({ ok: true });

@@ -176,3 +176,70 @@ describe('import from the old app', () => {
     expect((await admin.post('/api/students').set(H).send(student())).body.code).toBe('YDO00052');
   });
 });
+
+describe('PIN, Google and Face ID sign-in', () => {
+  it('a PIN works only on the device that set it, and five wrong ones remove it', async () => {
+    const a = await login('owner', 'secret9');
+    expect((await a.post('/api/me/pin').set(H).send({ pin: '12345' })).status).toBe(400); // 4 or 6 digits
+    await a.post('/api/me/pin').set(H).send({ pin: '4321' }).expect(200);
+    expect((await a.get('/api/me/pin')).body.on).toBe(true);
+    // signed out on this device: the pad knows who it is for
+    await a.post('/api/auth/logout').set(H).send({}).expect(200);
+    expect((await a.get('/api/me')).status).toBe(401);
+    expect((await a.get('/api/auth/pin')).body).toMatchObject({ on: true, name: 'Owner' });
+    expect((await a.post('/api/auth/pin').set(H).send({ pin: '1111' })).body.error).toBe('wrong_pin');
+    await a.post('/api/auth/pin').set(H).send({ pin: '4321' }).expect(200);
+    expect((await a.get('/api/me')).status).toBe(200);
+    // another device has no PIN
+    expect((await request(app).get('/api/auth/pin')).body.on).toBe(false);
+    await a.post('/api/auth/logout').set(H).send({});
+    for (let i = 0; i < 4; i++) expect((await a.post('/api/auth/pin').set(H).send({ pin: '0000' })).body.error).toBe('wrong_pin');
+    expect((await a.post('/api/auth/pin').set(H).send({ pin: '0000' })).body.error).toBe('pin_locked');
+    expect((await a.get('/api/auth/pin')).body.on).toBe(false);
+  });
+
+  it('changing the password removes the PINs on other devices', async () => {
+    const phone = await login('owner', 'secret9');
+    await phone.post('/api/me/pin').set(H).send({ pin: '111111' }).expect(200);
+    const pc = await login('owner', 'secret9');
+    await pc.post('/api/me/pin').set(H).send({ pin: '2222' }).expect(200);
+    await pc.post('/api/me/password').set(H).send({ current: 'secret9', next: 'secret8' }).expect(200);
+    expect((await phone.get('/api/auth/pin')).body.on).toBe(false);
+    expect((await pc.get('/api/me/pin')).body.on).toBe(true);
+    admin = pc;
+  });
+
+  it('Google signs in only an existing account whose profile email matches', async () => {
+    const { SignJWT, generateKeyPair, exportJWK, createLocalJWKSet } = await import('jose');
+    const { setGoogleKeysForTest } = await import('../src/routes/signin.js');
+    const { publicKey, privateKey } = await generateKeyPair('RS256');
+    setGoogleKeysForTest(createLocalJWKSet({ keys: [{ ...(await exportJWK(publicKey)), kid: 'k', alg: 'RS256' }] }));
+    const cid = '1234-abc.apps.googleusercontent.com';
+    const token = (email: string, sub: string, aud = cid) => new SignJWT({ email, email_verified: true })
+      .setProtectedHeader({ alg: 'RS256', kid: 'k' }).setIssuer('https://accounts.google.com').setAudience(aud).setSubject(sub).setExpirationTime('5m').sign(privateKey);
+    expect((await request(app).get('/api/auth/options')).body.googleClientId).toBe('');
+    expect((await request(app).post('/api/auth/google').set(H).send({ credential: await token('x@gmail.com', '1') })).body.error).toBe('google_not_set_up');
+    expect((await admin.put('/api/settings/google').set(H).send({ googleClientId: 'not-an-id' })).status).toBe(400);
+    await admin.put('/api/settings/google').set(H).send({ googleClientId: cid }).expect(200);
+    expect((await request(app).get('/api/auth/options')).body.googleClientId).toBe(cid);
+    // nobody has this email yet
+    expect((await request(app).post('/api/auth/google').set(H).send({ credential: await token('owner@gmail.com', 'g-1') })).body.error).toBe('google_no_account');
+    const me = (await admin.get('/api/me')).body;
+    await admin.patch('/api/me').set(H).send({ firstName: me.firstName, lastName: me.lastName, nickname: me.nickname, email: 'Owner@Gmail.com', phone: '', image: me.image }).expect(200);
+    const g = request.agent(app);
+    await g.post('/api/auth/google').set(H).send({ credential: await token('owner@gmail.com', 'g-1') }).expect(200);
+    expect((await g.get('/api/me')).body.googleLinked).toBe(true);
+    // a token for another app is refused
+    expect((await request(app).post('/api/auth/google').set(H).send({ credential: await token('owner@gmail.com', 'g-1', 'other.apps.googleusercontent.com') })).status).toBe(401);
+    // a different Google account with the same email cannot take over a linked account
+    expect((await request(app).post('/api/auth/google').set(H).send({ credential: await token('owner@gmail.com', 'g-2') })).body.error).toBe('google_no_account');
+  });
+
+  it('Face ID needs https and a signed-in person to add one', async () => {
+    expect((await admin.post('/api/me/passkeys/options').set({ ...H, origin: 'http://192.168.1.100:8092' }).send({})).body.error).toBe('passkey_needs_https');
+    const o = await admin.post('/api/me/passkeys/options').set({ ...H, origin: 'https://mikenas.tail4afc1d.ts.net:8443' }).send({});
+    expect(o.body.rp).toMatchObject({ name: 'YODO', id: 'mikenas.tail4afc1d.ts.net' });
+    expect((await request(app).post('/api/me/passkeys/options').set({ ...H, origin: 'https://x.test' }).send({})).status).toBe(401);
+    expect((await request(app).post('/api/auth/passkey').set({ ...H, origin: 'https://x.test' }).send({ response: {} })).body.error).toBe('passkey_expired');
+  });
+});

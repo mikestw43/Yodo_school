@@ -46,7 +46,7 @@ function useVersion() {
   return v;
 }
 
-function useSignOut() {
+export function useSignOut() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { clear } = useYodo();

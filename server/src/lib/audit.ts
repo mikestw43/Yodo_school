@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { prisma } from './db.js';
 
 // Rows are kept in the old app's shape (snake_case column names) so the Audit Log page reads the same.
-const SKIP = new Set(['created_at', 'joined_at', 'updated_at', 'deleted_at', 'password_hash', 'token_version', 'last_login_at', 'lang', 'theme']);
+const SKIP = new Set(['created_at', 'joined_at', 'updated_at', 'deleted_at', 'password_hash', 'token_version', 'last_login_at', 'lang', 'theme', 'google_sub']);
 const IMAGES = new Set(['image', 'receipt_image', 'signature']);
 const LISTS = new Set(['interested', 'specializations']);
 const snake = (k: string) => k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);

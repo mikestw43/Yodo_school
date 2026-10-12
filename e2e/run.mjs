@@ -131,7 +131,7 @@ try {
   await page.getByText('Username').first().waitFor();
   const nick = page.locator('label:has-text("ชื่อเล่น") + *').locator('input').first();
   if (await nick.count()) await nick.fill('ไมค์');
-  await page.getByRole('button', { name: 'บันทึก', exact: true }).click();
+  await page.getByRole('button', { name: 'บันทึก', exact: true }).first().click();
   await page.getByText('บันทึกโปรไฟล์แล้ว').waitFor().then(() => check('profile save works', true), () => check('profile save works', false));
 
   // student detail opens
@@ -139,6 +139,84 @@ try {
   await page.getByText('มะลิ').locator('visible=true').first().click();
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${SHOTS}/14-student-detail.png` });
+
+  // ---------- PIN, Face ID, auto-lock, Google (round 2) ----------
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  const typePin = async (p, digits) => { for (const d of digits) await p.getByRole('button', { name: d, exact: true }).click(); };
+  await page.goto(BASE + '/settings');
+  await page.getByText('การเข้าสู่ระบบของฉัน').waitFor();
+  await page.screenshot({ path: `${SHOTS}/15-signin-card.png`, fullPage: true });
+  await page.getByRole('switch', { name: 'PIN บนเครื่องนี้' }).click();
+  await page.getByText('ตั้ง PIN สำหรับเครื่องนี้').waitFor();
+  await page.getByRole('radio', { name: '6 หลัก' }).click();
+  await page.getByRole('radio', { name: '4 หลัก' }).click();
+  await page.screenshot({ path: `${SHOTS}/16-pin-setup.png` });
+  await typePin(page, '1357');
+  await page.getByText('กด PIN อีกครั้งเพื่อยืนยัน').waitFor();
+  await typePin(page, '1357');
+  await page.getByText('ตั้ง PIN แล้ว').waitFor().then(() => check('PIN can be set from the settings page', true), () => check('PIN can be set from the settings page', false));
+  await page.getByRole('switch', { name: 'Face ID' }).click();
+  await page.getByText('เปิด Face ID แล้ว').waitFor({ timeout: 8000 }).then(() => check('Face ID can be turned on (virtual authenticator)', true), () => check('Face ID can be turned on (virtual authenticator)', false));
+  await page.screenshot({ path: `${SHOTS}/17-signin-card-on.png`, fullPage: true });
+
+  // signed out: Face ID is tried straight away and signs in
+  await page.goto(BASE + '/');
+  await page.getByTitle('เมนูโปรไฟล์').click();
+  await page.getByText('ออกจากระบบ').click();
+  await page.waitForURL('**/auth');
+  await page.waitForURL(BASE + '/', { timeout: 10000 }).then(() => check('Face ID signs in on the PIN screen', true), () => check('Face ID signs in on the PIN screen', false));
+
+  // without Face ID: the PIN pad, a wrong PIN, then the right one
+  await page.evaluate(() => localStorage.removeItem('yodo-passkey'));
+  await page.getByTitle('เมนูโปรไฟล์').click();
+  await page.getByText('ออกจากระบบ').click();
+  await page.waitForURL('**/auth');
+  await page.getByText('ใส่ PIN เพื่อเข้าใช้งาน').waitFor();
+  await typePin(page, '0000');
+  await page.getByText('PIN ไม่ถูกต้อง').waitFor().then(() => check('wrong PIN is refused', true), () => check('wrong PIN is refused', false));
+  await page.screenshot({ path: `${SHOTS}/18-pin-login.png` });
+  await typePin(page, '1357');
+  await page.waitForURL(BASE + '/', { timeout: 8000 }).then(() => check('PIN signs in', true), () => check('PIN signs in', false));
+
+  // auto-lock: "when I leave the app", away for 20 seconds -> locked after reopening
+  await page.goto(BASE + '/settings');
+  await page.getByText('ล็อกแอปอัตโนมัติ').waitFor();
+  await page.evaluate(() => { localStorage.removeItem('yodo-fresh'); localStorage.setItem('yodo-lock', '0'); });
+  // "left the app 20 seconds ago", written as the next page opens (leaving this page writes its own time)
+  await page.addInitScript(() => { if (!sessionStorage.getItem('t-away')) { sessionStorage.setItem('t-away', '1'); localStorage.setItem('yodo-away-at', String(Date.now() - 20000)); } });
+  await page.goto(BASE + '/students');
+  await page.getByText('ใส่ PIN เพื่อใช้งานต่อ').waitFor({ timeout: 8000 }).then(() => check('app locks itself after leaving', true), () => check('app locks itself after leaving', false));
+  await page.screenshot({ path: `${SHOTS}/19-locked.png` });
+  await typePin(page.getByRole('dialog', { name: 'แอปถูกล็อก' }), '1357');
+  await page.getByText('ใส่ PIN เพื่อใช้งานต่อ').waitFor({ state: 'detached', timeout: 8000 }).then(() => check('PIN unlocks the app', true), () => check('PIN unlocks the app', false));
+  await page.evaluate(() => localStorage.removeItem('yodo-lock'));
+
+  // password sign-in is still there
+  await page.getByTitle('เมนูโปรไฟล์').click();
+  await page.getByText('ออกจากระบบ').click();
+  await page.getByText('เข้าด้วย Username และรหัสผ่าน').click();
+  await page.fill('#identifier', 'mike');
+  await page.fill('#password', 'secret1');
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.waitForURL(BASE + '/').then(() => check('password sign-in from the PIN screen', true), () => check('password sign-in from the PIN screen', false));
+
+  // Google: the SuperAdmin card, then the button area on the sign-in page
+  await page.goto(BASE + '/settings');
+  await page.getByText('เข้าด้วย Google (ทั้งโรงเรียน)').waitFor();
+  await page.getByPlaceholder('xxxx.apps.googleusercontent.com').fill('1234-test.apps.googleusercontent.com');
+  await page.getByRole('button', { name: 'บันทึก' }).last().click();
+  await page.getByText('ปุ่มเข้าด้วย Google จะขึ้น').waitFor().then(() => check('Google client ID saves', true), () => check('Google client ID saves', false));
+  await page.screenshot({ path: `${SHOTS}/20-google-setup.png`, fullPage: true });
+  const anon = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const ap = await anon.newPage();
+  await ap.goto(BASE + '/auth');
+  await ap.getByText('หรือ', { exact: true }).waitFor().then(() => check('sign-in page shows the Google area', true), () => check('sign-in page shows the Google area', false));
+  await ap.waitForTimeout(1500);
+  await ap.screenshot({ path: `${SHOTS}/21-login-google.png` });
+  await anon.close();
+  await page.request.put(`${BASE}/api/settings/google`, { headers: H, data: { googleClientId: '' } });
 
   // ---------- phone ----------
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: await ctx.storageState() });

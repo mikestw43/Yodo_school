@@ -21,7 +21,17 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 - 12/10/2026: only the **students** in Lovable are real data; teachers/classes/users there were test data and are not moved.
   Students come over with the Import page (profile menu > "นำเข้านักเรียน", SuperAdmin only, CSV/JSON export of the
   Lovable `students` table, keeps ids/codes/pictures, skips codes that exist, safe to run twice).
-- Plan, round 2 (not built yet): PIN + Face ID + Google sign-in, Thai/English switch, as in FinHR.
+- 12/10/2026 (mockup approved, artifact 49c5UnqUsYztJPZ1187BjN): PIN + Face ID + Google sign-in copied from FinHR.
+  PIN 4 or 6 digits, each person picks; Face ID only after a PIN; auto-lock default "never" (person can pick: when I
+  leave the app (15 s grace) / 1-60 min); Google only for existing accounts whose profile email matches the Gmail
+  (linked by Google id at the first sign-in, `User.googleSub`), no self sign-up. Google client ID: SuperAdmin card on
+  the profile settings page (`PUT /settings/google`, `Setting` row 1); the same client ID as FinHR works once the
+  :8443 address is added as an allowed JavaScript origin in Google Cloud. Files: server `routes/pin.ts` (cookie
+  `yodo_pin`), `routes/signin.ts` (passkeys rpName YODO, user handle `yodo-user-<id>`), client `components/yodo/Pin.tsx`
+  (PinPad, PinLogin, SecurityCard = "การเข้าสู่ระบบของฉัน" card with the change-password row, AutoLock in
+  `_authenticated/route.tsx` so the settings page locks too), `lib/signin.ts`. Password change/admin reset/disable/
+  delete drops the person's PINs. Every way of signing in goes through `finishLogin` (audit row with `method`).
+- Next (not built yet): Thai/English switch, as in FinHR.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
@@ -64,4 +74,5 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 ## Testing
 1. `cd server && npx tsc --noEmit && npx vitest run`
 2. `cd client && npx tsc --noEmit && npx vite build`
-3. Browser: `node e2e/run.mjs` (Playwright, Chromium at /opt/pw-browsers, phone 390x844 + computer 1366x900, fresh data folder).
+3. Clean install like the NAS: copy the repo files to a scratch folder, `npm ci` + build in client and server.
+4. Browser: `node e2e/run.mjs` (Playwright, Chromium at /opt/pw-browsers, phone 390x844 + computer 1366x900, fresh data folder).

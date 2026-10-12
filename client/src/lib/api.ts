@@ -37,6 +37,19 @@ const MESSAGES: Record<string, string> = {
   invalid_input: "ข้อมูลไม่ถูกต้อง",
   server_error: "เซิร์ฟเวอร์ขัดข้อง ลองใหม่อีกครั้ง",
   network: "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้",
+  wrong_pin: "PIN ไม่ถูกต้อง",
+  pin_locked: "ใส่ PIN ผิดหลายครั้ง PIN ถูกลบจากเครื่องนี้แล้ว กรุณาเข้าด้วยรหัสผ่าน",
+  pin_off: "เครื่องนี้ยังไม่ได้ตั้ง PIN",
+  pin_format: "PIN ต้องเป็นตัวเลข 4 หรือ 6 หลัก",
+  google_not_set_up: "ยังไม่ได้ตั้งค่าการเข้าด้วย Google",
+  google_failed: "เข้าด้วย Google ไม่สำเร็จ ลองใหม่อีกครั้ง",
+  google_no_account: "ไม่พบบัญชี YODO ที่ใช้อีเมลนี้ ให้ใส่อีเมล Gmail ในหน้าตั้งค่าโปรไฟล์ก่อน",
+  google_client_id_format: "Client ID ต้องลงท้ายด้วย .apps.googleusercontent.com",
+  passkey_needs_https: "Face ID ใช้ได้เมื่อเปิดผ่านที่อยู่ https เท่านั้น",
+  passkey_expired: "หมดเวลา ลองใหม่อีกครั้ง",
+  passkey_failed: "ยืนยัน Face ID ไม่สำเร็จ",
+  passkey_unknown: "เครื่องนี้ยังไม่ได้เปิด Face ID สำหรับ YODO",
+  passkey_exists: "เครื่องนี้เปิด Face ID ไว้แล้ว",
 };
 export const errorText = (e: unknown) => {
   if (e instanceof ApiError) return MESSAGES[e.code] ?? e.code;

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { api, errorText, getMe } from "@/lib/api";
 import { useYodo } from "@/lib/yodo-store";
 import loginImg from "@/assets/login-ballet.jpg";
+import { PinLogin, markSignedOut } from "@/components/yodo/Pin";
+import { loadGoogle } from "@/lib/signin";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -25,12 +27,19 @@ function AuthPage() {
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [pin, setPin] = useState<{ on: boolean; name?: string } | null>(null);
+  const [usePassword, setUsePassword] = useState(false);
+  const [googleId, setGoogleId] = useState("");
   const { reload } = useYodo();
 
   useEffect(() => {
     getMe().then(() => navigate({ to: "/", replace: true })).catch(() => null);
     api<{ needsSetup: boolean }>("/setup/status").then((r) => setNeedsSetup(r.needsSetup)).catch(() => null);
+    api<{ on: boolean; name?: string }>("/auth/pin").then(setPin).catch(() => setPin({ on: false }));
+    api<{ googleClientId: string }>("/auth/options").then((r) => setGoogleId(r.googleClientId)).catch(() => null);
   }, [navigate]);
+
+  const signedIn = async () => { markSignedOut(); await reload(); navigate({ to: "/", replace: true }); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +58,7 @@ function AuthPage() {
       setFormError(errorText(err));
       return;
     }
-    await reload();
-    navigate({ to: "/", replace: true });
+    await signedIn();
   };
 
   return (
@@ -71,7 +79,11 @@ function AuthPage() {
 
       <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-24">
         <div className="w-full max-w-[400px]">
-          {needsSetup ? <SetupCard onDone={async () => { await reload(); navigate({ to: "/", replace: true }); }} /> : (
+          {needsSetup ? <SetupCard onDone={signedIn} /> : pin?.on && !usePassword ? (
+            <Card className="rounded-3xl border border-white/50 bg-card/80 p-8 shadow-soft backdrop-blur-xl">
+              <PinLogin name={pin.name ?? ""} onPassword={() => setUsePassword(true)} onSignedIn={signedIn} />
+            </Card>
+          ) : (
           <Card className="gap-6 rounded-3xl border border-white/50 bg-card/80 p-8 shadow-soft backdrop-blur-xl">
             <div>
               <h1 className="font-display text-3xl font-bold">Welcome Back</h1>
@@ -104,6 +116,7 @@ function AuthPage() {
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />} Sign In
               </Button>
             </form>
+            {googleId && <GoogleButton clientId={googleId} onSignedIn={signedIn} onError={setFormError} />}
           </Card>
           )}
         </div>
@@ -149,5 +162,34 @@ function SetupCard({ onDone }: { onDone: () => Promise<void> }) {
         <Button type="submit" className="w-full rounded-full" disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} สร้างบัญชี</Button>
       </form>
     </Card>
+  );
+}
+
+// Google's own "Continue with Google" button; only shown when the SuperAdmin pasted the school's client ID.
+function GoogleButton({ clientId, onSignedIn, onError }: { clientId: string; onSignedIn: () => Promise<void>; onError: (m: string) => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    loadGoogle().then((g) => {
+      if (!live || !box.current) return;
+      g.accounts.id.initialize({
+        client_id: clientId,
+        callback: async ({ credential }) => {
+          onError("");
+          try { await api("/auth/google", { body: { credential } }); await onSignedIn(); }
+          catch (e) { onError(errorText(e)); }
+        },
+      });
+      g.accounts.id.renderButton(box.current, { theme: "outline", size: "large", shape: "pill", text: "continue_with", locale: "th", width: Math.min(336, box.current.clientWidth || 336) });
+    }).catch(() => setFailed(true));
+    return () => { live = false; };
+  }, [clientId]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />หรือ<span className="h-px flex-1 bg-border" /></div>
+      <div ref={box} className="flex min-h-10 justify-center" />
+      {failed && <p className="text-center text-xs text-muted-foreground">โหลดปุ่ม Google ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่</p>}
+    </div>
   );
 }

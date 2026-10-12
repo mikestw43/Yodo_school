@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, KeyRound } from "lucide-react";
+import { ArrowLeft, ChevronRight, Check, KeyRound, Link2 } from "lucide-react";
+import { Row, SecurityCard } from "@/components/yodo/Pin";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -34,6 +35,7 @@ function SettingsPage() {
   const [username, setUsername] = useState("");
   const [roleLabel, setRoleLabel] = useState("-");
   const [positionName, setPositionName] = useState("-");
+  const [google, setGoogle] = useState({ linked: false, superadmin: false, clientId: "" });
   const [f, setF] = useState<ProfileForm>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileForm, string>>>({});
   const set = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) => setF((p) => ({ ...p, [k]: v }));
@@ -50,6 +52,8 @@ function SettingsPage() {
       setF({ firstName: p.firstName, lastName: p.lastName, nickname: p.nickname, email: p.email, phone: p.phone, image: p.image });
       if (p.positionName) setPositionName(p.positionName);
       setRoleLabel(ROLE_LABEL[p.role] ?? p.role);
+      const o = await api<{ googleClientId: string }>("/auth/options").catch(() => ({ googleClientId: "" }));
+      setGoogle({ linked: !!(p as { googleLinked?: boolean }).googleLinked, superadmin: p.superadmin, clientId: o.googleClientId });
       setLoading(false);
     })();
   }, []);
@@ -134,13 +138,25 @@ function SettingsPage() {
           <div><p className="text-xs text-muted-foreground">ตำแหน่ง</p><p className="font-medium">{positionName}</p></div>
           <div><p className="text-xs text-muted-foreground">บทบาท</p><p className="font-medium">{roleLabel}</p></div>
         </div>
-        <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={openPwDialog} className="gap-2 rounded-full">
-            <KeyRound className="h-4 w-4" /> เปลี่ยนรหัสผ่าน
-          </Button>
+        <div className="flex items-center justify-end">
           <Button onClick={save} disabled={saving} className="rounded-full px-8">{saving ? "กำลังบันทึก..." : "บันทึก"}</Button>
         </div>
       </Card>
+      <Card className="mt-6 gap-0 rounded-3xl py-2">
+        <h2 className="px-5 pb-1 pt-3 font-semibold">การเข้าสู่ระบบของฉัน</h2>
+        <SecurityCard>
+          {google.clientId && (
+            <Row icon={<Link2 className="h-4 w-4" />} title="บัญชี Google"
+              sub={google.linked ? f.email || "ผูกแล้ว" : "ยังไม่ผูก: ใส่อีเมล Gmail ด้านบน แล้วกด \"เข้าด้วย Google\" ที่หน้าเข้าสู่ระบบหนึ่งครั้ง"}>
+              {google.linked && <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><Check className="h-3.5 w-3.5" />ผูกแล้ว</span>}
+            </Row>
+          )}
+          <button type="button" onClick={openPwDialog} className="w-full text-left hover:bg-muted/50">
+            <Row icon={<KeyRound className="h-4 w-4" />} title="เปลี่ยนรหัสผ่าน"><ChevronRight className="h-4 w-4 text-muted-foreground" /></Row>
+          </button>
+        </SecurityCard>
+      </Card>
+      {google.superadmin && <GoogleSetupCard value={google.clientId} onSaved={(v) => setGoogle((g) => ({ ...g, clientId: v }))} />}
       <Dialog open={pwOpen} onOpenChange={setPwOpen}>
         <DialogContent className="max-w-md rounded-3xl">
           <DialogHeader>
@@ -194,5 +210,27 @@ function SettingsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// SuperAdmin only: the school's Google client ID (public; the client secret is never needed or asked for).
+function GoogleSetupCard({ value, onSaved }: { value: string; onSaved: (v: string) => void }) {
+  const [v, setV] = useState(value);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try { await api("/settings/google", { method: "PUT", body: { googleClientId: v.trim() } }); onSaved(v.trim()); toast.success(v.trim() ? "บันทึกแล้ว ปุ่มเข้าด้วย Google จะขึ้นที่หน้าเข้าสู่ระบบ" : "ปิดการเข้าด้วย Google แล้ว"); }
+    catch (e) { toast.error(errorText(e)); }
+    setBusy(false);
+  };
+  return (
+    <Card className="mt-6 flex flex-col gap-3 rounded-3xl p-7">
+      <div>
+        <h2 className="font-semibold">เข้าด้วย Google (ทั้งโรงเรียน)</h2>
+        <p className="text-xs text-muted-foreground">เห็นเฉพาะ SuperAdmin · วาง Client ID จาก Google (ใช้ตัวเดียวกับ FinHR ได้) เว้นว่าง = ปิดปุ่ม Google</p>
+      </div>
+      <Field label="Google Client ID"><Input value={v} placeholder="xxxx.apps.googleusercontent.com" onChange={(e) => setV(e.target.value)} /></Field>
+      <div className="flex justify-end"><Button onClick={save} disabled={busy || v.trim() === value} className="rounded-full px-8">บันทึก</Button></div>
+    </Card>
   );
 }

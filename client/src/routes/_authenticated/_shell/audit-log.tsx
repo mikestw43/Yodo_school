@@ -40,7 +40,7 @@ const ACTION: Record<string, { label: string; cls: string }> = {
 const TABLE: Record<string, string> = {
   students: "นักเรียน", teachers: "ครู", classes: "คลาส", enrollments: "ลงทะเบียนคลาส", schedules: "ตารางเรียน",
   schedule_students: "นักเรียนในคาบ", positions: "ตำแหน่ง", position_permissions: "สิทธิ์", profiles: "ผู้ใช้ระบบ",
-  auth: "การเข้าสู่ระบบ",
+  auth: "การเข้าสู่ระบบ", settings: "ตั้งค่า",
 };
 const FIELD: Record<string, string> = {
   code: "รหัส", prefix: "คำนำหน้า", first_name: "ชื่อ", last_name: "นามสกุล", nickname: "ชื่อเล่น", dob: "วันเกิด",
@@ -53,9 +53,11 @@ const FIELD: Record<string, string> = {
   remark: "หมายเหตุ", receipt_image: "รูปใบเสร็จ", signature: "ลายเซ็น", signed_at: "วันที่เซ็น", date: "วันที่", start_time: "เวลาเริ่ม", end_time: "เวลาเลิก",
   schedule_id: "คาบเรียน", position_id: "ตำแหน่ง", menu_key: "เมนู", can_view: "ดู", can_add: "เพิ่ม", can_edit: "แก้ไข",
   can_delete: "ลบ", is_system: "ตำแหน่งระบบ", username: "Username", display_name: "ชื่อที่แสดง", password: "รหัสผ่าน",
-  notif_seen_at: "เวลาอ่านแจ้งเตือน", full_name: "ชื่อ–นามสกุล", logged_in_at: "เวลาเข้าสู่ระบบ", logged_out_at: "เวลาออกจากระบบ",
+  notif_seen_at: "เวลาอ่านแจ้งเตือน", pin: "PIN", face_id: "Face ID", method: "วิธีเข้าระบบ", google_client_id: "Google Client ID", full_name: "ชื่อ–นามสกุล", logged_in_at: "เวลาเข้าสู่ระบบ", logged_out_at: "เวลาออกจากระบบ",
 };
 const HIDDEN = new Set(["id"]);
+const METHOD: Record<string, string> = { password: "รหัสผ่าน", pin: "PIN", google: "Google", face_id: "Face ID" };
+const PIN_STATE: Record<string, string> = { on: "เปิด", off: "ปิด", changed: "เปลี่ยน PIN" };
 
 const thDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) ? v.split("-").reverse().join("/") : v;
 
@@ -70,6 +72,8 @@ function show(k: string, v: unknown): string {
   if (v === null || v === undefined || v === "") return "-";
   if (typeof v === "string" && v.startsWith("img:")) return "มีรูป";
   if (typeof v === "boolean") return v ? "ใช่" : "ไม่ใช่";
+  if (k === "method") return METHOD[String(v)] ?? String(v);
+  if (k === "pin") return PIN_STATE[String(v)] ?? String(v);
   if (Array.isArray(v)) return v.length ? v.join(", ") : "-";
   const s = String(v);
   if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {

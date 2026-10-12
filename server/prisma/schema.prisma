@@ -33,6 +33,7 @@ model User {
   lang         String    @default("th")
   theme        String    @default("light")
   lastLoginAt  DateTime?
+  googleSub    String? // Google account id, linked at the first Google sign-in
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -197,4 +198,39 @@ model PushDevice {
   lastOkAt  DateTime?
 
   @@index([userId])
+}
+
+// ---------- sign-in: PIN, Face ID, Google (added 12/10/2026, copied from FinHR) ----------
+// School-wide settings (one row, id 1). The Google client ID is public (not a secret).
+model Setting {
+  id             Int      @id @default(1)
+  googleClientId String   @default("")
+  updatedAt      DateTime @updatedAt
+}
+
+// Face ID / fingerprint (WebAuthn passkeys).
+model Passkey {
+  id           Int       @id @default(autoincrement())
+  userId       String
+  credentialId String    @unique // base64url
+  publicKey    Bytes
+  counter      Int       @default(0)
+  transports   String    @default("")
+  deviceName   String    @default("")
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  deletedAt    DateTime?
+
+  @@index([userId])
+}
+
+// A PIN set on one device: works only with that device's secret (httpOnly cookie), only hashes kept.
+model DevicePin {
+  id         Int       @id @default(autoincrement())
+  userId     String
+  tokenHash  String    @unique
+  pinHash    String
+  fails      Int       @default(0)
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
 }

@@ -9,6 +9,8 @@ import { router as auth } from './routes/auth.js';
 import { router as data } from './routes/data.js';
 import { router as notices } from './routes/notices.js';
 import { router as importer } from './routes/importer.js';
+import { router as pin } from './routes/pin.js';
+import { router as signin } from './routes/signin.js';
 
 export function createApp() {
   const app = express();
@@ -31,6 +33,8 @@ export function createApp() {
   api.use(express.json({ limit: '40mb' })); // pictures arrive inside the form as data URLs
   api.use((_req, res, next) => { if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', 'no-store'); next(); });
   api.use(auth);
+  api.use(pin);
+  api.use(signin);
   api.use(data);
   api.use(notices);
   api.use((_req, _res, next) => next(notFound()));

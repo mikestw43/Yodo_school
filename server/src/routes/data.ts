@@ -10,6 +10,7 @@ import { storeImage } from '../lib/images.js';
 import { isDate } from '../lib/dates.js';
 import { fdate, notifyAll } from '../lib/notify.js';
 import { optEmail, optPhone, username } from './auth.js';
+import { dropPins } from './pin.js';
 
 // The school's data, in the same shape the old app's pages used (src/lib/yodo-store.tsx on the client).
 export const router = Router();
@@ -401,6 +402,7 @@ router.put('/users/:id', requirePerm('users', 'edit'), async (req, res) => {
     where: { id: before.id },
     data: { ...(await userData(b, before.id)), ...(b.password ? { passwordHash: await bcrypt.hash(b.password, 12), tokenVersion: { increment: 1 } } : {}) },
   });
+  if (b.password) await dropPins(after.id, after.id === req.user!.id ? req : undefined);
   await audit(req, 'update', 'profiles', after.id, after.username, before, after);
   res.json(userOut(after));
 });
@@ -410,6 +412,7 @@ router.post('/users/:id/status', requirePerm('users', 'edit'), async (req, res) 
   if (s === 'Disabled' && before.id === req.user!.id) throw bad('cannot_disable_self');
   if (s === 'Disabled' && before.role === 'superadmin') throw bad('cannot_disable_superadmin');
   const after = await prisma.user.update({ where: { id: before.id }, data: { status: s, ...(s === 'Disabled' ? { tokenVersion: { increment: 1 } } : {}) } });
+  if (s === 'Disabled') await dropPins(after.id);
   await audit(req, 'update', 'profiles', after.id, after.username, before, after);
   res.json(userOut(after));
 });
@@ -419,6 +422,8 @@ router.delete('/users/:id', requirePerm('users', 'delete'), async (req, res) => 
   if (before.role === 'superadmin') throw bad('cannot_delete_superadmin');
   // The username is freed (renamed) so it can be used again for a new account.
   await prisma.user.update({ where: { id: before.id }, data: { deletedAt: new Date(), username: `${before.username}#deleted-${Date.now()}`, tokenVersion: { increment: 1 } } });
+  await dropPins(before.id);
+  await prisma.passkey.updateMany({ where: { userId: before.id, deletedAt: null }, data: { deletedAt: new Date() } });
   await audit(req, 'delete', 'profiles', before.id, before.username, before, null);
   res.json({ ok: true });
 });
