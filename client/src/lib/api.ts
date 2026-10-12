@@ -36,6 +36,9 @@ const MESSAGES: Record<string, [string, string]> = {
   receipt_not_newest: ["แก้ไข/ลบได้เฉพาะใบเสร็จใบล่าสุดของเดือนนี้", "Only this month's newest receipt can be edited or deleted"],
   receipt_same_month: ["วันที่รับเงินต้องอยู่ในเดือนเดิมของใบเสร็จ", "The payment date must stay in the receipt's month"],
   receipt_lines: ["รายการในใบเสร็จไม่ตรงกัน กรุณาเปิดใหม่", "The receipt lines changed, please open it again"],
+  mail_not_set: ["ยังไม่ได้ตั้งค่า Gmail สำหรับส่งอีเมล (ตั้งค่าบริษัท)", "The Gmail for sending is not set up yet (Company settings)"],
+  mail_auth: ["Gmail ไม่ยอมให้เข้า ตรวจอีเมลและรหัสผ่านสำหรับแอปอีกครั้ง", "Gmail refused the sign-in. Check the email and the app password"],
+  mail_failed: ["ส่งอีเมลไม่สำเร็จ ลองใหม่อีกครั้ง", "The email could not be sent. Please try again"],
   not_enrolled: ["นักเรียนยังไม่ได้ลงทะเบียนคลาสนี้", "The student is not enrolled in this class"],
   bad_image: ["ไฟล์รูปไม่ถูกต้อง", "Invalid picture file"],
   forbidden: ["ไม่มีสิทธิ์ทำรายการนี้", "You don't have permission for this"],
@@ -112,4 +115,13 @@ export async function getMeCached(): Promise<Me> {
   }
   meCache = await getMe();
   return meCache;
+}
+
+/** A file from our server (e.g. a receipt PDF) as a Blob. */
+export async function apiFile(path: string): Promise<Blob> {
+  let res: Response;
+  try { res = await fetch(`/api${path}`, { credentials: "same-origin", headers: { "x-yodo": "1" } }); }
+  catch { throw new ApiError(0, "network"); }
+  if (!res.ok) { const j = await res.json().catch(() => ({})) as { error?: string }; throw new ApiError(res.status, j.error ?? "server_error"); }
+  return res.blob();
 }

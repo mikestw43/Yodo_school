@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { BackButton, EmptyState } from "@/components/yodo/ui";
 import { ReceiptActions, openReceipt, type Full } from "@/components/yodo/receipt";
+import { EmailReceipt, ShareReceipt } from "@/components/yodo/receipt-send";
+import { fdt } from "@/lib/i18n";
 import { api, errorText } from "@/lib/api";
 import { L, fd, getLang, prefixed } from "@/lib/i18n";
 import { methodLabel, money } from "@/lib/receipt-print";
@@ -46,10 +48,15 @@ function ReceiptDetailPage() {
               : full.editable && <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">{L("ใบล่าสุดของเดือน", "Newest this month")}</span>}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{fd(r.date)} · {L("ออกโดย", "Issued by")} {r.receivedByName}</p>
+          {(full.emails ?? []).slice(0, 3).map((e) => (
+            <p key={e.id} className="mt-0.5 text-xs text-muted-foreground" data-testid="sent-email">{L(`ส่งอีเมลแล้ว ${fdt(e.createdAt)} ถึง ${e.to} (${e.lang.toUpperCase()}) โดย ${e.byName}`, `Emailed ${fdt(e.createdAt)} to ${e.to} (${e.lang.toUpperCase()}) by ${e.byName}`)}</p>
+          ))}
           {r.cancelled && <p className="mt-1 text-sm text-red-700">{L("ยกเลิกโดย", "Cancelled by")} {r.cancelledBy}{r.cancelReason ? ` · ${r.cancelReason}` : ""}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <ReceiptActions full={full} onChanged={load} onDeleted={() => navigate({ to: "/receipts", replace: true })} />
+          <ShareReceipt full={full} />
+          {!r.cancelled && <EmailReceipt full={full} onSent={() => void load()} />}
           <Button className="rounded-full" onClick={() => openReceipt(r.id)} data-testid="receipt-pdf"><FileText className="h-4 w-4" /> {L("ดู PDF / พิมพ์", "View PDF / Print")}</Button>
         </div>
       </div>

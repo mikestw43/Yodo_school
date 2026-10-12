@@ -225,6 +225,11 @@ model Setting {
   receiptSign    String   @default("") // signature of the person receiving money, optional
   receiptStamp   String   @default("") // company stamp printed beside the signature, optional (owner 12/10/2026)
   receiptSignName String  @default("") // receiver's name printed under the signature on receipts (owner 12/10/2026)
+  // Sending receipts by email through the school's Gmail (owner 13/10/2026). The app password is typed in by the owner
+  // on the Company settings page and kept encrypted (lib/crypto.ts); only its last 4 characters are ever shown.
+  mailUser        String  @default("")
+  mailFromName    String  @default("")
+  mailPass        String  @default("")
   updatedAt      DateTime @updatedAt
 }
 
@@ -315,5 +320,17 @@ model CoursePurchase {
 
   @@index([studentId])
   @@index([enrollmentId])
+  @@index([receiptId])
+}
+
+// A receipt sent by email (owner 13/10/2026): to whom, in which language, by whom.
+model ReceiptEmail {
+  id        String   @id @default(uuid())
+  receiptId String
+  to        String
+  lang      String
+  byName    String   @default("")
+  createdAt DateTime @default(now())
+
   @@index([receiptId])
 }

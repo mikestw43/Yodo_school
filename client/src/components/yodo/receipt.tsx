@@ -13,7 +13,8 @@ import { DateField, Field, ReceiptUpload } from "@/components/yodo/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { fd, getLang } from "@/lib/i18n";
 
-export type Full = { receipt: Receipt; company: Company; student: ReceiptStudent; editable?: boolean };
+export type ReceiptEmail = { id: string; to: string; lang: string; byName: string; createdAt: string };
+export type Full = { receipt: Receipt; company: Company; student: ReceiptStudent; editable?: boolean; emails?: ReceiptEmail[] };
 
 // One receipt viewer for the whole app: any page calls openReceipt(id) (after closing its own window, so nothing
 // underneath blocks scrolling) and <ReceiptHost/> in the shell shows it full screen.

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { ImagePlus, Mail, Trash2 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ function CompanyPage() {
     <>
       <PageHeader back title={L("ตั้งค่าบริษัท", "Company settings")} subtitle={L("ข้อมูลนี้ใช้ในใบเสร็จรับเงิน", "These details are printed on receipts")} />
       <div className="grid items-start gap-5 lg:grid-cols-[1fr_360px]">
+        <div className="grid content-start gap-5">
         <Card className="grid content-start gap-x-4 gap-y-3 rounded-3xl p-6 sm:grid-cols-2">
           <Field label={L("ชื่อโรงเรียน / บริษัท (ตามจดทะเบียน)", "School / company name (as registered)")} className="sm:col-span-2"><Input disabled={!edit} value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
           <Field label={L("ชื่อภาษาอังกฤษ", "Name in English")} className="sm:col-span-2"><Input disabled={!edit} value={f.nameEn} onChange={(e) => set("nameEn", e.target.value)} /></Field>
@@ -50,8 +51,10 @@ function CompanyPage() {
             <Input disabled={!edit} inputMode="numeric" maxLength={13} value={f.taxId} onChange={(e) => set("taxId", e.target.value.replace(/\D/g, ""))} />
           </Field>
           <Field label={L("สาขา", "Branch")}><Input disabled={!edit} placeholder={L("สำนักงานใหญ่", "Head office")} value={f.branch} onChange={(e) => set("branch", e.target.value)} /></Field>
-          {edit && <div className="flex justify-end sm:col-span-2"><Button className="rounded-full" disabled={busy} onClick={save}>{L("บันทึก", "Save")}</Button></div>}
+          {edit && <div className="flex justify-end sm:col-span-2"><Button className="rounded-full" disabled={busy} onClick={save} data-testid="co-save">{L("บันทึก", "Save")}</Button></div>}
         </Card>
+        <MailCard edit={edit} />
+        </div>
         <div className="grid content-start gap-5">
           <Card className="rounded-3xl p-6">
             <p className="mb-1 text-sm font-semibold">{L("โลโก้ในใบเสร็จ", "Logo on receipts")}</p>
@@ -108,5 +111,62 @@ function PicUpload({ value, onChange, edit, tidy, crop, testId }: { value: strin
         </div>
       )}
     </div>
+  );
+}
+
+type MailSettings = { user: string; fromName: string; passSet: boolean; passLast4: string };
+
+/** The school's Gmail for sending receipts (owner 13/10/2026, mockup R4EUKR2FJGuQcf4Xjytzm8 board 3). The app password
+ *  is typed here by the owner, kept encrypted on the NAS and never shown again (only its last 4 characters). */
+function MailCard({ edit }: { edit: boolean }) {
+  const [m, setM] = useState<MailSettings | null>(null);
+  const [user, setUser] = useState("");
+  const [fromName, setFromName] = useState("");
+  const [pass, setPass] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api<MailSettings>("/settings/mail").then((x) => { setM(x); setUser(x.user); setFromName(x.fromName); }).catch(() => setM(null));
+  }, []);
+  const save = async () => {
+    setBusy(true);
+    try { const x = await api<MailSettings>("/settings/mail", { method: "PUT", body: { user: user.trim(), fromName: fromName.trim(), pass } }); setM(x); setPass(""); toast.success(L("บันทึกแล้ว", "Saved")); }
+    catch (e) { toast.error(errorText(e)); }
+    setBusy(false);
+  };
+  const test = async () => {
+    setBusy(true);
+    try { await api("/settings/mail/test", { body: {} }); toast.success(L(`ส่งอีเมลทดลองไปที่ ${m?.user} แล้ว`, `Test email sent to ${m?.user}`)); }
+    catch (e) { toast.error(errorText(e)); }
+    setBusy(false);
+  };
+  if (!m) return null;
+  const ready = !!m.user && m.passSet;
+  return (
+    <Card className="gap-3 rounded-3xl p-6" data-testid="mail-card">
+      <div className="flex items-center gap-2">
+        <Mail className="h-4 w-4 text-primary" />
+        <p className="text-sm font-semibold">{L("ส่งใบเสร็จทางอีเมล (Gmail)", "Send receipts by email (Gmail)")}</p>
+        <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-semibold ${ready ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{ready ? L("ตั้งค่าแล้ว", "Set up") : L("ยังไม่ได้ตั้งค่า", "Not set up")}</span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label={L("อีเมล Gmail ที่ใช้ส่ง", "Gmail address to send from")}><Input disabled={!edit} type="email" value={user} placeholder="school@gmail.com" onChange={(e) => setUser(e.target.value)} data-testid="mail-user" /></Field>
+        <Field label={L("ชื่อผู้ส่งที่ผู้รับเห็น", "Sender name people see")}><Input disabled={!edit} value={fromName} placeholder={L("ไม่ใส่ = ชื่อบริษัท", "Empty = the company name")} onChange={(e) => setFromName(e.target.value)} /></Field>
+      </div>
+      {edit && (
+        <Field label={L("รหัสผ่านสำหรับแอป (App password 16 ตัว)", "App password (16 characters)")}>
+          <Input type="password" autoComplete="new-password" value={pass} placeholder={m.passSet ? L(`ตั้งไว้แล้ว ลงท้ายด้วย ${m.passLast4} (ไม่ใส่ = ใช้อันเดิม)`, `Set, ends with ${m.passLast4} (empty = keep it)`) : "xxxx xxxx xxxx xxxx"} onChange={(e) => setPass(e.target.value)} data-testid="mail-pass" />
+        </Field>
+      )}
+      <p className="rounded-2xl bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
+        {L("วิธีสร้าง: บัญชี Google › ความปลอดภัย › เปิด \"การยืนยัน 2 ขั้นตอน\" › \"รหัสผ่านสำหรับแอป\" › ตั้งชื่อ YODO › คัดลอกรหัส 16 ตัวมาวางที่นี่ เก็บแบบเข้ารหัสในเครื่อง NAS และแสดงแค่ 4 ตัวท้าย ไม่ต้องบอกใคร",
+          "How: Google Account › Security › turn on \"2-Step Verification\" › \"App passwords\" › name it YODO › paste the 16 characters here. It is kept encrypted on the NAS and only its last 4 characters are shown. Never share it.")}
+      </p>
+      {edit && (
+        <div className="flex flex-wrap justify-between gap-2">
+          <Button variant="outline" className="rounded-full" disabled={busy || !ready} onClick={test}>{L("ทดลองส่งหาตัวเอง", "Send a test to myself")}</Button>
+          <Button className="rounded-full" disabled={busy} onClick={save} data-testid="mail-save">{L("บันทึก", "Save")}</Button>
+        </div>
+      )}
+    </Card>
   );
 }

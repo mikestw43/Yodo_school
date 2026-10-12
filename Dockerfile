@@ -34,6 +34,7 @@ WORKDIR /app/server
 COPY --from=server /src/server/node_modules ./node_modules
 COPY --from=server /src/server/dist ./dist
 COPY --from=server /src/server/prisma ./prisma
+COPY --from=server /src/server/assets ./assets
 COPY --from=server /src/server/package.json ./
 COPY --from=client /src/client/dist /app/client/dist
 COPY web/ /app/web/

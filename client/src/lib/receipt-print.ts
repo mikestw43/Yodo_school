@@ -7,7 +7,7 @@ import logoUrlRaw from "@/assets/yodo-logo.png";
 // (an iframe) and by the print window, in Thai or English (the receipt has its own TH/EN switch).
 
 export type Company = { name: string; nameEn: string; address: string; phone: string; email: string; taxId: string; branch: string; logo: string; sign: string; stamp?: string; signName?: string };
-export type ReceiptStudent = { code: string; prefix: string; firstName: string; lastName: string } | null;
+export type ReceiptStudent = { code: string; prefix: string; firstName: string; lastName: string; email?: string } | null;
 
 const esc = (v: string | number | null | undefined) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);

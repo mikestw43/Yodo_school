@@ -14,7 +14,8 @@ fs.mkdirSync(SHOTS, { recursive: true });
 const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'yodo-e2e-'));
 const PORT = 3999;
 const BASE = `http://localhost:${PORT}`;
-const env = { ...process.env, DATA_DIR: DATA, DATABASE_URL: `file:${DATA}/yodo.db`, APP_PORT: String(PORT), PUBLIC_DIR: path.join(ROOT, 'client/dist'), EXTRA_DIR: path.join(ROOT, 'web') };
+const MAIL = path.join(DATA, 'mail-out');
+const env = { ...process.env, MAIL_OUT_DIR: MAIL, DATA_DIR: DATA, DATABASE_URL: `file:${DATA}/yodo.db`, APP_PORT: String(PORT), PUBLIC_DIR: path.join(ROOT, 'client/dist'), EXTRA_DIR: path.join(ROOT, 'web') };
 
 const sh = (cmd, args, opts) => new Promise((ok, no) => { const p = spawn(cmd, args, { stdio: 'inherit', ...opts }); p.on('exit', (c) => (c ? no(new Error(`${cmd} ${c}`)) : ok())); });
 await sh('npx', ['prisma', 'db', 'push', '--skip-generate'], { cwd: path.join(ROOT, 'server'), env, stdio: 'ignore' });
@@ -462,8 +463,18 @@ try {
   const cs = await corner('co-sign-img'), cst = await corner('co-stamp-img');
   check('signature upload stays transparent (not black)', cs.png && cs.a === 0, JSON.stringify(cs));
   check('stamp upload: white paper made transparent', cst.png && cst.a === 0, JSON.stringify(cst));
-  await page.getByRole('button', { name: 'บันทึก', exact: true }).click();
+  await page.getByTestId('co-save').click();
   await page.waitForTimeout(600);
+  // Gmail for receipts (owner 13/10/2026): a dummy app password, only its last 4 come back
+  await page.getByTestId('mail-user').fill('yodo.school@gmail.com');
+  await page.getByTestId('mail-pass').fill('abcd efgh ijkl wxyz');
+  await page.getByTestId('mail-save').click();
+  await page.waitForTimeout(600);
+  {
+    const m = await (await page.request.get(`${BASE}/api/settings/mail`)).json();
+    check('Gmail settings saved, password hidden (last 4 only)', m.user === 'yodo.school@gmail.com' && m.passSet && m.passLast4 === 'wxyz' && !JSON.stringify(m).includes('abcd'), JSON.stringify(m));
+    check('mail card shows the last 4 of the password', (await page.getByTestId('mail-pass').getAttribute('placeholder')).includes('wxyz'));
+  }
   {
     const co = await (await page.request.get(`${BASE}/api/settings/company`)).json();
     check('company settings are saved (with stamp)', co.taxId === '0105555555555' && co.stamp.startsWith('/api/files/') && co.stamp.endsWith('.png'), JSON.stringify(co).slice(0, 200));
@@ -508,6 +519,37 @@ try {
   await det.waitFor({ timeout: 8000 }).then(() => check('saving opens the new receipt\'s details', true), () => check('saving opens the new receipt\'s details', false));
   await page.screenshot({ path: `${SHOTS}/36b-receipt-detail.png` });
   check('details: both classes and the total', (await det.getByTestId('receipt-lines').innerText()).includes('Jazz Course') && (await det.getByTestId('receipt-detail-total').innerText()).includes('13,000.00'));
+  {
+    // email + share (owner 13/10/2026)
+    const rid = page.url().split('/receipts/')[1];
+    const pdf = await page.request.get(`${BASE}/api/receipts/${rid}/pdf?lang=en`, { headers: { 'x-yodo': '1' } });
+    check('receipt PDF file for sharing', pdf.ok() && pdf.headers()['content-type'] === 'application/pdf' && (await pdf.body()).subarray(0, 4).toString() === '%PDF');
+    check('share button shown', await det.getByTestId('receipt-share').isVisible());
+    await det.getByTestId('receipt-email').click();
+    const dlg = page.getByTestId('email-dialog');
+    await dlg.waitFor();
+    await dlg.getByTestId('email-to').fill('parent@example.com');
+    await dlg.getByRole('group', { name: 'ภาษาอีเมล' }).getByRole('button', { name: 'EN' }).click();
+    await dlg.getByTestId('email-note').fill('See you on Saturday.');
+    await page.screenshot({ path: `${SHOTS}/36c-email-dialog.png` });
+    await dlg.getByTestId('email-preview').click();
+    const pf = page.frameLocator('[data-testid="email-preview-frame"]');
+    await pf.locator('body').waitFor();
+    const ptxt = await pf.locator('body').innerText();
+    check('email preview: professional English, no phone / reply lines', ptxt.includes('Thank you for your payment') && ptxt.includes('See you on Saturday.') && ptxt.includes('Kind regards') && !/reply|call us/i.test(ptxt), ptxt.slice(0, 200));
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${SHOTS}/36d-email-preview.png` });
+    await page.getByRole('dialog', { name: 'ตัวอย่างอีเมล' }).focus();
+    await page.keyboard.press('Escape');
+    await page.getByTestId('email-preview-frame').waitFor({ state: 'detached' });
+    await dlg.getByTestId('email-send').click();
+    await det.getByTestId('sent-email').first().waitFor({ timeout: 8000 }).catch(() => {});
+    const emls = fs.existsSync(MAIL) ? fs.readdirSync(MAIL) : [];
+    const eml = emls.length ? fs.readFileSync(path.join(MAIL, emls[0]), 'utf8') : '';
+    check('email sent with the PDF attached', emls.length === 1 && eml.includes('parent@example.com') && /Receipt-RC\d{4}-0001\.pdf/.test(eml) && eml.includes('application/pdf'), emls.join(','));
+    check('details list the sent email', (await det.getByTestId('sent-email').first().innerText()).includes('parent@example.com'));
+    await page.screenshot({ path: `${SHOTS}/36e-email-sent.png` });
+  }
   await det.getByTestId('receipt-pdf').click();
   await rv.waitFor({ timeout: 8000 });
   const frame = page.frameLocator('[data-testid="receipt-frame"]');

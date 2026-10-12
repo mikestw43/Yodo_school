@@ -184,6 +184,29 @@ describe('roles and receipts (owner 12/10/2026)', () => {
     expect((await admin.get('/api/settings/company')).body).toMatchObject({ stamp: expect.stringMatching(/^\/api\/files\/.+\.png$/), signName: 'ครูพร' });
     expect((await admin.put('/api/settings/company').set(H).send({ name: '', nameEn: '', address: '', phone: '', email: '', taxId: '12', branch: '', logo: '', sign: '' })).status).toBe(400);
     expect((await admin.get(`/api/receipts/${r1.body.receipt.id}`)).body.company.taxId).toBe('1234567890123');
+    // e-mail: needs the school's Gmail first; the app password never comes back, only its last 4 characters
+    const rid = r1.body.receipt.id;
+    expect((await admin.post(`/api/receipts/${rid}/email`).set(H).send({ to: 'mum@example.com', lang: 'en' })).body.error).toBe('mail_not_set');
+    const ms = await admin.put('/api/settings/mail').set(H).send({ user: 'yodo.school@gmail.com', fromName: 'YODO Dance', pass: 'abcd efgh ijkl mnop' });
+    expect(ms.body).toEqual({ user: 'yodo.school@gmail.com', fromName: 'YODO Dance', passSet: true, passLast4: 'mnop' });
+    expect(JSON.stringify((await admin.get('/api/settings/mail')).body)).not.toContain('abcd');
+    expect((await admin.put('/api/settings/mail').set(H).send({ user: 'yodo.school@gmail.com', fromName: 'YODO Dance', pass: '' })).body.passLast4).toBe('mnop'); // empty = keep
+    expect((await admin.post(`/api/receipts/${rid}/email`).set(H).send({ to: 'not-an-email', lang: 'en' })).status).toBe(400);
+    const sent = await admin.post(`/api/receipts/${rid}/email`).set(H).send({ to: 'mum@example.com, dad@example.com', lang: 'en', note: 'See you on Saturday' });
+    expect(sent.status, JSON.stringify(sent.body)).toBe(201);
+    const outDir = process.env.MAIL_OUT_DIR!;
+    const eml = fs.readdirSync(outDir).map((f) => fs.readFileSync(path.join(outDir, f), 'utf8')).join('\n');
+    expect(eml).toContain('Your receipt RC2610-0001');
+    expect(eml).toContain('Receipt-RC2610-0001.pdf');
+    expect(eml).toContain('application/pdf');
+    expect(eml).toContain('mum@example.com');
+    expect((await admin.get(`/api/receipts/${rid}`)).body.emails[0]).toMatchObject({ to: 'mum@example.com, dad@example.com', lang: 'en' });
+    const pdf = await admin.get(`/api/receipts/${rid}/pdf?lang=th`).buffer(true).parse((res, cb) => { const b: Buffer[] = []; res.on('data', (d: Buffer) => b.push(d)); res.on('end', () => cb(null, Buffer.concat(b))); });
+    expect(pdf.headers['content-type']).toBe('application/pdf');
+    expect((pdf.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+    expect((await admin.get(`/api/receipts/${rid}/email-preview?lang=th`)).body.subject).toContain('ใบเสร็จรับเงิน RC2610-0001');
+    const audits = JSON.stringify((await admin.get('/api/audit-log')).body);
+    expect(audits).not.toContain('mnop');
     const adminRole = (await admin.get('/api/data')).body.positions.find((p: { kind: string }) => p.kind === 'admin');
     await admin.post('/api/users').set(H).send({ firstName: 'Ann', lastName: '', nickname: '', username: 'ann', password: 'secret4', email: '', phone: '', positionId: adminRole.id, image: '' }).expect(201);
     const ann = await login('ann', 'secret4');
