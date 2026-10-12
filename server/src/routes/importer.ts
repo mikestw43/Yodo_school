@@ -53,7 +53,8 @@ function when(v: unknown) {
   const s = str(v);
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2}))?/.exec(s);
   if (m) return new Date(`${dmy(s)}T${(m[4] ?? '0').padStart(2, '0')}:${m[5] ?? '00'}:00+07:00`);
-  return new Date(s);
+  // Postgres text "2026-09-30 10:00:00+00" -> "2026-09-30T10:00:00+00:00"
+  return new Date(s.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'));
 }
 // Arrays come as JSON (["Ballet"]) or Postgres text ({Ballet,"Hip Hop"}).
 function arr(v: unknown): string[] {
@@ -89,12 +90,28 @@ router.post('/import/students', requireAuth, express.text({ type: '*/*', limit: 
   if (!rows.length) throw bad('empty_file');
   if (!rows.some((r) => 'firstName' in r && 'code' in r)) throw bad('not_students');
   const dryRun = req.query.dry === '1';
-  const out = { total: rows.length, added: 0, skipped: [] as { code: string; reason: string }[] };
+  const out = { total: rows.length, added: 0, pictures: 0, skipped: [] as { code: string; reason: string }[] };
   for (const r of rows) {
     const code = str(r.code), firstName = str(r.firstName);
     if (!code || !firstName) { out.skipped.push({ code, reason: 'missing' }); continue; }
     const rid = /^[0-9a-f-]{36}$/i.test(str(r.id)) ? str(r.id) : undefined;
-    if (await prisma.student.findFirst({ where: { OR: [{ code }, ...(rid ? [{ id: rid }] : [])] } })) { out.skipped.push({ code, reason: 'exists' }); continue; }
+    const existing = await prisma.student.findFirst({ where: { OR: [{ code }, ...(rid ? [{ id: rid }] : [])] } });
+    if (existing) {
+      // Already here (e.g. imported from a CSV without pictures): only fill in a missing photo / signature.
+      const hasImg = str(r.image).startsWith('data:image/') && !existing.image;
+      const hasSig = str(r.signature).startsWith('data:image/') && !existing.signature;
+      if (hasImg || hasSig) {
+        out.pictures++;
+        if (!dryRun) {
+          const after = await prisma.student.update({ where: { id: existing.id }, data: {
+            ...(hasImg ? { image: picture(r.image) } : {}),
+            ...(hasSig ? { signature: picture(r.signature), ...(existing.signedAt ? {} : { signedAt: day(r.signedAt) }) } : {}),
+          } });
+          await audit(req, 'update', 'students', after.id, [after.code, after.firstName, after.lastName].join(' '), existing, after);
+        }
+      } else out.skipped.push({ code, reason: 'exists' });
+      continue;
+    }
     if (dryRun) { out.added++; continue; }
     const deleted = bool(r.delFlg);
     const created = when(r.createdAt);

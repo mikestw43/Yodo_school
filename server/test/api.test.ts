@@ -156,7 +156,7 @@ describe('import from the old app', () => {
   it('adds the students once, keeping ids, codes and pictures', async () => {
     const csv = [
       'id,code,prefix,first_name,last_name,dob,interested,has_experience,status,image,signature,signed_at,del_flg,created_at',
-      `11111111-1111-4111-8111-111111111111,YDO00050,ด.ช.,ต้นกล้า,สุขใจ,2017-01-02,"{Ballet,""Hip Hop""}",true,Active,${PNG},,,false,2026-09-30 10:00:00+00`,
+      `11111111-1111-4111-8111-111111111111,YDO00050,ด.ช.,ต้นกล้า,สุขใจ,2017-01-02,"{Ballet,""Hip Hop""}",true,Active,"${PNG}",,,false,2026-09-30 10:00:00+00`,
       '22222222-2222-4222-8222-222222222222,YDO00051,,ลบแล้ว,,,{},false,Active,,,,true,2026-09-30 10:00:00+00',
       '33333333-3333-4333-8333-333333333333,YDO00001,,ซ้ำรหัส,,,{},false,Active,,,,false,2026-09-30 10:00:00+00',
     ].join('\n');
@@ -170,7 +170,9 @@ describe('import from the old app', () => {
     const d = (await admin.get('/api/data')).body;
     const s = d.students.find((x: { code: string }) => x.code === 'YDO00050');
     expect(s).toMatchObject({ id: '11111111-1111-4111-8111-111111111111', interested: ['Ballet', 'Hip Hop'], hasExperience: true, dob: '2017-01-02' });
+    expect(s.image).toMatch(/^\/api\/files\/.+\.png$/);
     expect(fs.existsSync(path.join(UPLOAD_DIR, s.image.split('/').pop()))).toBe(true);
+    expect(s.createdAt).toBe('2026-09-30T10:00:00.000Z');
     expect(d.deletedStudentCodes).toContain('YDO00051');
     // the next new student continues after the highest code
     expect((await admin.post('/api/students').set(H).send(student())).body.code).toBe('YDO00052');
@@ -300,5 +302,20 @@ describe('notification settings and the bell', () => {
     await admin.put('/api/settings/notices').set(H).send({ expiryDays: 14 }).expect(200);
     expect((await admin.get('/api/me/notices')).body.expiryDays).toBe(14);
     expect((await admin.get('/api/push/devices')).body).toEqual([]);
+  });
+});
+
+describe('import: pictures for students already there', () => {
+  it('fills in a missing photo and signature, never overwrites one', async () => {
+    const json = JSON.stringify([{ code: 'YDO00101', first_name: 'ทดลอง', image: PNG, signature: PNG, signed_at: '2026-10-01' }, { code: 'YDO00050', first_name: 'ต้นกล้า', image: PNG }]);
+    const dry = await admin.post('/api/import/students?dry=1').set({ ...H, 'content-type': 'text/plain' }).send(json);
+    const s50 = (await admin.get('/api/data')).body.students.find((x: { code: string }) => x.code === 'YDO00050');
+    expect(s50?.image, JSON.stringify(s50)).toMatch(/files/);
+    expect(dry.body).toMatchObject({ added: 0, pictures: 1 }); // YDO00050 already has a photo
+    await admin.post('/api/import/students').set({ ...H, 'content-type': 'text/plain' }).send(json).expect(200);
+    const s = (await admin.get('/api/data')).body.students.find((x: { code: string }) => x.code === 'YDO00101');
+    expect(s.image).toMatch(/^\/api\/files\//);
+    expect(s).toMatchObject({ signedAt: '2026-10-01', firstName: 'ทดลอง' });
+    expect((await admin.post('/api/import/students').set({ ...H, 'content-type': 'text/plain' }).send(json)).body.pictures).toBe(0);
   });
 });
