@@ -49,6 +49,10 @@ export function ageDetail(dob: string) {
   return years > 0 ? L(`${years} ปี ${months} เดือน`, `${years} years ${months} months`) : L(`${months} เดือน`, `${months} months`);
 }
 
+/** The two statements ticked before signing (owner's wording 12/10/2026). */
+export const agreeText = () => L("ข้าพเจ้าได้อ่านและยอมรับข้อตกลงและเงื่อนไขของโรงเรียนด้านบนแล้ว", "I have read and agree to the school's terms and conditions above.");
+export const correctText = () => L("ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง", "I confirm that the information provided in this application form is true and correct.");
+
 /** The applicant's label under the signature line (owner 12/10/2026). */
 export const signerLabel = () => L("ผู้สมัคร / ผู้ปกครอง", "Applicant / Parent");
 

@@ -1,6 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { Student } from "@/lib/yodo-store";
-import { appliedOn, formSections, signerLabel, terms } from "@/lib/student-print";
+import { agreeText, appliedOn, correctText, formSections, signerLabel, terms } from "@/lib/student-print";
 import { L, fd } from "@/lib/i18n";
 import { RotateCcw } from "lucide-react";
 import logoUrlRaw from "@/assets/yodo-logo.png";
@@ -168,11 +168,11 @@ export function SignBox({ sig, current }: { sig: ReturnType<typeof useSignCanvas
       </ol>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-        {L("อ่านและยอมรับข้อตกลงและเงื่อนไขแล้ว", "I have read and accept the terms and conditions")}
+        {agreeText()}
       </label>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={correct} onChange={(e) => setCorrect(e.target.checked)} />
-        {L("ข้อมูลที่ให้ไว้ถูกต้องตามความเป็นจริง", "The details given are true and correct")}
+        {correctText()}
       </label>
       <div className="flex items-center justify-between gap-2 pt-1">
         <p className="text-sm font-semibold">{L("ลายเซ็นผู้สมัคร / ผู้ปกครอง", "Applicant / Parent signature")}</p>

@@ -379,6 +379,7 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
   const canEdit = can("students", "edit");
   const [signing, setSigning] = useState(false);
   const [viewPdf, setViewPdf] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [editEn, setEditEn] = useState<Enrollment | null>(null);
   const [kept, setKept] = useState<Student | null>(null);
   if (student && kept !== student) setKept(student);
@@ -387,12 +388,14 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
   const classes = s ? data.enrollments.filter((e) => e.studentId === s.id).map((e) => ({ en: e, cls: data.classes.find((c) => c.id === e.classId) })).filter((x) => x.cls) : [];
   return (
     <>
-    <Dialog open={!!student} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={!!student && !viewPdf} onOpenChange={(o) => !o && !viewPdf && onClose()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
         {s && (
           <>
             <div className="flex items-center gap-4">
-              <Avatar src={s.image} name={s.firstName} className="h-20 w-20 text-3xl" />
+              {s.image
+                ? <button type="button" onClick={() => setPhotoOpen(true)} className="shrink-0 rounded-full transition-opacity hover:opacity-80" title={L("ดูรูปใหญ่", "View photo")} aria-label={L("ดูรูปใหญ่", "View photo")}><Avatar src={s.image} name={s.firstName} className="h-20 w-20 text-3xl" /></button>
+                : <Avatar src={s.image} name={s.firstName} className="h-20 w-20 text-3xl" />}
               <div>
                 <DialogTitle className="font-display text-2xl">{fullName(s)}</DialogTitle>
                 <p className="text-sm text-muted-foreground">{s.nickname} · <span className="font-mono">{s.code}</span></p>
@@ -454,6 +457,14 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader><DialogTitle>{s?.signature ? L("เซ็นใหม่", "Sign again") : L("เซ็นเอกสาร", "Sign document")}</DialogTitle><DialogDescription>{s ? `${fullName(s)} · ${s.code}` : ""}</DialogDescription></DialogHeader>
         {signing && s && <SignDocumentBody student={s} onDone={() => setSigning(false)} />}
+      </DialogContent>
+    </Dialog>
+    {/* Tap the photo to see it big (owner 12/10/2026) */}
+    <Dialog open={photoOpen} onOpenChange={setPhotoOpen}>
+      <DialogContent className="w-auto max-w-[92vw] p-3 sm:max-w-2xl">
+        <DialogTitle className="sr-only">{s ? fullName(s) : ""}</DialogTitle>
+        <DialogDescription className="sr-only">{L("รูปนักเรียน", "Student photo")}</DialogDescription>
+        {s?.image && <img src={s.image} alt={fullName(s)} className="max-h-[80vh] max-w-full rounded-2xl object-contain" data-testid="photo-big" />}
       </DialogContent>
     </Dialog>
     {/* View the application in the app, print only on request (owner 12/10/2026) */}

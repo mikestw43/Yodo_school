@@ -85,6 +85,10 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   ข้อตกลงและเงื่อนไขแล้ว" and (owner's addition) "ข้อมูลที่ให้ไว้ถูกต้องตามความเป็นจริง", the sign box opens only when both
   are ticked (ticks are not stored). Details button "ดู PDF" opens the application full screen in the app (Back +
   "พิมพ์ / บันทึกเป็น PDF", which opens the print window); nothing prints by itself any more.
+  Owner 12/10/2026: tick wording = `agreeText`/`correctText` in lib/student-print.ts ("ข้าพเจ้าได้อ่านและยอมรับข้อตกลงและ
+  เงื่อนไขของโรงเรียนด้านบนแล้ว" / "ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง", English given by the
+  owner). The PDF view hides the details window while open (a window under it blocked scrolling). Tapping the photo in
+  the details opens it big.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
