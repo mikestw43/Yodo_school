@@ -44,6 +44,8 @@ async function overflow(page) {
 try {
   // ---------- computer ----------
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'th-TH' });
+  // Most checks read the Thai texts; the English pass is at the end (default for new accounts is English).
+  await ctx.addInitScript(() => { try { if (!localStorage.getItem('yodo-lang')) localStorage.setItem('yodo-lang', 'th'); } catch { /* */ } });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); });
@@ -63,6 +65,9 @@ try {
   await page.getByRole('button', { name: 'สร้างบัญชี' }).click();
   await page.waitForURL(BASE + '/');
   check('setup creates the owner and opens the dashboard', true);
+  check('new account starts in English', (await (await page.request.get(`${BASE}/api/me`)).json()).lang === 'en');
+  await page.request.patch(`${BASE}/api/me/lang`, { headers: { 'x-yodo': '1' }, data: { lang: 'th' } });
+  await page.reload();
 
   // sign out and back in through the login form
   await page.getByTitle('เมนูโปรไฟล์').click();
@@ -72,12 +77,12 @@ try {
   await page.waitForURL('**/auth');
   await page.fill('#identifier', 'mike');
   await page.fill('#password', 'wrong');
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  await page.getByText('Username หรือรหัสผ่านไม่ถูกต้อง').waitFor();
+  await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click();
+  await page.getByText('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง').waitFor();
   check('wrong password says so in Thai', true);
   await page.screenshot({ path: `${SHOTS}/02-login.png` });
   await page.fill('#password', 'secret1');
-  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click();
   await page.waitForURL(BASE + '/');
   check('login works', true);
 
@@ -128,7 +133,7 @@ try {
 
   // edit profile through the form
   await page.goto(BASE + '/settings');
-  await page.getByText('Username').first().waitFor();
+  await page.getByText('ชื่อผู้ใช้').first().waitFor();
   const nick = page.locator('label:has-text("ชื่อเล่น") + *').locator('input').first();
   if (await nick.count()) await nick.fill('ไมค์');
   await page.getByRole('button', { name: 'บันทึก', exact: true }).first().click();
@@ -196,10 +201,10 @@ try {
   // password sign-in is still there
   await page.getByTitle('เมนูโปรไฟล์').click();
   await page.getByText('ออกจากระบบ').click();
-  await page.getByText('เข้าด้วย Username และรหัสผ่าน').click();
+  await page.getByText('เข้าด้วยชื่อผู้ใช้และรหัสผ่าน').click();
   await page.fill('#identifier', 'mike');
   await page.fill('#password', 'secret1');
-  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click();
   await page.waitForURL(BASE + '/').then(() => check('password sign-in from the PIN screen', true), () => check('password sign-in from the PIN screen', false));
 
   // Google: the SuperAdmin card, then the button area on the sign-in page
@@ -210,6 +215,7 @@ try {
   await page.getByText('ปุ่มเข้าด้วย Google จะขึ้น').waitFor().then(() => check('Google client ID saves', true), () => check('Google client ID saves', false));
   await page.screenshot({ path: `${SHOTS}/20-google-setup.png`, fullPage: true });
   const anon = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await anon.addInitScript(() => { try { localStorage.setItem('yodo-lang', 'th'); } catch { /* */ } });
   const ap = await anon.newPage();
   await ap.goto(BASE + '/auth');
   await ap.getByText('หรือ', { exact: true }).waitFor().then(() => check('sign-in page shows the Google area', true), () => check('sign-in page shows the Google area', false));
@@ -234,6 +240,35 @@ try {
   await pp.getByLabel('เปิดเมนู').click();
   await pp.waitForTimeout(500);
   await pp.screenshot({ path: `${SHOTS}/p9-menu.png` });
+
+  // ---------- English ----------
+  await page.goto(BASE + '/');
+  await page.getByRole('button', { name: 'Switch to English' }).last().click();
+  await page.getByRole('link', { name: 'Students' }).first().waitFor().then(() => check('TH/EN button switches the menu to English', true), () => check('TH/EN button switches the menu to English', false));
+  check('the language is kept with the account', (await (await page.request.get(`${BASE}/api/me`)).json()).lang === 'en');
+  // typed data (names, class names) may be Thai; nothing else may be
+  const TYPED = /บัลเล่ต์สำหรับเด็ก 4-7 ปี|มะลิ|ใจดี|ลิลี่|ต้นกล้า|สุขใจ|กล้า|แอนนา|บัลเล่ต์|แอน|บัลเล่ต์สำหรับเด็ก 4-7 ปี|ไมค์|ด\.ญ\.|ด\.ช\.|นางสาว/g;
+  for (const [pth, name] of [['/', 'e1-dashboard'], ['/students', 'e2-students'], ['/classes', 'e3-classes'], ['/teachers', 'e4-teachers'], ['/calendar', 'e5-calendar'], ['/users', 'e6-users'], ['/permissions', 'e7-permissions'], ['/audit-log', 'e8-audit'], ['/settings', 'e9-settings'], ['/import', 'e10-import']]) {
+    await page.goto(BASE + pth);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(300);
+    const text = (await page.evaluate(() => document.body.innerText)).replace(TYPED, '');
+    const thai = [...new Set(text.match(/[\u0E00-\u0E7F][\u0E00-\u0E7F .]*/g) ?? [])].slice(0, 6);
+    // the audit log shows what was typed into old records, which may be Thai
+    check(`English ${pth} has no Thai left`, pth === '/audit-log' || thai.length === 0, thai.join(' | '));
+    await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
+  }
+  await page.goto(BASE + '/students');
+  await page.getByText('Add Student').first().click();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${SHOTS}/e11-student-form.png` });
+  await page.keyboard.press('Escape');
+  const anon2 = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const a2 = await anon2.newPage();
+  await a2.goto(BASE + '/auth');
+  await a2.getByText('Welcome Back').waitFor().then(() => check('sign-in page is English for a new visitor', true), () => check('sign-in page is English for a new visitor', false));
+  await a2.screenshot({ path: `${SHOTS}/e12-login.png` });
+  await anon2.close();
 
   check('no page errors', errors.length === 0, errors.slice(0, 5).join(' | '));
 } catch (e) {

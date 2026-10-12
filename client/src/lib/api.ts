@@ -9,13 +9,13 @@ export class ApiError extends Error {
 
 // Server error codes shown to staff in plain Thai.
 const MESSAGES: Record<string, [string, string]> = {
-  wrong_credentials: ["Username หรือรหัสผ่านไม่ถูกต้อง", "Wrong username or password"],
+  wrong_credentials: ["ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "Wrong username or password"],
   account_disabled: ["บัญชีนี้ถูกปิดใช้งาน", "This account is disabled"],
   too_many_attempts: ["ลองหลายครั้งเกินไป กรุณารอ 15 นาที", "Too many tries. Please wait 15 minutes"],
   wrong_password: ["รหัสผ่านปัจจุบันไม่ถูกต้อง", "The current password is wrong"],
   same_password: ["รหัสผ่านใหม่ต้องไม่เหมือนรหัสผ่านเดิม", "The new password must differ from the old one"],
-  username_taken: ["Username นี้ถูกใช้แล้ว", "This username is already taken"],
-  username_format: ["Username ใช้ได้เฉพาะ a-z 0-9 . _ - (3-30 ตัว)", "Username: a-z 0-9 . _ - only (3-30 characters)"],
+  username_taken: ["ชื่อผู้ใช้นี้ถูกใช้แล้ว", "This username is already taken"],
+  username_format: ["ชื่อผู้ใช้ใช้ได้เฉพาะ a-z 0-9 . _ - (3-30 ตัว)", "Username: a-z 0-9 . _ - only (3-30 characters)"],
   email_format: ["อีเมลไม่ถูกต้อง", "Invalid email"],
   phone_format: ["เบอร์โทรต้องมี 10 หลัก", "Phone number must have 10 digits"],
   password_too_short: ["รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", "Password must have at least 6 characters"],

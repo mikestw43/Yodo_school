@@ -31,7 +31,16 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   (PinPad, PinLogin, SecurityCard = "การเข้าสู่ระบบของฉัน" card with the change-password row, AutoLock in
   `_authenticated/route.tsx` so the settings page locks too), `lib/signin.ts`. Password change/admin reset/disable/
   delete drops the person's PINs. Every way of signing in goes through `finishLogin` (audit row with `method`).
-- Next (not built yet): Thai/English switch, as in FinHR.
+- 12/10/2026 (mockup approved, artifact TkjwRTADaAChHoy1dYTxm9): Thai / English everywhere. Owner's answers: default
+  ENGLISH (new accounts `lang` "en"; accounts made before were switched to English once at start, key `once:lang-en`);
+  TH/EN button next to the bell (phone header + computer top right, also on the sign-in page), one tap, kept with the
+  account (`PATCH /me/lang`, the server's value wins after sign-in); typed data is never translated, stored choices
+  (prefix, nationality, religion, source, status) keep their stored value and show `opt(value)`; PDFs (student
+  document, receipt) FOLLOW the chosen language. How: every visible text is `L("ไทย", "English")` (client
+  `src/lib/i18n.ts`, never at module top level); the page tree under the root is keyed by the language so a switch
+  redraws everything; dates via `fd`/`fdt`/`fMonthYear`/`fDayMonth`. Bell notices are written in each person's
+  language (`notifyAll({ text: (lang) => ... })`). Thai menu names: ภาพรวม, นักเรียน, คลาส, ครู, ปฏิทิน,
+  ผู้ใช้ระบบ, สิทธิ์, ประวัติการแก้ไข. e2e checks that English pages show no Thai except typed data.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

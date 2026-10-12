@@ -13,13 +13,13 @@ import { LangToggle } from "@/components/yodo/LangToggle";
 import { L } from "@/lib/i18n";
 
 const NAV = [
-  { to: "/", th: "แดชบอร์ด", en: "Dashboard", icon: Sparkles, key: "dashboard" },
+  { to: "/", th: "ภาพรวม", en: "Dashboard", icon: Sparkles, key: "dashboard" },
   { to: "/students", th: "นักเรียน", en: "Students", icon: PersonStanding, key: "students" },
   { to: "/classes", th: "คลาส", en: "Classes", icon: Music4, key: "classes" },
   { to: "/teachers", th: "ครู", en: "Teachers", icon: Crown, key: "teachers" },
   { to: "/calendar", th: "ปฏิทิน", en: "Calendar", icon: CalendarHeart, key: "calendar" },
-  { to: "/users", th: "ผู้ใช้", en: "Users", icon: UserCog, key: "users" },
-  { to: "/permissions", th: "สิทธิ์การใช้งาน", en: "Permissions", icon: ShieldCheck, key: "users" },
+  { to: "/users", th: "ผู้ใช้ระบบ", en: "Users", icon: UserCog, key: "users" },
+  { to: "/permissions", th: "สิทธิ์", en: "Permissions", icon: ShieldCheck, key: "users" },
   { to: "/audit-log", th: "ประวัติการแก้ไข", en: "Audit Log", icon: History, key: "auditlog" },
 ] as const satisfies readonly { to: string; th: string; en: string; key: MenuKey; icon: unknown }[];
 
