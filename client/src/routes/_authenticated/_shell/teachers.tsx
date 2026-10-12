@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Avatar, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, onlyDigits10, usePagination } from "@/components/yodo/ui";
+import { Avatar, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, RowActions, onlyDigits10, usePagination } from "@/components/yodo/ui";
 import { TEACHER_PREFIXES, fullName, useYodo, type Teacher, type TeacherInput } from "@/lib/yodo-store";
 import { L, bothLang, opt } from "@/lib/i18n";
 
@@ -84,7 +84,7 @@ function TeachersPage() {
             {pg.pageItems.map((t) => {
               const classes = data.classes.filter((c) => c.teacherId === t.id && !c.disabled);
               return (
-                <Card key={t.id} className={`flex flex-col gap-5 rounded-3xl p-7 ${t.status === "Disabled" ? "opacity-60" : ""}`}>
+                <Card key={t.id} className={`flex min-w-0 flex-col gap-5 rounded-3xl p-7 ${t.status === "Disabled" ? "opacity-60" : ""}`}>
                   <div className="flex items-center gap-4">
                     <Avatar src={t.image} name={t.nickname} className="h-16 w-16 text-2xl" />
                     <div className="min-w-0 flex-1">
@@ -92,6 +92,12 @@ function TeachersPage() {
                       <p className="truncate text-sm text-muted-foreground">{fullName(t)}</p>
                     </div>
                     <StatusBadge status={t.status} />
+                    <RowActions name={fullName(t)} items={[
+                      can("teachers", "edit") && { label: L("แก้ไข", "Edit"), icon: <Pencil />, onSelect: () => { setEditing(t); setOpen(true); } },
+                      can("teachers", "edit") && t.status === "Active" && { label: L("ปิดใช้งาน", "Disable"), icon: <Ban />, onSelect: () => setDisabling(t) },
+                      can("teachers", "edit") && t.status !== "Active" && { label: L("เปิดใช้งาน", "Enable"), icon: <RotateCcw />, onSelect: () => { setTeacherStatus(t.id, "Active"); toast.success(L("เปิดใช้งานครูแล้ว", "Teacher enabled")); } },
+                      can("teachers", "delete") && { label: L("ลบ", "Delete"), icon: <Trash2 />, danger: true, onSelect: () => setDeleting(t) },
+                    ]} />
                   </div>
                   <div className="space-y-2.5 rounded-2xl bg-accent/30 px-4 py-3.5 text-sm text-muted-foreground">
                     <p className="flex items-center gap-2.5"><Phone className="h-4 w-4 shrink-0 text-primary/70" /> {t.phone}</p>
@@ -102,15 +108,6 @@ function TeachersPage() {
                     <Music2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/60" />
                     <span>{L(`สอน ${classes.length} คลาส`, `Teaches ${classes.length} ${classes.length === 1 ? "class" : "classes"}`)}{classes.length ? `: ${classes.map((c) => c.name).join(", ")}` : ""}</span>
                   </p>
-                  <div className="mt-auto flex gap-1 border-t border-border pt-4">
-                    {can("teachers", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("แก้ไข", "Edit")} aria-label={L(`แก้ไข ${fullName(t)}`, `Edit ${fullName(t)}`)} onClick={() => { setEditing(t); setOpen(true); }}><Pencil strokeWidth={1.6} /></Button>}
-                    {can("teachers", "edit") && (t.status === "Active" ? (
-                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ปิดใช้งาน", "Disable")} aria-label={L(`ปิดใช้งาน ${fullName(t)}`, `Disable ${fullName(t)}`)} onClick={() => setDisabling(t)}><Ban strokeWidth={1.6} /></Button>
-                    ) : (
-                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เปิดใช้งาน", "Enable")} aria-label={L(`เปิดใช้งาน ${fullName(t)}`, `Enable ${fullName(t)}`)} onClick={() => { setTeacherStatus(t.id, "Active"); toast.success(L("เปิดใช้งานครูแล้ว", "Teacher enabled")); }}><RotateCcw strokeWidth={1.6} /></Button>
-                    ))}
-                    {can("teachers", "delete") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ลบ", "Delete")} aria-label={L(`ลบ ${fullName(t)}`, `Delete ${fullName(t)}`)} onClick={() => setDeleting(t)}><Trash2 strokeWidth={1.6} /></Button>}
-                  </div>
                 </Card>
               );
             })}

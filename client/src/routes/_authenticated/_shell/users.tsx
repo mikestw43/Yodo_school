@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Avatar, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, onlyDigits10, usePagination } from "@/components/yodo/ui";
+import { Avatar, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, RowActions, onlyDigits10, usePagination } from "@/components/yodo/ui";
 import { useYodo, type Position, type SystemUser, type SystemUserInput } from "@/lib/yodo-store";
 import { L, opt } from "@/lib/i18n";
 
@@ -58,6 +58,11 @@ function UsersTab() {
   }, [data.systemUsers, q, pos, status]);
   const pg = usePagination(list, 10, `${q}|${pos}|${status}`);
   const canManage = can("users", "edit") || can("users", "delete");
+  const actions = (u: SystemUser) => [
+    can("users", "edit") && { label: L("แก้ไข", "Edit"), icon: <Pencil />, onSelect: () => { setEdit(u); setOpen(true); } },
+    can("users", "edit") && { label: u.status === "Active" ? L("ปิดใช้งาน", "Disable") : L("เปิดใช้งาน", "Enable"), icon: u.status === "Active" ? <Ban /> : <RotateCcw />, onSelect: () => { setSystemUserStatus(u.id, u.status === "Active" ? "Disabled" : "Active"); toast.success(L("อัปเดตสถานะแล้ว", "Status updated")); } },
+    can("users", "delete") && { label: L("ลบ", "Delete"), icon: <Trash2 />, danger: true, onSelect: () => setDeleting(u) },
+  ];
 
   return (
     <>
@@ -89,20 +94,13 @@ function UsersTab() {
                   <p className="text-xs text-muted-foreground">{u.nickname}</p>
                 </div>
                 <StatusBadge status={u.status} />
+                {canManage && <RowActions name={[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "-"} items={actions(u)} />}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div className="min-w-0"><p className="text-xs text-muted-foreground">{L("อีเมล", "Email")}</p><p className="truncate">{u.email || "-"}</p></div>
                 <div><p className="text-xs text-muted-foreground">{L("เบอร์โทร", "Phone")}</p><p>{u.phone || "-"}</p></div>
                 <div><p className="text-xs text-muted-foreground">{L("Role", "Role")}</p><p>{data.positions.find((p) => p.id === u.positionId)?.name ?? "-"}</p></div>
               </div>
-              {canManage && <div className="mt-3 flex justify-center gap-1.5 border-t border-border/60 pt-3">
-                {can("users", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" aria-label={L("แก้ไข", "Edit")} title={L("แก้ไข", "Edit")} onClick={() => { setEdit(u); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
-                {can("users", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" aria-label={u.status === "Active" ? L("ปิดใช้งาน", "Disable") : L("เปิดใช้งาน", "Enable")} title={u.status === "Active" ? L("ปิดใช้งาน", "Disable") : L("เปิดใช้งาน", "Enable")}
-                  onClick={() => { setSystemUserStatus(u.id, u.status === "Active" ? "Disabled" : "Active"); toast.success(L("อัปเดตสถานะแล้ว", "Status updated")); }}>
-                  {u.status === "Active" ? <Ban className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
-                </Button>}
-                {can("users", "delete") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:text-destructive" aria-label={L("ลบ", "Delete")} title={L("ลบ", "Delete")} onClick={() => setDeleting(u)}><Trash2 className="h-4 w-4" /></Button>}
-              </div>}
             </Card>
           ))}
         </div>
@@ -127,14 +125,7 @@ function UsersTab() {
                   <td className="px-3 py-3">{u.phone}</td>
                   <td className="px-3 py-3">{data.positions.find((p) => p.id === u.positionId)?.name ?? "-"}</td>
                   <td className="px-3 py-3"><StatusBadge status={u.status} /></td>
-                  {canManage && <td className="px-5 py-3">
-                    {can("users", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" aria-label={L("แก้ไข", "Edit")} title={L("แก้ไข", "Edit")} onClick={() => { setEdit(u); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
-                    {can("users", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" aria-label={u.status === "Active" ? L("ปิดใช้งาน", "Disable") : L("เปิดใช้งาน", "Enable")} title={u.status === "Active" ? L("ปิดใช้งาน", "Disable") : L("เปิดใช้งาน", "Enable")}
-                      onClick={() => { setSystemUserStatus(u.id, u.status === "Active" ? "Disabled" : "Active"); toast.success(L("อัปเดตสถานะแล้ว", "Status updated")); }}>
-                      {u.status === "Active" ? <Ban className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
-                    </Button>}
-                    {can("users", "delete") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:text-destructive" aria-label={L("ลบ", "Delete")} title={L("ลบ", "Delete")} onClick={() => setDeleting(u)}><Trash2 className="h-4 w-4" /></Button>}
-                  </td>}
+                  {canManage && <td className="px-5 py-3"><RowActions name={[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "-"} items={actions(u)} className="flex justify-center" /></td>}
                 </tr>
               ))}
             </tbody>
@@ -230,15 +221,10 @@ function PositionsTab() {
                     <h3 className="font-display text-xl font-semibold">{p.name}</h3>
                     {p.isSystem && <span className="mt-1 inline-block rounded-full bg-primary/10 px-3 py-0.5 text-xs text-primary">{L("ทำได้ทุกอย่าง · แก้ไขไม่ได้", "Full access · cannot be edited")}</span>}
                   </div>
-                  {!p.isSystem && (
-                    <div className="flex">
-                      {owner && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" aria-label={L("แก้ไข Role", "Edit role")} title={L("แก้ไข", "Edit")} onClick={() => { setEdit(p); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
-                      {owner && !p.kind && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-destructive hover:text-destructive" aria-label={L("ลบ Role", "Delete role")} title={L("ลบ", "Delete")}
-                        onClick={() => { if (n > 0) { toast.error(L("ลบไม่ได้ ยังมีผู้ใช้ใน Role นี้", "Cannot delete: users still have this role")); return; } deletePosition(p.id); toast.success(L("ลบ Role แล้ว", "Role deleted")); }}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>}
-                    </div>
-                  )}
+                  {!p.isSystem && owner && <RowActions name={p.name} items={[
+                    { label: L("แก้ไข", "Edit"), icon: <Pencil />, onSelect: () => { setEdit(p); setOpen(true); } },
+                    !p.kind && { label: L("ลบ", "Delete"), icon: <Trash2 />, danger: true, onSelect: () => { if (n > 0) { toast.error(L("ลบไม่ได้ ยังมีผู้ใช้ใน Role นี้", "Cannot delete: users still have this role")); return; } deletePosition(p.id); toast.success(L("ลบ Role แล้ว", "Role deleted")); } },
+                  ]} />}
                 </div>
                 <p className="text-sm text-muted-foreground">{p.description || "-"}</p>
                 <p className="text-xs text-muted-foreground">{L(`ผู้ใช้ ${n} คน`, `${n} ${n === 1 ? "user" : "users"}`)}</p>

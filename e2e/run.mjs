@@ -512,7 +512,11 @@ try {
   await post('/classes', { name: 'Jazz Course', teacherId: '', description: '', image: '', status: 'Active', price: 4500, months: 3 });
   // ---------- buy courses: two in one receipt, % and baht off, a remark (owner 12/10/2026) ----------
   await page.goto(BASE + '/students');
-  await page.getByRole('button', { name: /^ซื้อคลาสให้ .*มะลิ/ }).first().click();
+  await page.getByRole('button', { name: /^จัดการ .*มะลิ/ }).first().click();
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${SHOTS}/33b-row-actions.png` });
+  check('student row: one actions button with Buy / Disable / Delete', (await page.getByRole('menuitem').allInnerTexts()).join('|') === 'ซื้อคลาส|ปิดใช้งาน|ลบ', (await page.getByRole('menuitem').allInnerTexts()).join('|'));
+  await page.getByRole('menuitem', { name: 'ซื้อคลาส' }).click();
   const ed = page.getByTestId('buy-dialog');
   await ed.getByRole('combobox').first().click();
   await page.getByRole('option', { name: 'Ballet Course' }).click();
@@ -534,7 +538,10 @@ try {
   await pbox.getByTestId('pay-remark').fill('แถมชุดเต้น 1 ชุด');
   await page.screenshot({ path: `${SHOTS}/36-payment.png` });
   await pp.goto(BASE + '/students');
-  await pp.getByRole('button', { name: /^ซื้อคลาสให้ / }).first().click();
+  await pp.getByRole('button', { name: /^จัดการ / }).first().click();
+  await pp.waitForTimeout(200);
+  await pp.screenshot({ path: `${SHOTS}/p13b-row-actions.png` });
+  await pp.getByRole('menuitem', { name: 'ซื้อคลาส' }).click();
   await pp.getByTestId('buy-dialog').waitFor();
   await pp.waitForTimeout(500);
   await pp.screenshot({ path: `${SHOTS}/p14-buy.png` });

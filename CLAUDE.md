@@ -204,6 +204,10 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   settings receiver's signature = "อัปโหลดรูป" OR "เซ็นเอง" (`DrawSign` in company.tsx: finger/mouse on `SignCanvas`, ink
   black/blue (`INKS`), line thin/medium/thick (`WIDTHS`), then `tidyImage` like an upload: transparent PNG, margins cut).
   The stamp stays upload only (owner).
+- 13/10/2026 (mockup Hfv2W8caQnfymebnMUxPa7; owner "A แล้วเปลี่ยนทั้งหมด"): rows of action icons became ONE round
+  "more" button (`RowActions` in components/yodo/ui.tsx: Ellipsis icon, aria-label "จัดการ <name>", menu items, delete
+  last in red after a line; shows only what the person may do). Top right of the card on phones (after the status), the
+  Actions column on computers: students, teachers, classes, users, roles. Single-icon buttons elsewhere stay.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

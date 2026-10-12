@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, ChipSelect, ConfirmDialog, DateField, EmptyState, Field, ImageUpload, NativeSelect, ReceiptUpload, PageHeader, Pagination, SectionTitle, StatusBadge, onlyDigits10, usePagination } from "@/components/yodo/ui";
+import { Avatar, ChipSelect, ConfirmDialog, DateField, EmptyState, Field, ImageUpload, NativeSelect, ReceiptUpload, PageHeader, Pagination, SectionTitle, StatusBadge, RowActions, onlyDigits10, usePagination } from "@/components/yodo/ui";
 
 import { useReceiptOpen } from "@/components/yodo/receipt";
 import { StudentCourses, openBuy } from "@/components/yodo/courses";
@@ -111,6 +111,12 @@ function StudentsPage() {
 
   const pg = usePagination(list, 25, `${q}|${status}`);
   const canManage = can("students", "edit") || can("students", "delete");
+  const actions = (s: Student) => [
+    can("students", "edit") && s.status === "Active" && { label: L("ซื้อคลาส", "Buy classes"), icon: <UserRoundPlus />, onSelect: () => openBuy(s.id) },
+    can("students", "edit") && s.status === "Active" && { label: L("ปิดใช้งาน", "Disable"), icon: <Ban />, onSelect: () => setDisabling(s) },
+    can("students", "edit") && s.status !== "Active" && { label: L("เปิดใช้งาน", "Enable"), icon: <RotateCcw />, onSelect: () => { setStudentStatus(s.id, "Active"); toast.success(L("เปิดใช้งานนักเรียนแล้ว", "Student enabled")); } },
+    can("students", "delete") && { label: L("ลบ", "Delete"), icon: <Trash2 />, danger: true, onSelect: () => setDeleting(s) },
+  ];
 
 
   return (
@@ -146,23 +152,13 @@ function StudentsPage() {
                     <p className="font-mono text-xs text-muted-foreground">{s.code}</p>
                   </div>
                   <StatusBadge status={s.status} />
+                  {canManage && <RowActions name={fullName(s)} items={actions(s)} />}
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
                   <div><p className="text-xs text-muted-foreground">{L("ชื่อเล่น", "Nickname")}</p><p>{s.nickname || "-"}</p></div>
                   <div><p className="text-xs text-muted-foreground">{L("อายุ", "Age")}</p><p>{ageText(s.dob)}</p></div>
                   <div><p className="text-xs text-muted-foreground">{L("เบอร์โทร", "Phone")}</p><p>{s.phone}</p></div>
                 </div>
-                {canManage && <div className="mt-3 flex justify-center gap-1.5 border-t border-border/60 pt-3" onClick={(e) => e.stopPropagation()}>
-                  {can("students", "edit") && (s.status === "Active" ? (
-                    <>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ซื้อคลาส", "Buy classes")} aria-label={L(`ซื้อคลาสให้ ${fullName(s)}`, `Buy classes for ${fullName(s)}`)} onClick={() => openBuy(s.id)}><UserRoundPlus strokeWidth={1.6} /></Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ปิดใช้งาน", "Disable")} aria-label={L(`ปิดใช้งาน ${fullName(s)}`, `Disable ${fullName(s)}`)} onClick={() => setDisabling(s)}><Ban strokeWidth={1.6} /></Button>
-                    </>
-                  ) : (
-                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เปิดใช้งาน", "Enable")} aria-label={L(`เปิดใช้งาน ${fullName(s)}`, `Enable ${fullName(s)}`)} onClick={() => { setStudentStatus(s.id, "Active"); toast.success(L("เปิดใช้งานนักเรียนแล้ว", "Student enabled")); }}><RotateCcw strokeWidth={1.6} /></Button>
-                  ))}
-                  {can("students", "delete") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ลบ", "Delete")} aria-label={L(`ลบ ${fullName(s)}`, `Delete ${fullName(s)}`)} onClick={() => setDeleting(s)}><Trash2 strokeWidth={1.6} /></Button>}
-                </div>}
               </Card>
             ))}
           </div>
@@ -195,19 +191,7 @@ function StudentsPage() {
                     <TableCell>{s.phone}</TableCell>
                     <TableCell><StatusBadge status={s.status} /></TableCell>
                     {canManage && (
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-center gap-1.5">
-                          {can("students", "edit") && (s.status === "Active" ? (
-                            <>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ซื้อคลาส", "Buy classes")} aria-label={L(`ซื้อคลาสให้ ${fullName(s)}`, `Buy classes for ${fullName(s)}`)} onClick={() => openBuy(s.id)}><UserRoundPlus strokeWidth={1.6} /></Button>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ปิดใช้งาน", "Disable")} aria-label={L(`ปิดใช้งาน ${fullName(s)}`, `Disable ${fullName(s)}`)} onClick={() => setDisabling(s)}><Ban strokeWidth={1.6} /></Button>
-                            </>
-                          ) : (
-                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เปิดใช้งาน", "Enable")} aria-label={L(`เปิดใช้งาน ${fullName(s)}`, `Enable ${fullName(s)}`)} onClick={() => { setStudentStatus(s.id, "Active"); toast.success(L("เปิดใช้งานนักเรียนแล้ว", "Student enabled")); }}><RotateCcw strokeWidth={1.6} /></Button>
-                          ))}
-                          {can("students", "delete") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ลบ", "Delete")} aria-label={L(`ลบ ${fullName(s)}`, `Delete ${fullName(s)}`)} onClick={() => setDeleting(s)}><Trash2 strokeWidth={1.6} /></Button>}
-                        </div>
-                      </TableCell>
+                      <TableCell><RowActions name={fullName(s)} items={actions(s)} className="flex justify-center" /></TableCell>
                     )}
                   </TableRow>
                 ))}

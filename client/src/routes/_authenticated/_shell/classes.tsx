@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Avatar, ClassCover, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, usePagination } from "@/components/yodo/ui";
+import { Avatar, ClassCover, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, RowActions, usePagination } from "@/components/yodo/ui";
 
 import { ageText, classColor, fullName, useYodo, type ClassInput, type DanceClass } from "@/lib/yodo-store";
 import { L, dayShort, fDayMonth, fd, opt } from "@/lib/i18n";
@@ -96,7 +96,15 @@ function ClassesPage() {
                   <div className="flex flex-1 flex-col gap-4 p-6">
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="font-display text-xl font-semibold leading-snug">{c.name}</h3>
-                      <StatusBadge status={statusOf(c)} />
+                      <div className="flex shrink-0 items-center gap-2">
+                        <StatusBadge status={statusOf(c)} />
+                        <RowActions name={c.name} items={[
+                          { label: L("ดูข้อมูล", "View"), icon: <Eye />, onSelect: () => setViewId(c.id) },
+                          can("classes", "edit") && { label: L("แก้ไข", "Edit"), icon: <Pencil />, onSelect: () => { setEditing(c); setFormOpen(true); } },
+                          can("classes", "edit") && c.disabled && { label: L("เปิดใช้งาน", "Enable"), icon: <RotateCcw />, onSelect: () => { setClassDisabled(c.id, false); toast.success(L("เปิดใช้งานคลาสแล้ว", "Class enabled")); } },
+                          can("classes", "edit") && !c.disabled && { label: L("ปิดใช้งาน", "Disable"), icon: <Ban />, onSelect: () => setDisabling(c) },
+                        ]} />
+                      </div>
                     </div>
                     <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{c.description || "-"}</p>
                     <p className="text-sm font-semibold text-primary">{coursePrice(c)}</p>
@@ -109,15 +117,6 @@ function ClassesPage() {
                       <span className="rounded-2xl bg-emerald-50 py-2 text-emerald-800"><span className="block text-xl font-bold">{k.active}</span><span className="block text-[11px]">{L("ยังไม่หมดอายุ", "Not ended")}</span></span>
                       <span className="rounded-2xl bg-orange-50 py-2 text-orange-800"><span className="block text-xl font-bold">{k.soon}</span><span className="block text-[11px]">{L("ใกล้หมด", "Ending soon")}</span></span>
                     </button>
-                    <div className="mt-auto flex gap-1 border-t border-border pt-4">
-                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ดูข้อมูล", "View")} aria-label={L(`ดูข้อมูล ${c.name}`, `View ${c.name}`)} onClick={() => setViewId(c.id)}><Eye strokeWidth={1.6} /></Button>
-                      {can("classes", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("แก้ไข", "Edit")} aria-label={L(`แก้ไข ${c.name}`, `Edit ${c.name}`)} onClick={() => { setEditing(c); setFormOpen(true); }}><Pencil strokeWidth={1.6} /></Button>}
-                      {can("classes", "edit") && (c.disabled ? (
-                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เปิดใช้งาน", "Enable")} aria-label={L(`เปิดใช้งาน ${c.name}`, `Enable ${c.name}`)} onClick={() => { setClassDisabled(c.id, false); toast.success(L("เปิดใช้งานคลาสแล้ว", "Class enabled")); }}><RotateCcw strokeWidth={1.6} /></Button>
-                      ) : (
-                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ปิดใช้งาน", "Disable")} aria-label={L(`ปิดใช้งาน ${c.name}`, `Disable ${c.name}`)} onClick={() => setDisabling(c)}><Ban strokeWidth={1.6} /></Button>
-                      ))}
-                    </div>
                   </div>
                 </Card>
               );

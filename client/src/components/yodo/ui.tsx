@@ -4,7 +4,8 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Children, isValidElement, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, Minus, Pencil, Plus, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Ellipsis, ImagePlus, Minus, Pencil, Plus, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -508,6 +509,33 @@ export function SignaturePad({ onSave, onCancel }: { onSave: (dataUrl: string) =
         <Button variant="outline" onClick={onCancel}>{L("ยกเลิก", "Cancel")}</Button>
         <Button disabled={!dirty} onClick={() => onSave(ref.current!.toDataURL("image/png"))}>{L("บันทึกลายเซ็น", "Save signature")}</Button>
       </div>
+    </div>
+  );
+}
+
+export type RowAction = { label: string; icon: ReactNode; onSelect: () => void; danger?: boolean; testId?: string };
+
+/** One "more" button that opens the row's actions (owner 13/10/2026, mockup Hfv2W8caQnfymebnMUxPa7 option A: one
+ *  button instead of a row of icons, on every list). Taps never reach the card/row under it. Nothing to do = nothing shown. */
+export function RowActions({ name, items, className }: { name: string; items: (RowAction | false | null | undefined)[]; className?: string }) {
+  const list = items.filter(Boolean) as RowAction[];
+  if (!list.length) return null;
+  const safe = list.filter((x) => !x.danger), danger = list.filter((x) => x.danger);
+  return (
+    <div className={cn("shrink-0", className)} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" size="icon" variant="outline" className="h-9 w-9 rounded-full text-muted-foreground data-[state=open]:border-primary data-[state=open]:bg-accent/40 data-[state=open]:text-primary"
+            aria-label={L(`จัดการ ${name}`, `Actions for ${name}`)} title={L("จัดการ", "Actions")} data-testid="row-actions">
+            <Ellipsis className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-48 rounded-2xl p-1.5">
+          {safe.map((x) => <DropdownMenuItem key={x.label} className="gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold [&_svg]:size-4" data-testid={x.testId} onSelect={x.onSelect}>{x.icon}{x.label}</DropdownMenuItem>)}
+          {safe.length > 0 && danger.length > 0 && <DropdownMenuSeparator />}
+          {danger.map((x) => <DropdownMenuItem key={x.label} className="gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-destructive focus:text-destructive [&_svg]:size-4" data-testid={x.testId} onSelect={x.onSelect}>{x.icon}{x.label}</DropdownMenuItem>)}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
