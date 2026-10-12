@@ -93,6 +93,9 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   under term 9 = `agreeText`, page 2 under the dance section above the signature = `correctText`; ticked whenever the
   student has a signature (signing needs both ticks; the 37 AppSheet students with their old signature show ticked,
   owner's choice), empty boxes when not signed (`Tick` in student-document.tsx, `BOX_SVG` in the print window).
+  Owner 12/10/2026: the sign box has its own TH/EN switch beside "School terms and conditions" (terms + the two statements
+  only, starts in the app's language, not saved; `terms(lang)`/`agreeText(lang)`/`correctText(lang)`), and its clear
+  button reads "Sign" in English (Thai stays "เซ็นใหม่").
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

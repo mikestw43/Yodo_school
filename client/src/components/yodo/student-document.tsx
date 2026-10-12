@@ -2,7 +2,7 @@ import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { Student } from "@/lib/yodo-store";
 import { agreeText, appliedOn, correctText, formSections, signerLabel, terms } from "@/lib/student-print";
 import { Square, SquareCheck } from "lucide-react";
-import { L, fd } from "@/lib/i18n";
+import { L, fd, useLang, type Lang } from "@/lib/i18n";
 import { RotateCcw } from "lucide-react";
 import logoUrlRaw from "@/assets/yodo-logo.png";
 const logo = { url: logoUrlRaw };
@@ -168,27 +168,38 @@ export function useSignCanvas() {
 /** Sign box (owner 12/10/2026): the terms to read, two ticks (terms accepted, details correct), then the one signature.
  *  Used at the end of the student form and in the "sign again" window. */
 export function SignBox({ sig, current }: { sig: ReturnType<typeof useSignCanvas>; current?: string | undefined }) {
+  const appLang = useLang();
+  // Own TH/EN switch for the terms and the two statements, so a parent can read them in their language (owner 12/10/2026).
+  const [tl, setTl] = useState<Lang>(appLang);
   const [agree, setAgree] = useState(false);
   const [correct, setCorrect] = useState(false);
   const ready = agree && correct;
   return (
     <div className="space-y-3">
-      <p className="text-sm font-semibold">{L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions")}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">{tl === "en" ? "School terms and conditions" : "ข้อตกลงและเงื่อนไขของโรงเรียน"}</p>
+        <div className="inline-flex shrink-0 rounded-full border border-border bg-background p-0.5 text-xs font-bold" role="group" aria-label={L("ภาษาของข้อตกลง", "Language of the terms")}>
+          {(["th", "en"] as const).map((x) => (
+            <button key={x} type="button" onClick={() => setTl(x)} aria-pressed={tl === x}
+              className={`h-7 min-w-9 rounded-full px-2 transition-colors ${tl === x ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted"}`}>{x.toUpperCase()}</button>
+          ))}
+        </div>
+      </div>
       <ol className="max-h-44 list-decimal space-y-1.5 overflow-y-auto rounded-2xl border border-border bg-muted/40 py-3 pl-8 pr-4 text-xs leading-relaxed text-foreground/80" data-testid="sign-terms">
-        {terms().map((t, i) => <li key={i}>{t}</li>)}
+        {terms(tl).map((t, i) => <li key={i}>{t}</li>)}
       </ol>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-        {agreeText()}
+        {agreeText(tl)}
       </label>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={correct} onChange={(e) => setCorrect(e.target.checked)} />
-        {correctText()}
+        {correctText(tl)}
       </label>
       <div className="flex items-center justify-between gap-2 pt-1">
         <p className="text-sm font-semibold">{L("ลายเซ็นผู้สมัคร / ผู้ปกครอง", "Applicant / Parent signature")}</p>
         <button type="button" onClick={sig.clear} disabled={!ready} className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-xs disabled:opacity-40">
-          <RotateCcw className="h-3.5 w-3.5" /> {L("เซ็นใหม่", "Sign again")}
+          <RotateCcw className="h-3.5 w-3.5" /> {L("เซ็นใหม่", "Sign")}
         </button>
       </div>
       <div key={sig.resetKey} className={`relative h-36 rounded-2xl border-[1.5px] border-dashed bg-background ${ready ? "border-primary/40" : "border-border opacity-60"}`} data-testid="form-sign">

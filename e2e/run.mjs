@@ -331,6 +331,12 @@ try {
   await box('ชื่อผู้ติดต่อฉุกเฉิน').fill('คุณแม่');
   await box('เบอร์โทรผู้ติดต่อฉุกเฉิน').fill('0899999999');
   await fdlg.getByPlaceholder('เช่น แม่, พ่อ').fill('แม่');
+  await fdlg.getByRole('group', { name: 'ภาษาของข้อตกลง' }).getByRole('button', { name: 'EN' }).click();
+  check('terms box has its own TH/EN switch', (await fdlg.getByTestId('sign-terms').innerText()).includes('I certify that all the details') && (await fdlg.getByText("I have read and agree to the school's terms and conditions above.").count()) === 1);
+  await fdlg.getByTestId('sign-terms').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  await fdlg.getByTestId('sign-terms').locator('xpath=..').screenshot({ path: `${SHOTS}/33-terms-en.png` });
+  await fdlg.getByRole('group', { name: 'ภาษาของข้อตกลง' }).getByRole('button', { name: 'TH' }).click();
   check('form signature is locked until both boxes are ticked', (await fdlg.getByTestId('form-sign').locator('canvas').count()) === 0);
   await fdlg.getByText('ข้าพเจ้าได้อ่านและยอมรับข้อตกลงและเงื่อนไขของโรงเรียนด้านบนแล้ว').click();
   await fdlg.getByText('ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง').click();

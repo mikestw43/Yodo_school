@@ -1,30 +1,36 @@
 import { format, parseISO, isValid } from "date-fns";
 import type { Student } from "@/lib/yodo-store";
-import { L, fd, getLang, opt, prefixed, optOr, splitList } from "@/lib/i18n";
+import { L, fd, getLang, opt, prefixed, optOr, splitList, type Lang } from "@/lib/i18n";
+
+/** A text in the given language, or the app's language when none is given (the terms box has its own TH/EN switch). */
+const pickLang = (lang: Lang | undefined, th: string, en: string) => (lang ? (lang === "en" ? en : th) : L(th, en));
 import logoUrlRaw from "@/assets/yodo-logo.png";
 const logo = { url: logoUrlRaw };
 
 /** The school's terms in the current language (call at render/print time). */
-export const terms = () => [
-  L("ข้าพเจ้าขอให้คำรับรองว่า ข้อความรายละเอียดต่างๆ ที่กรอกไว้ในใบสมัครข้างต้นนี้ถูกต้องตามความเป็นจริงทุกประการ หากข้อความใดเป็นเท็จ หรือมีการตรวจพบภายหลัง ข้าพเจ้าจะเป็นผู้รับผิดชอบในทุกกรณี",
+export const terms = (lang?: Lang) => {
+  const T = (th: string, en: string) => pickLang(lang, th, en);
+  return [
+  T("ข้าพเจ้าขอให้คำรับรองว่า ข้อความรายละเอียดต่างๆ ที่กรอกไว้ในใบสมัครข้างต้นนี้ถูกต้องตามความเป็นจริงทุกประการ หากข้อความใดเป็นเท็จ หรือมีการตรวจพบภายหลัง ข้าพเจ้าจะเป็นผู้รับผิดชอบในทุกกรณี",
     "I certify that all the details filled in on this application are true and correct in every respect. If any statement is false or is found to be false later, I will take full responsibility in every case."),
-  L("ข้าพเจ้าขอยอมรับว่าโรงเรียน You Only Dance Once (Y.O.D.O) มีสิทธิ์ในการพิจารณารับหรือไม่รับในการสมัครแต่ละวิชาหรือถอดสิทธิ์การเป็นนักเรียนหากทำผิดกฎของทางโรงเรียน",
+  T("ข้าพเจ้าขอยอมรับว่าโรงเรียน You Only Dance Once (Y.O.D.O) มีสิทธิ์ในการพิจารณารับหรือไม่รับในการสมัครแต่ละวิชาหรือถอดสิทธิ์การเป็นนักเรียนหากทำผิดกฎของทางโรงเรียน",
     "I accept that You Only Dance Once (Y.O.D.O) school has the right to accept or refuse each class application, or to withdraw student status if the school's rules are broken."),
-  L("ข้าพเจ้าขอรับรองว่า หากมีอันตรายและหรือความเสียหายใดๆ ที่เกิดขึ้นกับข้าพเจ้าโดยเหตุสุดวิสัย หรืออุปกรณ์ของข้าพเจ้า ผู้ปกครองข้าพเจ้าจะเป็นผู้รับผิดชอบแต่เพียงผู้เดียว",
+  T("ข้าพเจ้าขอรับรองว่า หากมีอันตรายและหรือความเสียหายใดๆ ที่เกิดขึ้นกับข้าพเจ้าโดยเหตุสุดวิสัย หรืออุปกรณ์ของข้าพเจ้า ผู้ปกครองข้าพเจ้าจะเป็นผู้รับผิดชอบแต่เพียงผู้เดียว",
     "I certify that if any harm and/or damage happens to me or my belongings by unforeseeable circumstances, my parent or guardian alone will be responsible."),
-  L("ข้าพเจ้าอนุญาตให้คุณครูมีสิทธิ์ในการพิจารณาคัดเลือกระดับชั้นเรียนที่เหมาะสมให้กับข้าพเจ้า",
+  T("ข้าพเจ้าอนุญาตให้คุณครูมีสิทธิ์ในการพิจารณาคัดเลือกระดับชั้นเรียนที่เหมาะสมให้กับข้าพเจ้า",
     "I allow the teachers to choose the class level that suits me."),
-  L("นักเรียนมีความจำเป็นที่จะต้องทำการสอบเพื่อประเมินศักยภาพ สำหรับการเลื่อนระดับชั้นในทุกๆ ปี",
+  T("นักเรียนมีความจำเป็นที่จะต้องทำการสอบเพื่อประเมินศักยภาพ สำหรับการเลื่อนระดับชั้นในทุกๆ ปี",
     "Students need to take an assessment every year to move up a level."),
-  L("ค่าเรียนในแต่ละ course จะต้องใช้ให้ครบภายในระยะเวลาที่ทางโรงเรียนกำหนดเท่านั้น (ยกเว้นในกรณีที่มีใบรับรองแพทย์)",
+  T("ค่าเรียนในแต่ละ course จะต้องใช้ให้ครบภายในระยะเวลาที่ทางโรงเรียนกำหนดเท่านั้น (ยกเว้นในกรณีที่มีใบรับรองแพทย์)",
     "The fees for each course must be used within the period set by the school only (except with a medical certificate)."),
-  L("ทางโรงเรียนสามารถใช้รูปภาพหรือวิดีโอ (ระหว่างการเรียน แสดง แข่ง) ของนักเรียนในการสื่อสารและโปรโมททางช่องทางออนไลน์และออฟไลน์ (หากไม่สะดวกกรุณาแจ้งทางโรงเรียน)",
+  T("ทางโรงเรียนสามารถใช้รูปภาพหรือวิดีโอ (ระหว่างการเรียน แสดง แข่ง) ของนักเรียนในการสื่อสารและโปรโมททางช่องทางออนไลน์และออฟไลน์ (หากไม่สะดวกกรุณาแจ้งทางโรงเรียน)",
     "The school may use photos or videos of students (during classes, shows and competitions) to communicate and promote online and offline (please tell the school if you do not agree)."),
-  L("ข้าพเจ้าขอยอมรับว่า โรงเรียน You Only Dance Once (Y.O.D.O) มีสิทธิ์ในการไม่คืนเงินในทุกกรณี",
+  T("ข้าพเจ้าขอยอมรับว่า โรงเรียน You Only Dance Once (Y.O.D.O) มีสิทธิ์ในการไม่คืนเงินในทุกกรณี",
     "I accept that You Only Dance Once (Y.O.D.O) school has the right not to give refunds in any case."),
-  L("ในกรณีที่เกิดการบาดเจ็บหรือป่วย ทางโรงเรียนสามารถผ่อนปรนระยะเวลาในการเรียนได้เฉพาะในกรณีที่มีใบรับรองแพทย์จากทางโรงพยาบาลเท่านั้น",
+  T("ในกรณีที่เกิดการบาดเจ็บหรือป่วย ทางโรงเรียนสามารถผ่อนปรนระยะเวลาในการเรียนได้เฉพาะในกรณีที่มีใบรับรองแพทย์จากทางโรงพยาบาลเท่านั้น",
     "In case of injury or illness, the school can extend the study period only with a medical certificate from a hospital."),
 ];
+};
 
 function escapeHtml(value: string | number | null | undefined) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -50,10 +56,10 @@ export function ageDetail(dob: string) {
 }
 
 /** The two statements ticked before signing (owner's wording 12/10/2026). */
-export const agreeText = () => L("ข้าพเจ้าได้อ่านและยอมรับข้อตกลงและเงื่อนไขของโรงเรียนด้านบนแล้ว", "I have read and agree to the school's terms and conditions above.");
+export const agreeText = (lang?: Lang) => pickLang(lang, "ข้าพเจ้าได้อ่านและยอมรับข้อตกลงและเงื่อนไขของโรงเรียนด้านบนแล้ว", "I have read and agree to the school's terms and conditions above.");
 /** A tick box line for the printed application: ticked once signed (signing needs both ticks; owner 12/10/2026). */
 export const BOX_SVG = (on: boolean) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2b2024" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/>${on ? '<path d="m9 12 2 2 4-4"/>' : ""}</svg>`;
-export const correctText = () => L("ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง", "I confirm that the information provided in this application form is true and correct.");
+export const correctText = (lang?: Lang) => pickLang(lang, "ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง", "I confirm that the information provided in this application form is true and correct.");
 
 /** The applicant's label under the signature line (owner 12/10/2026). */
 export const signerLabel = () => L("ผู้สมัคร / ผู้ปกครอง", "Applicant / Parent");
