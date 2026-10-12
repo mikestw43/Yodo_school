@@ -555,7 +555,7 @@ function EnrollDialog({ student: studentProp, enrollment: enrollmentProp, onClos
       const { classId, purchaseDate, startDate, expiryDate, remark, receiptImage } = enrollment;
       setF({ classId, purchaseDate, startDate, expiryDate, remark, receiptImage });
     } else setF({ ...enrollEmpty, purchaseDate: todayIso(), startDate: todayIso() });
-    setPay({ ...payEmpty, on: !enrollment && canPay, date: todayIso(), payer: studentProp?.emergencyName || "" });
+    setPay({ ...payEmpty, on: !enrollment && canPay, date: todayIso(), payer: "" }); // payer starts empty (owner 12/10/2026)
     setAutoExpiry(!enrollment);
     setReceipts([]);
     setErrors({});
@@ -723,7 +723,7 @@ function PaymentBox({ pay, setPay, amount, isNew }: { pay: PayState; setPay: Rea
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label={L("วันที่รับเงิน", "Payment date")}><DateField value={pay.date} onChange={(v) => set("date", v)} /></Field>
-            <Field label={L("ชื่อผู้จ่าย (ในใบเสร็จ)", "Payer (on the receipt)")}><Input value={pay.payer} placeholder={L("ไม่ใส่ = ชื่อนักเรียน", "Empty = the student's name")} onChange={(e) => set("payer", e.target.value)} /></Field>
+            <Field label={L("ชื่อผู้จ่าย (ในใบเสร็จ)", "Payer (on the receipt)")}><Input data-testid="pay-payer" value={pay.payer} placeholder={L("ไม่ใส่ = ชื่อนักเรียน", "Empty = the student's name")} onChange={(e) => set("payer", e.target.value)} /></Field>
           </div>
           {pay.method === "transfer" && <Field label={L("สลิปโอน", "Transfer slip")}><ReceiptUpload value={pay.slip} onChange={(v) => set("slip", v)} /></Field>}
         </>

@@ -6,7 +6,7 @@ import logoUrlRaw from "@/assets/yodo-logo.png";
 // The A4 receipt (owner 12/10/2026, mockup 3gLnsvQrxnGWHKpPmbRxBA board 3). One HTML page, used both by the in-app view
 // (an iframe) and by the print window, in Thai or English (the receipt has its own TH/EN switch).
 
-export type Company = { name: string; nameEn: string; address: string; phone: string; email: string; taxId: string; branch: string; logo: string; sign: string; stamp?: string };
+export type Company = { name: string; nameEn: string; address: string; phone: string; email: string; taxId: string; branch: string; logo: string; sign: string; stamp?: string; signName?: string };
 export type ReceiptStudent = { code: string; prefix: string; firstName: string; lastName: string } | null;
 
 const esc = (v: string | number | null | undefined) =>
@@ -118,7 +118,7 @@ ${r.discount ? `<div><span>${T("ส่วนลด", "Discount")}</span><span>�
 <div class="pay">${T("ชำระโดย", "Paid by")}: <b>${esc(methodLabel(r.method, lang))}</b> ${T("วันที่", "on")} ${d(r.date)}</div>
 ${r.remark ? `<div class="note">${T("หมายเหตุ", "Remark")}: ${esc(r.remark)}</div>` : ""}
 ${r.cancelled ? `<div class="voidnote">${T("ยกเลิกแล้ว", "Cancelled")}${r.cancelReason ? `: ${esc(r.cancelReason)}` : ""}</div>` : ""}
-<div class="sign">${c.stamp ? `<img class="stamp" src="${esc(abs(c.stamp))}" alt="">` : ""}<div><div class="line">${c.sign ? `<img src="${esc(abs(c.sign))}" alt="">` : ""}</div><div>${T("ผู้รับเงิน", "Received by")}</div><div style="color:#5f4b52">(${esc(r.receivedByName)})</div></div></div>
+<div class="sign">${c.stamp ? `<img class="stamp" src="${esc(abs(c.stamp))}" alt="">` : ""}<div><div class="line">${c.sign ? `<img src="${esc(abs(c.sign))}" alt="">` : ""}</div><div>${T("ผู้รับเงิน", "Received by")}</div><div style="color:#5f4b52">(${esc(c.signName || r.receivedByName)})</div></div></div>
 </section>${o.print ? `<script>window.addEventListener('load',async()=>{try{await document.fonts.ready;await Promise.all(Array.from(document.images,i=>i.decode().catch(()=>{})))}finally{window.focus();window.print()}})</script>` : ""}</body></html>`;
 }
 

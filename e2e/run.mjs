@@ -449,6 +449,7 @@ try {
     return c.toDataURL(kind === 'stamp' ? 'image/jpeg' : 'image/png', 0.95).split(',')[1];
   }, kind);
   await page.getByTestId('co-sign').setInputFiles({ name: 'sign.png', mimeType: 'image/png', buffer: Buffer.from(await mkPic('sign'), 'base64') });
+  await page.getByTestId('co-sign-name').fill('ครูพรกันยา');
   await page.getByTestId('co-stamp').setInputFiles({ name: 'stamp.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(await mkPic('stamp'), 'base64') });
   await page.getByTestId('co-stamp-img').waitFor();
   const corner = (id) => page.getByTestId(id).evaluate(async (im) => {
@@ -476,6 +477,7 @@ try {
   await page.waitForTimeout(300);
   const pbox = ed.getByTestId('payment-box');
   check('payment is on and the price comes from the course', (await pbox.locator('input[type="checkbox"]').isChecked()) && (await pbox.locator('input[type="number"]').first().inputValue()) === '10000');
+  check('payer starts empty', (await pbox.getByTestId('pay-payer').inputValue()) === '');
   await pbox.locator('input[type="number"]').nth(1).fill('500');
   check('amount = price − discount', (await pbox.getByTestId('pay-amount').innerText()) === '9,500.00');
   await page.screenshot({ path: `${SHOTS}/36-payment.png` });
@@ -486,6 +488,7 @@ try {
   await frame.locator('h1').waitFor();
   const rtxt = await frame.locator('body').innerText();
   check('receipt: running number, company, course, amount in Thai words', /RC\d{4}-0001/.test(rtxt) && rtxt.includes('บริษัท โยโด้ แดนซ์ จำกัด') && rtxt.includes('Ballet Course') && rtxt.includes('6 เดือน') && rtxt.includes('เก้าพันห้าร้อยบาทถ้วน'), rtxt.slice(0, 200));
+  check('receipt prints the receiver name typed in Company settings', rtxt.includes('(ครูพรกันยา)'));
   check('receipt shows the stamp and the signature', (await frame.locator('img.stamp').count()) === 1 && (await frame.locator('.sign .line img').count()) === 1);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOTS}/37-receipt-th.png` });

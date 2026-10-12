@@ -23,7 +23,7 @@ export const receiptOut = (r: Receipt) => ({
 });
 const companyOut = (s: Setting | null) => ({
   name: s?.companyName ?? '', nameEn: s?.companyNameEn ?? '', address: s?.companyAddress ?? '', phone: s?.companyPhone ?? '',
-  email: s?.companyEmail ?? '', taxId: s?.companyTaxId ?? '', branch: s?.companyBranch ?? '', logo: s?.receiptLogo ?? '', sign: s?.receiptSign ?? '', stamp: s?.receiptStamp ?? '',
+  email: s?.companyEmail ?? '', taxId: s?.companyTaxId ?? '', branch: s?.companyBranch ?? '', logo: s?.receiptLogo ?? '', sign: s?.receiptSign ?? '', stamp: s?.receiptStamp ?? '', signName: s?.receiptSignName ?? '',
 });
 
 // ---------- company settings ----------
@@ -34,12 +34,12 @@ router.put('/settings/company', requirePerm('company', 'edit'), async (req, res)
   const b = z.object({
     name: text(300), nameEn: text(300), address: text(1000), phone: text(50), email: text(255),
     taxId: z.string().trim().refine((v) => v === '' || /^\d{13}$/.test(v), 'tax_id_format'), branch: text(100),
-    logo: z.string().max(12_000_000), sign: z.string().max(12_000_000), stamp: z.string().max(12_000_000).default(''),
+    logo: z.string().max(12_000_000), sign: z.string().max(12_000_000), stamp: z.string().max(12_000_000).default(''), signName: text(200).default(''),
   }).parse(req.body);
   const before = await prisma.setting.findUnique({ where: { id: 1 } });
   const data = {
     companyName: b.name, companyNameEn: b.nameEn, companyAddress: b.address, companyPhone: b.phone, companyEmail: b.email,
-    companyTaxId: b.taxId, companyBranch: b.branch, receiptLogo: storeImage(b.logo), receiptSign: storeImage(b.sign), receiptStamp: storeImage(b.stamp),
+    companyTaxId: b.taxId, companyBranch: b.branch, receiptLogo: storeImage(b.logo), receiptSign: storeImage(b.sign), receiptStamp: storeImage(b.stamp), receiptSignName: b.signName,
   };
   const after = await prisma.setting.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data });
   await audit(req, 'update', 'settings', '1', 'Company', before, after);

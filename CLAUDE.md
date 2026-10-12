@@ -139,6 +139,9 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   Owner 12/10/2026: phone hamburger on the LEFT before the logo (menu slides in from the left, like the computer);
   PIN pad full size (keys 76 px, bigger dots) and quicker: keys react on touch (`onPointerDown`), no see-through blur
   behind the sign-in PIN card, a spinner instead of the dots while the PIN is checked and the app opens.
+- 12/10/2026 (owner): Company settings has a typed "receiver's name" under the signature (`Setting.receiptSignName`,
+  `signName` in `/settings/company`); receipts print it under the signature line, empty = the person who issued the
+  receipt (`receivedByName`). The payer box in the payment window starts empty (empty = the student's name on the receipt).
 - 12/10/2026 speed (owner: clicks felt slow/stuck over the internet): every page change waited for `GET /me` (route
   `beforeLoad`) and the first visit of each page waited for its own script file. Now `getMeCached()` (lib/api.ts) answers
   from the last result and refreshes in the background (401 -> /auth; cleared on sign-in/out), the client is one bundle

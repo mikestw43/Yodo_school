@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/_shell/company")({
   component: CompanyPage,
 });
 
-const EMPTY: Company = { name: "", nameEn: "", address: "", phone: "", email: "", taxId: "", branch: "", logo: "", sign: "", stamp: "" };
+const EMPTY: Company = { name: "", nameEn: "", address: "", phone: "", email: "", taxId: "", branch: "", logo: "", sign: "", stamp: "", signName: "" };
 
 // Company details printed on receipts (owner 12/10/2026, mockup board 4).
 function CompanyPage() {
@@ -62,6 +62,10 @@ function CompanyPage() {
             <p className="mb-1 text-sm font-semibold">{L("ลายเซ็นผู้รับเงิน (ไม่บังคับ)", "Signature of the person receiving money (optional)")}</p>
             <p className="mb-3 text-xs text-muted-foreground">{L("ไม่ใส่ = เซ็นด้วยมือหลังพิมพ์", "Empty = sign by hand after printing")}</p>
             <PicUpload testId="co-sign" tidy edit={edit} value={f.sign} onChange={(v) => set("sign", v)} />
+            {/* Typed name printed under the signature on receipts (owner 12/10/2026); empty = whoever issued the receipt. */}
+            <Field label={L("ชื่อผู้รับเงิน (พิมพ์ในใบเสร็จ)", "Receiver's name (printed on the receipt)")} className="mt-4">
+              <Input data-testid="co-sign-name" disabled={!edit} value={f.signName ?? ""} placeholder={L("ไม่ใส่ = ชื่อคนที่ออกใบเสร็จ", "Empty = the person who issued it")} onChange={(e) => set("signName", e.target.value)} />
+            </Field>
           </Card>
           <Card className="rounded-3xl p-6">
             <p className="mb-1 text-sm font-semibold">{L("ตราประทับ (ไม่บังคับ)", "Stamp (optional)")}</p>
