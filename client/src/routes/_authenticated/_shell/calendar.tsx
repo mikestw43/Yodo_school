@@ -181,7 +181,7 @@ function EventDialog({ schedule, onClose }: { schedule: Schedule | null; onClose
               {can("calendar", "edit") && <div className="flex items-end gap-2">
                 <Field label={L("เพิ่มนักเรียน", "Add student")} className="min-w-0 flex-1">
                 <NativeSelect value={available.some((s) => s.id === studentId) ? studentId : ""} onValueChange={setStudentId} className="min-w-0">
-                  <option value="">{available.length ? L("เลือกนักเรียนที่ลงทะเบียนคลาส", "Pick a student enrolled in this class") : L("ไม่มีนักเรียนที่คอร์สยังไม่หมดอายุในวันนี้", "No students with a course still valid on this day")}</option>
+                  <option value="">{available.length ? L("เลือกนักเรียนที่ลงทะเบียนคลาส", "Pick a student enrolled in this class") : L("ไม่มีนักเรียนที่คลาสยังไม่หมดอายุในวันนี้", "No students with a class still valid on this day")}</option>
                   {available.map((student) => <option key={student.id} value={student.id}>{fullName(student)} ({student.nickname})</option>)}
                 </NativeSelect>
                 </Field>

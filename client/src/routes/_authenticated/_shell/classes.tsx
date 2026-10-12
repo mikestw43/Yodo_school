@@ -183,10 +183,10 @@ function ClassForm({ open, onOpenChange, editing }: { open: boolean; onOpenChang
             </NativeSelect>
           </Field>
           <Field label={L("คำอธิบาย", "Description")} error={errors.description}><Textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
-          <Field label={L("ราคาคอร์ส (บาท)", "Course price (baht)")}>
+          <Field label={L("ราคาคลาส (บาท)", "Class price (baht)")}>
             <Input type="number" min={0} step="1" placeholder={L("เช่น 10000", "e.g. 10000")} value={f.price ?? ""} onChange={(e) => setF({ ...f, price: e.target.value === "" ? null : Math.max(0, Number(e.target.value)) })} />
           </Field>
-          <Field label={L("อายุคอร์ส (เดือน)", "Course length (months)")}>
+          <Field label={L("อายุคลาส (เดือน)", "Class length (months)")}>
             <Input type="number" min={1} max={120} step="1" value={f.months} onChange={(e) => setF({ ...f, months: Math.min(120, Math.max(1, Math.round(Number(e.target.value) || 1))) })} />
           </Field>
           <Field label={L("สถานะคลาส", "Class Status")}>

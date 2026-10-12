@@ -13,7 +13,7 @@ import { DateField, Field, ReceiptUpload } from "@/components/yodo/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { fd, getLang } from "@/lib/i18n";
 
-type Full = { receipt: Receipt; company: Company; student: ReceiptStudent; editable?: boolean };
+export type Full = { receipt: Receipt; company: Company; student: ReceiptStudent; editable?: boolean };
 
 // One receipt viewer for the whole app: any page calls openReceipt(id) (after closing its own window, so nothing
 // underneath blocks scrolling) and <ReceiptHost/> in the shell shows it full screen.
@@ -35,15 +35,10 @@ export function useReceiptOpen() {
 const A4_W = 794, A4_H = 1123;
 
 export function ReceiptHost() {
-  const { can, reload } = useYodo();
   const appLang = useLang();
-  const [editOpen, setEditOpen] = useState(false);
-  const [delOpen, setDelOpen] = useState(false);
   const [id, setId] = useState<string | null>(null);
   const [full, setFull] = useState<Full | null>(null);
   const [lang, setLang] = useState<Lang>(appLang);
-  const [cancelOpen, setCancelOpen] = useState(false);
-  const [reason, setReason] = useState("");
   const box = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
@@ -52,8 +47,11 @@ export function ReceiptHost() {
     window.addEventListener(EVT, on);
     return () => window.removeEventListener(EVT, on);
   }, [appLang]);
-  const load = (rid: string) => api<Full>(`/receipts/${rid}`).then(setFull).catch((e) => { toast.error(errorText(e)); setId(null); });
-  useEffect(() => { setFull(null); if (id) void load(id); window.dispatchEvent(new CustomEvent(RECEIPT_OPEN, { detail: !!id })); }, [id]);
+  useEffect(() => {
+    setFull(null);
+    if (id) api<Full>(`/receipts/${id}`).then(setFull).catch((e) => { toast.error(errorText(e)); setId(null); });
+    window.dispatchEvent(new CustomEvent(RECEIPT_OPEN, { detail: !!id }));
+  }, [id]);
   useEffect(() => {
     const el = box.current;
     if (!el || !id) return;
@@ -64,77 +62,87 @@ export function ReceiptHost() {
     return () => ro.disconnect();
   }, [id, full]);
 
+  // The A4 receipt only: back, its own TH/EN, print. Edit / delete / cancel live on the details page (owner 12/10/2026).
+  return (
+    <Dialog open={!!id} onOpenChange={(o) => { if (!o) setId(null); }}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Content className="fixed inset-0 z-50 flex flex-col bg-[#5b4b50] outline-none" data-testid="receipt-view">
+          <DialogPrimitive.Title className="sr-only">{L("ใบเสร็จรับเงิน", "Receipt")}</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="sr-only">{full?.receipt.no ?? ""}</DialogPrimitive.Description>
+          <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background px-3 py-2.5 sm:px-5">
+            <Button variant="outline" className="rounded-full" onClick={() => setId(null)}><ChevronLeft className="h-4 w-4" /> {L("กลับ", "Back")}</Button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{L("ใบเสร็จรับเงิน", "Receipt")}</p>
+              <p className="font-mono text-xs text-muted-foreground">{full?.receipt.no}</p>
+            </div>
+            <div className="inline-flex shrink-0 rounded-full border border-border bg-background p-0.5 text-xs font-bold" role="group" aria-label={L("ภาษาของใบเสร็จ", "Language of the receipt")}>
+              {(["th", "en"] as const).map((x) => (
+                <button key={x} type="button" onClick={() => setLang(x)} aria-pressed={lang === x}
+                  className={`h-8 min-w-10 rounded-full px-2 transition-colors ${lang === x ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted"}`}>{x.toUpperCase()}</button>
+              ))}
+            </div>
+            <Button className="rounded-full" disabled={!full} onClick={() => { if (full && !printReceipt({ ...full, lang })) toast.error(L("กรุณาอนุญาตหน้าต่างใหม่เพื่อพิมพ์", "Please allow pop-up windows to print")); }}>
+              <Printer className="h-4 w-4" /> {L("พิมพ์ / บันทึกเป็น PDF", "Print / Save as PDF")}
+            </Button>
+          </div>
+          <div ref={box} className="min-h-0 flex-1 overflow-auto p-3 sm:p-6">
+            {full && (
+              <div className="mx-auto" style={{ width: A4_W * scale, height: A4_H * scale }}>
+                <iframe title={full.receipt.no} srcDoc={receiptHtml({ ...full, lang })} data-testid="receipt-frame"
+                  style={{ width: A4_W, height: A4_H, border: 0, background: "#fff", transform: `scale(${scale})`, transformOrigin: "0 0", boxShadow: "0 2px 15px rgba(0,0,0,.25)" }} />
+              </div>
+            )}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </Dialog>
+  );
+}
+
+/** Edit / Delete (this month's newest receipt) or Cancel (older ones) for the receipt details page. */
+export function ReceiptActions({ full, onChanged, onDeleted }: { full: Full; onChanged: () => Promise<void>; onDeleted: () => void }) {
+  const { can, reload } = useYodo();
+  const [editOpen, setEditOpen] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const r = full.receipt;
+  const canChange = !!full.editable && can("receipts", "edit");
+  const canCancel = !canChange && !r.cancelled && can("receipts", "delete");
+  const changed = async () => { window.dispatchEvent(new Event(RECEIPTS_CHANGED)); await onChanged(); void reload(); };
   const cancel = async () => {
-    if (!full) return;
     try {
-      await api(`/receipts/${full.receipt.id}/cancel`, { body: { reason: reason.trim() } });
+      await api(`/receipts/${r.id}/cancel`, { body: { reason: reason.trim() } });
       toast.success(L("ยกเลิกใบเสร็จแล้ว", "Receipt cancelled"));
       setCancelOpen(false); setReason("");
-      window.dispatchEvent(new Event(RECEIPTS_CHANGED));
-      await load(full.receipt.id);
+      await changed();
     } catch (e) { toast.error(errorText(e)); }
   };
-
-  // This month's newest receipt can be edited or deleted (owner 12/10/2026); older ones only cancelled.
-  const canChange = !!full?.editable && can("receipts", "edit");
   const del = async () => {
-    if (!full) return;
     try {
-      await api(`/receipts/${full.receipt.id}/delete`, { body: {} });
-      toast.success(L(`ลบใบเสร็จ ${full.receipt.no} แล้ว`, `Receipt ${full.receipt.no} deleted`));
-      setDelOpen(false); setId(null);
+      await api(`/receipts/${r.id}/delete`, { body: {} });
+      toast.success(L(`ลบใบเสร็จ ${r.no} แล้ว`, `Receipt ${r.no} deleted`));
+      setDelOpen(false);
       window.dispatchEvent(new Event(RECEIPTS_CHANGED));
       void reload();
+      onDeleted();
     } catch (e) { toast.error(errorText(e)); }
   };
+  const items = (r.lines ?? []).map((l) => l.item).join(", ");
   return (
     <>
-      <Dialog open={!!id} onOpenChange={(o) => { if (!o) setId(null); }}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Content className="fixed inset-0 z-50 flex flex-col bg-[#5b4b50] outline-none" data-testid="receipt-view">
-            <DialogPrimitive.Title className="sr-only">{L("ใบเสร็จรับเงิน", "Receipt")}</DialogPrimitive.Title>
-            <DialogPrimitive.Description className="sr-only">{full?.receipt.no ?? ""}</DialogPrimitive.Description>
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background px-3 py-2.5 sm:px-5">
-              <Button variant="outline" className="rounded-full" onClick={() => setId(null)}><ChevronLeft className="h-4 w-4" /> {L("กลับ", "Back")}</Button>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{L("ใบเสร็จรับเงิน", "Receipt")}</p>
-                <p className="font-mono text-xs text-muted-foreground">{full?.receipt.no}</p>
-              </div>
-              <div className="inline-flex shrink-0 rounded-full border border-border bg-background p-0.5 text-xs font-bold" role="group" aria-label={L("ภาษาของใบเสร็จ", "Language of the receipt")}>
-                {(["th", "en"] as const).map((x) => (
-                  <button key={x} type="button" onClick={() => setLang(x)} aria-pressed={lang === x}
-                    className={`h-8 min-w-10 rounded-full px-2 transition-colors ${lang === x ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted"}`}>{x.toUpperCase()}</button>
-                ))}
-              </div>
-              {canChange && <Button variant="outline" className="rounded-full" onClick={() => setEditOpen(true)} data-testid="receipt-edit"><Pencil className="h-4 w-4" /> {L("แก้ไข", "Edit")}</Button>}
-              {canChange && <Button variant="outline" className="rounded-full text-destructive hover:text-destructive" onClick={() => setDelOpen(true)} data-testid="receipt-delete"><Trash2 className="h-4 w-4" /> {L("ลบ", "Delete")}</Button>}
-              {full && can("receipts", "delete") && !full.receipt.cancelled && !canChange && (
-                <Button variant="outline" className="rounded-full text-destructive hover:text-destructive" onClick={() => setCancelOpen(true)}><Ban className="h-4 w-4" /> {L("ยกเลิกใบเสร็จ", "Cancel receipt")}</Button>
-              )}
-              <Button className="rounded-full" disabled={!full} onClick={() => { if (full && !printReceipt({ ...full, lang })) toast.error(L("กรุณาอนุญาตหน้าต่างใหม่เพื่อพิมพ์", "Please allow pop-up windows to print")); }}>
-                <Printer className="h-4 w-4" /> {L("พิมพ์ / บันทึกเป็น PDF", "Print / Save as PDF")}
-              </Button>
-            </div>
-            <div ref={box} className="min-h-0 flex-1 overflow-auto p-3 sm:p-6">
-              {full && (
-                <div className="mx-auto" style={{ width: A4_W * scale, height: A4_H * scale }}>
-                  <iframe title={full.receipt.no} srcDoc={receiptHtml({ ...full, lang })} data-testid="receipt-frame"
-                    style={{ width: A4_W, height: A4_H, border: 0, background: "#fff", transform: `scale(${scale})`, transformOrigin: "0 0", boxShadow: "0 2px 15px rgba(0,0,0,.25)" }} />
-                </div>
-              )}
-            </div>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </Dialog>
+      {canChange && <Button variant="outline" className="rounded-full" onClick={() => setEditOpen(true)} data-testid="receipt-edit"><Pencil className="h-4 w-4" /> {L("แก้ไข", "Edit")}</Button>}
+      {canChange && <Button variant="outline" className="rounded-full text-destructive hover:text-destructive" onClick={() => setDelOpen(true)} data-testid="receipt-delete"><Trash2 className="h-4 w-4" /> {L("ลบ", "Delete")}</Button>}
+      {canCancel && <Button variant="outline" className="rounded-full text-destructive hover:text-destructive" onClick={() => setCancelOpen(true)}><Ban className="h-4 w-4" /> {L("ยกเลิกใบเสร็จ", "Cancel receipt")}</Button>}
       <Dialog open={delOpen} onOpenChange={setDelOpen}>
         <DialogContent className="max-w-md rounded-3xl">
           <DialogHeader>
-            <DialogTitle>{L(`ลบใบเสร็จ ${full?.receipt.no ?? ""}?`, `Delete receipt ${full?.receipt.no ?? ""}?`)}</DialogTitle>
+            <DialogTitle>{L(`ลบใบเสร็จ ${r.no}?`, `Delete receipt ${r.no}?`)}</DialogTitle>
             <DialogDescription asChild>
               <ul className="list-disc space-y-1 pl-5 text-sm">
                 <li>{L("ใบเสร็จนี้หายไปจากรายการ และไม่นับยอด", "The receipt leaves the list and is not counted")}</li>
-                <li>{L(`คอร์สในใบนี้ (${(full?.receipt.lines ?? []).map((l) => l.item).join(", ")}) ถูกเอาออก วันหมดอายุกลับไปเหมือนก่อนซื้อ`, `Its courses (${(full?.receipt.lines ?? []).map((l) => l.item).join(", ")}) are taken back to before they were bought`)}</li>
-                <li>{L(`เลข ${full?.receipt.no ?? ""} จะใช้กับใบเสร็จใบถัดไป`, `Number ${full?.receipt.no ?? ""} goes to the next receipt`)}</li>
+                <li>{L(`คลาสในใบนี้ (${items}) ถูกเอาออก วันหมดอายุกลับไปเหมือนก่อนซื้อ`, `Its classes (${items}) are taken back to before they were bought`)}</li>
+                <li>{L(`เลข ${r.no} จะใช้กับใบเสร็จใบถัดไป`, `Number ${r.no} goes to the next receipt`)}</li>
                 <li>{L("เก็บไว้ในประวัติการแก้ไขว่าใครลบ เมื่อไหร่", "The audit log keeps who deleted it and when")}</li>
               </ul>
             </DialogDescription>
@@ -145,7 +153,7 @@ export function ReceiptHost() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {full && editOpen && <EditReceipt full={full} onClose={() => setEditOpen(false)} onSaved={async () => { setEditOpen(false); window.dispatchEvent(new Event(RECEIPTS_CHANGED)); await load(full.receipt.id); void reload(); }} />}
+      {editOpen && <EditReceipt full={full} onClose={() => setEditOpen(false)} onSaved={async () => { setEditOpen(false); await changed(); }} />}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent className="max-w-md rounded-3xl">
           <DialogHeader>
@@ -229,7 +237,7 @@ function EditReceipt({ full, onClose, onSaved }: { full: Full; onClose: () => vo
               <p className="ml-auto pb-2 text-sm font-semibold">{money(lineAmount(l).amount)}</p>
             </div>
           ))}
-          <p className="text-xs text-muted-foreground">{L("แก้ราคาและส่วนลดได้ · จะเปลี่ยนคอร์สหรือวันที่เรียน ให้ลบใบนี้แล้วซื้อใหม่", "Price and discount can change · to change a course or its dates, delete this receipt and buy again")}</p>
+          <p className="text-xs text-muted-foreground">{L("แก้ราคาและส่วนลดได้ · จะเปลี่ยนคลาสหรือวันที่เรียน ให้ลบใบนี้แล้วซื้อใหม่", "Price and discount can change · to change a class or its dates, delete this receipt and buy again")}</p>
           <p className="text-right text-lg font-bold text-primary">{L("ยอดชำระ", "Total")} <span data-testid="edit-total">{money(total)}</span> {L("บาท", "THB")}</p>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -31,8 +31,8 @@ const VAED = (menu: MenuKey): Chip[] => [
 const ROWS = (): { label: string; isNew?: boolean; chips: Chip[] }[] => [
   { label: L("ภาพรวม", "Dashboard"), chips: [{ menu: "dashboard", action: "view", label: L("ดู", "View") }, { menu: "money", action: "view", label: L("ดูยอดเงิน", "See money") }] },
   { label: L("นักเรียน", "Students"), chips: VAED("students") },
-  { label: L("คอร์ส", "Courses"), isNew: true, chips: [{ menu: "courses", action: "view", label: L("ดู", "View") }, { menu: "courses", action: "edit", label: L("ขยายเวลา", "Extend") }] },
   { label: L("คลาส", "Classes"), chips: VAED("classes") },
+  { label: L("วันหมดอายุ", "Expiry dates"), isNew: true, chips: [{ menu: "courses", action: "view", label: L("ดู", "View") }, { menu: "courses", action: "edit", label: L("ขยายเวลา", "Extend") }] },
   { label: L("ครู", "Teachers"), chips: VAED("teachers") },
   { label: L("ปฏิทิน", "Calendar"), chips: VAED("calendar") },
   { label: L("ใบเสร็จรับเงิน", "Receipts"), isNew: true, chips: [{ menu: "receipts", action: "view", label: L("ดู", "View") }, { menu: "receipts", action: "add", label: L("ออกใบเสร็จ", "Issue") }, { menu: "receipts", action: "edit", label: L("แก้ไข/ลบใบล่าสุด", "Edit/delete newest") }, { menu: "receipts", action: "delete", label: L("ยกเลิกใบเสร็จ", "Cancel") }] },

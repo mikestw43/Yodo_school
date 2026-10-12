@@ -113,7 +113,7 @@ ${r.cancelled ? `<div class="void"><span>${T("ยกเลิก", "CANCELLED")}
 <div class="ttl"><h1>${T("ใบเสร็จรับเงิน", "Receipt")}</h1><div>${T("เลขที่", "No.")} <b class="mono">${esc(r.no)}</b></div><div>${T("วันที่", "Date")} <b>${d(r.date)}</b></div></div></div>
 <div class="who"><div><div class="lbl">${T("ได้รับเงินจาก", "Received from")}</div><div class="val">${esc(r.payer || name)}</div></div>
 <div><div class="lbl">${T("นักเรียน", "Student")}</div><div class="val">${esc(name)}${s ? ` · <span class="mono">${esc(s.code)}</span>` : ""}</div></div></div>
-<table><thead><tr><th style="width:9mm">#</th><th>${T("รายการ", "Item")}</th><th class="r">${T("อายุคอร์ส", "Course length")}</th><th class="r">${T("จำนวนเงิน", "Amount")}</th></tr></thead>
+<table><thead><tr><th style="width:9mm">#</th><th>${T("รายการ", "Item")}</th><th class="r">${T("ระยะเวลา", "Length")}</th><th class="r">${T("จำนวนเงิน", "Amount")}</th></tr></thead>
 <tbody>${rows}</tbody></table>
 <div class="tot"><div><span>${T("รวม", "Subtotal")}</span><span>${money(r.price)}</span></div>
 ${r.discount ? `<div><span>${T("ส่วนลด", "Discount")}</span><span>− ${money(r.discount)}</span></div>` : ""}

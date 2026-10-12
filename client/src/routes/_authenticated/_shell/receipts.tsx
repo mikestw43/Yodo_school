@@ -4,13 +4,15 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { EmptyState, PageHeader } from "@/components/yodo/ui";
-import { openReceipt, RECEIPTS_CHANGED } from "@/components/yodo/receipt";
+import { RECEIPTS_CHANGED } from "@/components/yodo/receipt";
 import { api, errorText } from "@/lib/api";
 import { fd, fMonthYear, L, useLang } from "@/lib/i18n";
 import { methodLabel, money } from "@/lib/receipt-print";
 import { fullName, useYodo, type Receipt } from "@/lib/yodo-store";
 
 export const Route = createFileRoute("/_authenticated/_shell/receipts")({
+  // the month stays in the address, so Back from a receipt returns to the same month
+  validateSearch: (s: Record<string, unknown>): { month?: string } => (typeof s["month"] === "string" && /^\d{4}-\d{2}$/.test(s["month"]) ? { month: s["month"] } : {}),
   component: ReceiptsPage,
 });
 
@@ -22,7 +24,10 @@ const shift = (m: string, n: number) => { const [y, mo] = m.split("-").map(Numbe
 function ReceiptsPage() {
   const { data } = useYodo();
   const lang = useLang();
-  const [month, setMonth] = useState(thisMonth());
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const month = search.month ?? thisMonth();
+  const setMonth = (m: string) => void navigate({ search: { month: m }, replace: true });
   const [rows, setRows] = useState<Receipt[] | null>(null);
   const [sum, setSum] = useState<Summary | null>(null);
   const load = useCallback(() => {
@@ -56,14 +61,14 @@ function ReceiptsPage() {
             <table className="w-full min-w-[640px] text-sm" data-testid="receipt-table">
               <thead><tr className="bg-muted/50 text-left text-muted-foreground">
                 <th className="px-4 py-3 font-medium">{L("เลขที่", "No.")}</th><th className="px-4 py-3 font-medium">{L("วันที่", "Date")}</th>
-                <th className="px-4 py-3 font-medium">{L("นักเรียน", "Student")}</th><th className="px-4 py-3 font-medium">{L("คอร์ส", "Course")}</th>
+                <th className="px-4 py-3 font-medium">{L("นักเรียน", "Student")}</th><th className="px-4 py-3 font-medium">{L("คลาส", "Class")}</th>
                 <th className="px-4 py-3 font-medium">{L("รับทาง", "Paid by")}</th><th className="px-4 py-3 text-right font-medium">{L("ยอด", "Amount")}</th>
               </tr></thead>
               <tbody>
                 {(rows ?? []).map((r) => {
                   const s = student(r.studentId);
                   return (
-                    <tr key={r.id} onClick={() => openReceipt(r.id)} className={`cursor-pointer border-t border-border/60 hover:bg-muted/40 ${r.cancelled ? "text-muted-foreground line-through" : ""}`}>
+                    <tr key={r.id} onClick={() => navigate({ to: "/receipts/$id", params: { id: r.id } })} className={`cursor-pointer border-t border-border/60 hover:bg-muted/40 ${r.cancelled ? "text-muted-foreground line-through" : ""}`}>
                       <td className="px-4 py-3 font-mono">{r.no}</td><td className="px-4 py-3">{fd(r.date)}</td>
                       <td className="px-4 py-3">{s ? fullName(s) : "-"}</td><td className="px-4 py-3">{r.item}</td>
                       <td className="px-4 py-3">{methodLabel(r.method, lang)}</td><td className="px-4 py-3 text-right font-semibold">{money(r.amount)}</td>

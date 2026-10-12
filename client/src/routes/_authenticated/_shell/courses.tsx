@@ -12,7 +12,7 @@ import { fullName, useYodo } from "@/lib/yodo-store";
 import { L, fd } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/_shell/courses")({
-  head: () => ({ meta: [{ title: "YODO" }, { name: "description", content: L("คอร์สของนักเรียนและวันหมดอายุ", "Students' courses and when they end") }] }),
+  head: () => ({ meta: [{ title: "YODO" }, { name: "description", content: L("คลาสของนักเรียนและวันหมดอายุ", "Students' classes and when they end") }] }),
   component: CoursesPage,
 });
 
@@ -49,7 +49,7 @@ function CoursesPage() {
   ];
   const actions = (r: (typeof rows)[number]) => (
     <div className="flex flex-wrap gap-1.5">
-      {canBuy && r.s!.status === "Active" && <Button size="sm" className="h-8 rounded-full" onClick={() => openBuy(r.s!.id, r.c!.id)}><RefreshCw className="h-3.5 w-3.5" /> {L("ต่อคอร์ส", "Renew")}</Button>}
+      {canBuy && r.s!.status === "Active" && <Button size="sm" className="h-8 rounded-full" onClick={() => openBuy(r.s!.id, r.c!.id)}><RefreshCw className="h-3.5 w-3.5" /> {L("ต่ออายุ", "Renew")}</Button>}
       {canExtend && r.st !== "ended" && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openExtend(r.e.id)}><CalendarPlus className="h-3.5 w-3.5" /> {L("ขยายเวลา", "Extend")}</Button>}
     </div>
   );
@@ -61,7 +61,7 @@ function CoursesPage() {
   );
   return (
     <>
-      <PageHeader title={L("คอร์ส", "Courses")} subtitle={L("นักเรียนทุกคนกับคอร์สที่ซื้อ เรียงจากใกล้หมดก่อน", "Every student's courses, ending soonest first")} />
+      <PageHeader title={L("วันหมดอายุ", "Expiry dates")} subtitle={L("นักเรียนทุกคนกับคลาสที่ซื้อ เรียงจากใกล้หมดก่อน", "Every student's classes, ending soonest first")} />
       <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label={L("แสดง", "Show")}>
         {chips.map(([f, t]) => (
           <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} data-testid={`filter-${f}`}
@@ -72,7 +72,7 @@ function CoursesPage() {
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("ค้นหาชื่อ / คลาส", "Search name / class")} className="rounded-full pl-9" />
         </div>
       </div>
-      {list.length === 0 ? <EmptyState title={filter === "soon" ? L("ไม่มีคอร์สใกล้หมดอายุ", "No courses ending soon") : L("ไม่พบรายการ", "Nothing found")} /> : (
+      {list.length === 0 ? <EmptyState title={filter === "soon" ? L("ไม่มีคลาสใกล้หมดอายุ", "No classes ending soon") : L("ไม่พบรายการ", "Nothing found")} /> : (
         <>
           <div className="space-y-3 md:hidden">
             {pg.pageItems.map((r) => (
@@ -88,7 +88,7 @@ function CoursesPage() {
               <TableHeader>
                 <TableRow className="bg-muted/50 [&>th]:h-12">
                   <TableHead className="text-left">{L("นักเรียน", "Student")}</TableHead>
-                  <TableHead className="text-left">{L("คอร์ส", "Course")}</TableHead>
+                  <TableHead className="text-left">{L("คลาส", "Class")}</TableHead>
                   <TableHead className="text-left">{L("เริ่ม", "Start")}</TableHead>
                   <TableHead className="text-left">{L("หมดอายุ", "Expiry")}</TableHead>
                   <TableHead className="text-left">{L("เหลือ", "Left")}</TableHead>

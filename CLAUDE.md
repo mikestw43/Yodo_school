@@ -175,6 +175,14 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   (`ensureThaiPrefixes` in server lib/prefixes.ts, key `once:prefix-th`, audited as "System"), English/other titles
   (Miss, Master, Mr., Ms., Mrs., เด็กหญิง, น.ส. ...) became the Thai choice by age (under 15 = ด.ญ./ด.ช.; no birthday =
   child, owner: most are ด.ญ.); the importer does the same.
+- 12/10/2026 (mockup EDWWyApdMLcXxo59hcMiR3; owner "1 ok, 2 B, 3 คอร์สไม่มีแล้ว มีแต่ class"): tapping a receipt (list, after
+  buying, a student's history) opens its DETAILS page `/receipts/$id` (routes/_authenticated/_shell/receipts_.$id.tsx:
+  student link, payer, classes with period and discount, totals, remark, method, slip (tap = big), status) with
+  `ReceiptActions` (Edit / Delete for this month's newest, Cancel for older) and "View PDF / Print" (`openReceipt`; the
+  full-screen PDF window now only has Back, TH/EN and Print). The receipts page keeps its month in `?month=`.
+  Menu "คอร์ส" renamed "วันหมดอายุ" / "Expiry dates" (route stays `/courses`, key `courses`) and comes after "คลาส".
+  The word "คอร์ส"/"course" is gone from the screens: it is "คลาส"/"class" everywhere (buy = "ซื้อคลาส", renew =
+  "ต่ออายุ", receipt column "ระยะเวลา"/"Length"); only the school's terms text keeps its own wording.
 - 12/10/2026 speed (owner: clicks felt slow/stuck over the internet): every page change waited for `GET /me` (route
   `beforeLoad`) and the first visit of each page waited for its own script file. Now `getMeCached()` (lib/api.ts) answers
   from the last result and refreshes in the background (401 -> /auth; cleared on sign-in/out), the client is one bundle

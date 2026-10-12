@@ -77,8 +77,8 @@ function Dashboard() {
           <Card className="flex-row items-center gap-4 rounded-3xl border-orange-200 bg-orange-50 p-5 text-orange-900 transition-shadow hover:shadow-soft">
             <Hourglass className="h-6 w-6 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs">{L(`คอร์สที่จะหมดอายุใน ${data.expiryDays} วัน`, `Courses ending within ${data.expiryDays} days`)}</p>
-              <p className="font-display text-2xl font-semibold">{L(`${soon} คอร์ส`, `${soon} ${soon === 1 ? "course" : "courses"}`)}</p>
+              <p className="text-xs">{L(`คลาสที่จะหมดอายุใน ${data.expiryDays} วัน`, `Classes ending within ${data.expiryDays} days`)}</p>
+              <p className="font-display text-2xl font-semibold">{L(`${soon} คลาส`, `${soon} ${soon === 1 ? "class" : "classes"}`)}</p>
             </div>
             <ChevronRight className="h-5 w-5 shrink-0" />
           </Card>
@@ -137,7 +137,7 @@ function Dashboard() {
         </Card>
 
         <Card className="rounded-3xl p-6 lg:col-span-3">
-          <h3 className="font-display text-xl font-semibold">{L("จำนวนนักเรียนต่อคลาส", "Students per class")}</h3>
+          <h3 className="font-display text-xl font-semibold">{L("จำนวนนักเรียนต่ออายุ", "Students per class")}</h3>
           <div className="space-y-3">
             {liveClasses.map((c) => {
               const n = data.enrollments.filter((e) => e.classId === c.id).length;

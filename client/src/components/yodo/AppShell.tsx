@@ -19,8 +19,8 @@ import markImg from "@/assets/yodo-mark.png";
 const NAV = [
   { to: "/", th: "ภาพรวม", en: "Dashboard", icon: Sparkles, key: "dashboard" },
   { to: "/students", th: "นักเรียน", en: "Students", icon: PersonStanding, key: "students" },
-  { to: "/courses", th: "คอร์ส", en: "Courses", icon: Hourglass, key: "courses" },
   { to: "/classes", th: "คลาส", en: "Classes", icon: Music4, key: "classes" },
+  { to: "/courses", th: "วันหมดอายุ", en: "Expiry dates", icon: Hourglass, key: "courses" },
   { to: "/teachers", th: "ครู", en: "Teachers", icon: Crown, key: "teachers" },
   { to: "/calendar", th: "ปฏิทิน", en: "Calendar", icon: CalendarHeart, key: "calendar" },
   { to: "/receipts", th: "ใบเสร็จรับเงิน", en: "Receipts", icon: ReceiptText, key: "receipts" },

@@ -117,7 +117,7 @@ router.post('/courses/buy', requirePerm('students', 'edit'), async (req, res) =>
     const label = `${s.code} ${s.firstName} → ${r.p.item}`;
     await audit(req, r.before ? 'update' : 'insert', 'enrollments', r.after.id, label, r.before, r.after);
     void notifyAll({ kind: 'enrollment', ref: `enrollment:${r.after.id}`, url: '/courses', text: (lg) => ({
-      title: r.before ? (lg === 'th' ? 'ต่อคอร์ส' : 'Course renewed') : (lg === 'th' ? 'ลงทะเบียนคลาสใหม่' : 'New class enrollment'), body: label,
+      title: r.before ? (lg === 'th' ? 'ต่ออายุคลาส' : 'Class renewed') : (lg === 'th' ? 'ลงทะเบียนคลาสใหม่' : 'New class enrollment'), body: label,
     }) });
   }
   if (out.receipt) await audit(req, 'insert', 'receipts', out.receipt.id, `${out.receipt.no} ${s.code}`, null, out.receipt);
@@ -151,7 +151,7 @@ router.post('/courses/extend', requirePerm('courses', 'edit'), async (req, res) 
   ]);
   const label = `${s.code} ${s.firstName} → ${c.name}`;
   await audit(req, 'update', 'enrollments', after.id, `${label} (+${b.reason || 'extend'})`, before, after);
-  void notifyAll({ kind: 'enrollment', ref: `enrollment:${after.id}`, url: '/courses', text: (lg) => ({ title: lg === 'th' ? 'ขยายเวลาคอร์ส' : 'Course extended', body: label }) });
+  void notifyAll({ kind: 'enrollment', ref: `enrollment:${after.id}`, url: '/courses', text: (lg) => ({ title: lg === 'th' ? 'ขยายเวลาคลาส' : 'Class extended', body: label }) });
   res.status(201).json({ enrollment: enrollmentOut(after), purchase: purchaseOut(p, await seesMoney(req)) });
 });
 

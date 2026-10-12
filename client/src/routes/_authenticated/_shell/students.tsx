@@ -155,7 +155,7 @@ function StudentsPage() {
                 {canManage && <div className="mt-3 flex justify-center gap-1.5 border-t border-border/60 pt-3" onClick={(e) => e.stopPropagation()}>
                   {can("students", "edit") && (s.status === "Active" ? (
                     <>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ซื้อคอร์ส", "Buy courses")} aria-label={L(`ซื้อคอร์สให้ ${fullName(s)}`, `Buy courses for ${fullName(s)}`)} onClick={() => openBuy(s.id)}><UserRoundPlus strokeWidth={1.6} /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ซื้อคลาส", "Buy classes")} aria-label={L(`ซื้อคลาสให้ ${fullName(s)}`, `Buy classes for ${fullName(s)}`)} onClick={() => openBuy(s.id)}><UserRoundPlus strokeWidth={1.6} /></Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ปิดใช้งาน", "Disable")} aria-label={L(`ปิดใช้งาน ${fullName(s)}`, `Disable ${fullName(s)}`)} onClick={() => setDisabling(s)}><Ban strokeWidth={1.6} /></Button>
                     </>
                   ) : (
@@ -199,7 +199,7 @@ function StudentsPage() {
                         <div className="flex justify-center gap-1.5">
                           {can("students", "edit") && (s.status === "Active" ? (
                             <>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ซื้อคอร์ส", "Buy courses")} aria-label={L(`ซื้อคอร์สให้ ${fullName(s)}`, `Buy courses for ${fullName(s)}`)} onClick={() => openBuy(s.id)}><UserRoundPlus strokeWidth={1.6} /></Button>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ซื้อคลาส", "Buy classes")} aria-label={L(`ซื้อคลาสให้ ${fullName(s)}`, `Buy classes for ${fullName(s)}`)} onClick={() => openBuy(s.id)}><UserRoundPlus strokeWidth={1.6} /></Button>
                               <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ปิดใช้งาน", "Disable")} aria-label={L(`ปิดใช้งาน ${fullName(s)}`, `Disable ${fullName(s)}`)} onClick={() => setDisabling(s)}><Ban strokeWidth={1.6} /></Button>
                             </>
                           ) : (
@@ -415,7 +415,7 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
             </div>
             {/* Tabs (owner 12/10/2026, mockup WTr5LoqwQAEnSrKDuzZiMi board 2) */}
             <div className="flex gap-1 border-b border-border text-sm font-semibold" role="tablist">
-              {([["info", L("ข้อมูล", "Details")], ["courses", L(`คอร์ส (${courseCount})`, `Courses (${courseCount})`)]] as const).map(([k, t]) => (
+              {([["info", L("ข้อมูล", "Details")], ["courses", L(`คลาส (${courseCount})`, `Classes (${courseCount})`)]] as const).map(([k, t]) => (
                 <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
                   className={`-mb-px border-b-2 px-4 py-2 transition-colors ${tab === k ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{t}</button>
               ))}
@@ -576,8 +576,8 @@ function EnrollDialog({ student: studentProp, enrollment: enrollmentProp, onClos
     <Dialog open={open} onOpenChange={(o) => { if (!o) close(); }}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{L("แก้ไขวันที่คอร์ส", "Fix course dates")}{cls ? ` · ${cls.name}` : ""}</DialogTitle>
-          <DialogDescription>{student && fullName(student)} · {L("ใช้แก้ข้อมูลที่ผิด ไม่เก็บเงิน (ต่อคอร์ส / ขยายเวลา ใช้ปุ่มของมันเอง)", "For corrections, no money (renew / extend have their own buttons)")}</DialogDescription>
+          <DialogTitle>{L("แก้ไขวันที่คลาส", "Fix class dates")}{cls ? ` · ${cls.name}` : ""}</DialogTitle>
+          <DialogDescription>{student && fullName(student)} · {L("ใช้แก้ข้อมูลที่ผิด ไม่เก็บเงิน (ต่ออายุ / ขยายเวลา ใช้ปุ่มของมันเอง)", "For corrections, no money (renew / extend have their own buttons)")}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <Field label={L("วันที่ซื้อ", "Purchase date")} required error={errors.purchaseDate}>

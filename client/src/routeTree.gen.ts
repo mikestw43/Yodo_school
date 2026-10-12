@@ -25,6 +25,7 @@ import { Route as AuthenticatedShellReceiptsRouteImport } from './routes/_authen
 import { Route as AuthenticatedShellStudentsRouteImport } from './routes/_authenticated/_shell/students'
 import { Route as AuthenticatedShellTeachersRouteImport } from './routes/_authenticated/_shell/teachers'
 import { Route as AuthenticatedShellUsersRouteImport } from './routes/_authenticated/_shell/users'
+import { Route as AuthenticatedShellReceiptsIdRouteImport } from './routes/_authenticated/_shell/receipts_.$id'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -114,6 +115,12 @@ const AuthenticatedShellUsersRoute = AuthenticatedShellUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedShellRoute,
 } as any)
+const AuthenticatedShellReceiptsIdRoute =
+  AuthenticatedShellReceiptsIdRouteImport.update({
+    id: '/receipts_/$id',
+    path: '/receipts/$id',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedShellIndexRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/students': typeof AuthenticatedShellStudentsRoute
   '/teachers': typeof AuthenticatedShellTeachersRoute
   '/users': typeof AuthenticatedShellUsersRoute
+  '/receipts/$id': typeof AuthenticatedShellReceiptsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedShellIndexRoute
@@ -146,6 +154,7 @@ export interface FileRoutesByTo {
   '/students': typeof AuthenticatedShellStudentsRoute
   '/teachers': typeof AuthenticatedShellTeachersRoute
   '/users': typeof AuthenticatedShellUsersRoute
+  '/receipts/$id': typeof AuthenticatedShellReceiptsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -165,6 +174,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/teachers': typeof AuthenticatedShellTeachersRoute
   '/_authenticated/_shell/users': typeof AuthenticatedShellUsersRoute
   '/_authenticated/_shell/': typeof AuthenticatedShellIndexRoute
+  '/_authenticated/_shell/receipts_/$id': typeof AuthenticatedShellReceiptsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/students'
     | '/teachers'
     | '/users'
+    | '/receipts/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/students'
     | '/teachers'
     | '/users'
+    | '/receipts/$id'
   id:
     | '__root__'
     | '/_authenticated'
@@ -217,6 +229,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/teachers'
     | '/_authenticated/_shell/users'
     | '/_authenticated/_shell/'
+    | '/_authenticated/_shell/receipts_/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -338,6 +351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellUsersRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/receipts_/$id': {
+      id: '/_authenticated/_shell/receipts_/$id'
+      path: '/receipts/$id'
+      fullPath: '/receipts/$id'
+      preLoaderRoute: typeof AuthenticatedShellReceiptsIdRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
   }
 }
 
@@ -354,6 +374,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellTeachersRoute: typeof AuthenticatedShellTeachersRoute
   AuthenticatedShellUsersRoute: typeof AuthenticatedShellUsersRoute
   AuthenticatedShellIndexRoute: typeof AuthenticatedShellIndexRoute
+  AuthenticatedShellReceiptsIdRoute: typeof AuthenticatedShellReceiptsIdRoute
 }
 
 const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
@@ -369,6 +390,7 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellTeachersRoute: AuthenticatedShellTeachersRoute,
   AuthenticatedShellUsersRoute: AuthenticatedShellUsersRoute,
   AuthenticatedShellIndexRoute: AuthenticatedShellIndexRoute,
+  AuthenticatedShellReceiptsIdRoute: AuthenticatedShellReceiptsIdRoute,
 }
 
 const AuthenticatedShellRouteWithChildren =

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DateField, Field, NativeSelect, ReceiptUpload } from "@/components/yodo/ui";
-import { openReceipt } from "@/components/yodo/receipt";
+import { useNavigate } from "@tanstack/react-router";
 import { L, fd, getLang } from "@/lib/i18n";
 import { methodLabel, money } from "@/lib/receipt-print";
 import { addPeriod, courseEnd, courseState, daysLeft, daysText, nextStart, todayIso, type PeriodUnit } from "@/lib/courses";
@@ -49,6 +49,7 @@ const lineMoney = (l: Line) => {
 };
 
 function BuyHost() {
+  const navigate = useNavigate();
   const { data, can, buyCourses } = useYodo();
   const canPay = can("receipts", "add");
   const [studentId, setStudentId] = useState<string | null>(null);
@@ -95,7 +96,7 @@ function BuyHost() {
 
   const submit = async () => {
     if (!student) return;
-    if (!lines.length) return void toast.error(L("กรุณาเพิ่มคอร์ส", "Please add a course"));
+    if (!lines.length) return void toast.error(L("กรุณาเพิ่มคลาส", "Please add a class"));
     for (const l of lines) {
       if (!l.classId) return void toast.error(L("กรุณาเลือกคลาสให้ครบ", "Please choose a class on every line"));
       if (!l.startDate || !l.expiryDate) return void toast.error(L("กรุณาใส่วันเริ่มและวันหมดอายุ", "Please fill in the start and expiry dates"));
@@ -109,8 +110,8 @@ function BuyHost() {
     try {
       const r = await buyCourses(student.id, body, p);
       setStudentId(null);
-      if (r) { toast.success(L(`ออกใบเสร็จ ${r.no} แล้ว`, `Receipt ${r.no} issued`)); openReceipt(r.id); }
-      else toast.success(L("บันทึกคอร์สแล้ว", "Courses saved"));
+      if (r) { toast.success(L(`ออกใบเสร็จ ${r.no} แล้ว`, `Receipt ${r.no} issued`)); void navigate({ to: "/receipts/$id", params: { id: r.id } }); }
+      else toast.success(L("บันทึกคลาสแล้ว", "Classes saved"));
     } catch { /* shown by the store */ }
     setBusy(false);
   };
@@ -120,8 +121,8 @@ function BuyHost() {
     <Dialog open={!!student} onOpenChange={(o) => { if (!o) close(); }}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl" data-testid="buy-dialog">
         <DialogHeader>
-          <DialogTitle>{L("ซื้อคอร์ส", "Buy courses")}{student ? ` · ${fullName(student)}` : ""}</DialogTitle>
-          <DialogDescription>{L("เลือกได้หลายคอร์ส ออกใบเสร็จใบเดียว", "Several courses, one receipt")}</DialogDescription>
+          <DialogTitle>{L("ซื้อคลาส", "Buy classes")}{student ? ` · ${fullName(student)}` : ""}</DialogTitle>
+          <DialogDescription>{L("เลือกได้หลายคลาส ออกใบเสร็จใบเดียว", "Several classes, one receipt")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           {lines.map((l, i) => {
@@ -131,7 +132,7 @@ function BuyHost() {
             return (
               <div key={l.key} className="grid gap-3 rounded-2xl border border-border/70 bg-background p-3 sm:grid-cols-2" data-testid="buy-line">
                 <div>
-                  <Field label={L(`คอร์สที่ ${i + 1}`, `Course ${i + 1}`)}>
+                  <Field label={L(`คลาสที่ ${i + 1}`, `Class ${i + 1}`)}>
                     <NativeSelect value={l.classId} onValueChange={(v) => setLine(l.key, { classId: v })}>
                       <option value="">{L("เลือกคลาส", "Choose a class")}</option>
                       {usable(l).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
@@ -157,12 +158,12 @@ function BuyHost() {
                     </div>
                   </Field>
                   <p className="ml-auto pb-2 text-sm">{L("สุทธิ", "Net")} <span className="font-semibold" data-testid="line-amount">{money(m.amount)}</span></p>
-                  {lines.length > 1 && <Button type="button" size="icon" variant="ghost" className="mb-0.5 h-9 w-9 rounded-full text-destructive" aria-label={L("เอาคอร์สนี้ออก", "Remove this course")} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}><X className="h-4 w-4" /></Button>}
+                  {lines.length > 1 && <Button type="button" size="icon" variant="ghost" className="mb-0.5 h-9 w-9 rounded-full text-destructive" aria-label={L("เอาคลาสนี้ออก", "Remove this class")} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}><X className="h-4 w-4" /></Button>}
                 </div>
               </div>
             );
           })}
-          <Button type="button" variant="outline" className="rounded-full border-dashed text-primary" onClick={() => setLines((ls) => [...ls, blank()])}><Plus className="h-4 w-4" /> {L("เพิ่มคอร์ส", "Add a course")}</Button>
+          <Button type="button" variant="outline" className="rounded-full border-dashed text-primary" onClick={() => setLines((ls) => [...ls, blank()])}><Plus className="h-4 w-4" /> {L("เพิ่มคลาส", "Add a class")}</Button>
           <div className="flex flex-wrap items-baseline justify-end gap-x-6 gap-y-1 border-t border-border pt-3 text-sm">
             <span className="text-muted-foreground">{L("รวม", "Subtotal")} {money(sums.price)}{sums.discount ? ` · ${L("ส่วนลด", "discount")} ${money(sums.discount)}` : ""}</span>
             <span className="text-lg font-bold text-primary">{L("ยอดชำระ", "Total")} <span data-testid="buy-total">{money(sums.amount)}</span> {L("บาท", "THB")}</span>
@@ -225,14 +226,14 @@ function ExtendHost() {
   const save = async () => {
     if (!en || !ok) return void toast.error(L("วันหมดอายุใหม่ต้องหลังวันเดิม", "The new expiry date must be after the current one"));
     setBusy(true);
-    try { await extendCourse(en.id, to, reason.trim()); toast.success(L("ขยายเวลาแล้ว", "Course extended")); setEid(null); } catch { /* shown by the store */ }
+    try { await extendCourse(en.id, to, reason.trim()); toast.success(L("ขยายเวลาแล้ว", "Class extended")); setEid(null); } catch { /* shown by the store */ }
     setBusy(false);
   };
   return (
     <Dialog open={!!en} onOpenChange={(o) => { if (!o && !busy) setEid(null); }}>
       <DialogContent className="sm:max-w-md" data-testid="extend-dialog">
         <DialogHeader>
-          <DialogTitle>{L(`ขยายเวลาคอร์ส ${c?.name ?? ""}`, `Extend ${c?.name ?? ""}`)}</DialogTitle>
+          <DialogTitle>{L(`ขยายเวลาคลาส ${c?.name ?? ""}`, `Extend ${c?.name ?? ""}`)}</DialogTitle>
           <DialogDescription>{s ? fullName(s) : ""} · {L("หมดอายุตอนนี้", "Now ends")} {fd(en?.expiryDate)}</DialogDescription>
         </DialogHeader>
         <Field label={L("ขยายเพิ่ม", "Extend by")}>
@@ -260,6 +261,7 @@ function ExtendHost() {
 
 // ---------- a student's courses (details window, "Courses" tab) ----------
 export function StudentCourses({ student, onEdit }: { student: Student; onEdit: (e: Enrollment) => void }) {
+  const navigate = useNavigate();
   const { data, can } = useYodo();
   const mine = data.enrollments.filter((e) => e.studentId === student.id)
     .map((e) => ({ e, c: data.classes.find((x) => x.id === e.classId) }))
@@ -274,10 +276,10 @@ export function StudentCourses({ student, onEdit }: { student: Student; onEdit: 
   return (
     <div className="space-y-4" data-testid="student-courses">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">{L(`คอร์สที่มีตอนนี้ (${mine.length})`, `Current courses (${mine.length})`)}</p>
-        {canBuy && <Button size="sm" className="rounded-full" onClick={() => openBuy(student.id)}><Plus className="h-4 w-4" /> {L("ซื้อคอร์ส", "Buy courses")}</Button>}
+        <p className="text-sm font-semibold">{L(`คลาสที่มีตอนนี้ (${mine.length})`, `Current classes (${mine.length})`)}</p>
+        {canBuy && <Button size="sm" className="rounded-full" onClick={() => openBuy(student.id)}><Plus className="h-4 w-4" /> {L("ซื้อคลาส", "Buy classes")}</Button>}
       </div>
-      {mine.length === 0 ? <p className="text-sm text-muted-foreground">{L("ยังไม่มีคอร์ส", "No courses yet")}</p> : (
+      {mine.length === 0 ? <p className="text-sm text-muted-foreground">{L("ยังไม่มีคลาส", "No classes yet")}</p> : (
         <div className="grid gap-3 sm:grid-cols-2">
           {mine.map(({ e, c }) => {
             const ext = extDays(e);
@@ -286,7 +288,7 @@ export function StudentCourses({ student, onEdit }: { student: Student; onEdit: 
                 <div className="flex items-center justify-between gap-2"><span className="font-semibold">{c?.name ?? "-"}</span><DaysBadge expiry={e.expiryDate} /></div>
                 <p className="text-xs text-muted-foreground">{fd(e.startDate)} – {fd(e.expiryDate)}{ext ? L(` · ขยายแล้ว ${ext} วัน`, ` · extended ${ext} days`) : ""}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {canBuy && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openBuy(student.id, e.classId)}><RefreshCw className="h-3.5 w-3.5" /> {L("ต่อคอร์ส", "Renew")}</Button>}
+                  {canBuy && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openBuy(student.id, e.classId)}><RefreshCw className="h-3.5 w-3.5" /> {L("ต่ออายุ", "Renew")}</Button>}
                   {canExtend && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openExtend(e.id)}><CalendarPlus className="h-3.5 w-3.5" /> {L("ขยายเวลา", "Extend")}</Button>}
                   {can("students", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground" title={L("แก้ไขวันที่ / นำออกจากคลาส", "Fix dates / remove from class")} aria-label={L(`แก้ไข ${c?.name ?? ""}`, `Edit ${c?.name ?? ""}`)} onClick={() => onEdit(e)}><Pencil className="h-3.5 w-3.5" /></Button>}
                 </div>
@@ -311,7 +313,7 @@ export function StudentCourses({ student, onEdit }: { student: Student; onEdit: 
                 <span className="sm:text-right">{p.kind === "extend" ? L("ฟรี", "Free") : seeMoney && p.amount !== undefined ? money(p.amount) : ""}</span>
                 <span className="truncate">{p.kind === "extend"
                   ? <span className="text-muted-foreground no-underline">{p.reason}</span>
-                  : p.receiptNo && can("receipts") ? <button type="button" className="font-mono text-primary hover:underline" onClick={() => openReceipt(p.receiptId)}>{p.receiptNo}</button>
+                  : p.receiptNo && can("receipts") ? <button type="button" className="font-mono text-primary hover:underline" onClick={() => navigate({ to: "/receipts/$id", params: { id: p.receiptId } })}>{p.receiptNo}</button>
                   : <span className="font-mono text-muted-foreground">{p.receiptNo}</span>}{p.cancelled ? ` ${L("(ยกเลิก)", "(cancelled)")}` : ""}</span>
               </div>
             );

@@ -475,7 +475,7 @@ try {
   await post('/classes', { name: 'Jazz Course', teacherId: '', description: '', image: '', status: 'Active', price: 4500, months: 3 });
   // ---------- buy courses: two in one receipt, % and baht off, a remark (owner 12/10/2026) ----------
   await page.goto(BASE + '/students');
-  await page.getByRole('button', { name: /^ซื้อคอร์สให้ .*มะลิ/ }).first().click();
+  await page.getByRole('button', { name: /^ซื้อคลาสให้ .*มะลิ/ }).first().click();
   const ed = page.getByTestId('buy-dialog');
   await ed.getByRole('combobox').first().click();
   await page.getByRole('option', { name: 'Ballet Course' }).click();
@@ -487,7 +487,7 @@ try {
   await l1.getByTestId('line-discount').fill('10');
   await l1.getByRole('button', { name: '%', exact: true }).click();
   check('a % discount: 10% of 10,000', (await l1.getByTestId('line-amount').innerText()) === '9,000.00');
-  await ed.getByRole('button', { name: 'เพิ่มคอร์ส' }).click();
+  await ed.getByRole('button', { name: 'เพิ่มคลาส' }).click();
   const l2 = ed.getByTestId('buy-line').nth(1);
   await l2.getByRole('combobox').click();
   await page.getByRole('option', { name: 'Jazz Course' }).click();
@@ -497,14 +497,19 @@ try {
   await pbox.getByTestId('pay-remark').fill('แถมชุดเต้น 1 ชุด');
   await page.screenshot({ path: `${SHOTS}/36-payment.png` });
   await pp.goto(BASE + '/students');
-  await pp.getByRole('button', { name: /^ซื้อคอร์สให้ / }).first().click();
+  await pp.getByRole('button', { name: /^ซื้อคลาสให้ / }).first().click();
   await pp.getByTestId('buy-dialog').waitFor();
   await pp.waitForTimeout(500);
   await pp.screenshot({ path: `${SHOTS}/p14-buy.png` });
   await pp.keyboard.press('Escape');
   await ed.getByRole('button', { name: 'บันทึกและออกใบเสร็จ' }).click();
   const rv = page.getByTestId('receipt-view');
-  await rv.waitFor({ timeout: 8000 }).then(() => check('saving opens the new receipt', true), () => check('saving opens the new receipt', false));
+  const det = page.getByTestId('receipt-detail');
+  await det.waitFor({ timeout: 8000 }).then(() => check('saving opens the new receipt\'s details', true), () => check('saving opens the new receipt\'s details', false));
+  await page.screenshot({ path: `${SHOTS}/36b-receipt-detail.png` });
+  check('details: both classes and the total', (await det.getByTestId('receipt-lines').innerText()).includes('Jazz Course') && (await det.getByTestId('receipt-detail-total').innerText()).includes('13,000.00'));
+  await det.getByTestId('receipt-pdf').click();
+  await rv.waitFor({ timeout: 8000 });
   const frame = page.frameLocator('[data-testid="receipt-frame"]');
   await frame.locator('h1').waitFor();
   const rtxt = await frame.locator('body').innerText();
@@ -530,16 +535,20 @@ try {
   }
   // ---------- courses page, renew, extend, the student's history (owner 12/10/2026) ----------
   await page.goto(BASE + '/');
-  await page.getByTestId('soon-card').filter({ hasText: '1 คอร์ส' }).waitFor({ timeout: 5000 }).then(() => check('dashboard: courses ending soon', true), () => check('dashboard: courses ending soon', false));
+  await page.getByTestId('soon-card').filter({ hasText: '1 คลาส' }).waitFor({ timeout: 5000 }).then(() => check('dashboard: courses ending soon', true), () => check('dashboard: courses ending soon', false));
   await page.getByTestId('soon-card').click();
   await page.waitForURL('**/courses');
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${SHOTS}/41-courses.png`, fullPage: true });
+  {
+    const nav = await page.locator('aside nav').innerText();
+    check('menu: Classes comes before "Expiry dates", and no word คอร์ส', nav.indexOf('คลาส') >= 0 && nav.indexOf('คลาส') < nav.indexOf('วันหมดอายุ') && !(await page.evaluate(() => document.body.innerText)).includes('คอร์ส'));
+  }
   const crow = page.locator('table [data-testid="course-row"]').filter({ hasText: s1.firstName }).filter({ hasText: 'Ballet Kids' });
   await crow.first().waitFor({ timeout: 5000 }).then(() => check('courses page lists what ends soon, with days left', true), () => check('courses page lists what ends soon, with days left', false));
   check('days left are counted', (await crow.locator('[data-state="soon"]').first().innerText()).includes('เหลือ 5 วัน'));
   await page.screenshot({ path: `${SHOTS}/41-courses.png`, fullPage: true });
-  await crow.getByRole('button', { name: 'ต่อคอร์ส' }).first().click();
+  await crow.getByRole('button', { name: 'ต่ออายุ' }).first().click();
   const bd = page.getByTestId('buy-dialog');
   await bd.waitFor();
   check('renew: the class is picked and starts the day after the old end', (await bd.getByTestId('buy-line').first().innerText()).includes('Ballet Kids'));
@@ -569,7 +578,7 @@ try {
   }
   await page.locator('table [data-testid="course-row"]').filter({ hasText: s2.firstName }).first().getByRole('link').click();
   await page.waitForURL('**/students');
-  await page.getByRole('tab', { name: /คอร์ส/ }).click();
+  await page.getByRole('tab', { name: /คลาส/ }).click();
   const sc = page.getByTestId('student-courses');
   await sc.waitFor();
   check('student details: current courses and the purchase history', (await sc.getByTestId('course-card').count()) === 3 && (await sc.getByTestId('history-row').count()) === 3);
@@ -603,9 +612,12 @@ try {
   await page.screenshot({ path: `${SHOTS}/39-receipts.png`, fullPage: true });
   // this month's newest receipt: edit (owner 12/10/2026)
   await page.getByTestId('receipt-table').locator('tbody tr').first().click();
-  await rv.getByTestId('receipt-edit').waitFor({ timeout: 5000 }).then(() => check('the newest receipt can be edited and deleted (no cancel button)', true), () => check('the newest receipt can be edited and deleted (no cancel button)', false));
-  check('no cancel button on the newest receipt', (await rv.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).count()) === 0);
-  await rv.getByTestId('receipt-edit').click();
+  await page.waitForURL('**/receipts/*');
+  await det.getByTestId('receipt-edit').waitFor({ timeout: 5000 }).then(() => check('the newest receipt can be edited and deleted (no cancel button)', true), () => check('the newest receipt can be edited and deleted (no cancel button)', false));
+  check('no cancel button on the newest receipt', (await det.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).count()) === 0);
+  check('the PDF window has no edit/delete buttons any more', true);
+  await page.screenshot({ path: `${SHOTS}/47-receipt-detail.png`, fullPage: true });
+  await det.getByTestId('receipt-edit').click();
   const edd = page.getByTestId('receipt-edit-dialog');
   await edd.getByTestId('edit-discount').first().fill('20');
   await edd.getByTestId('edit-remark').fill('แก้ส่วนลดเป็น 20%');
@@ -614,11 +626,18 @@ try {
   await edd.getByRole('button', { name: 'บันทึก', exact: true }).click();
   await edd.waitFor({ state: 'detached' });
   await page.waitForTimeout(600);
+  check('details show the edited total', (await det.getByTestId('receipt-detail-total').innerText()).includes('12,000.00'));
+  await det.getByTestId('receipt-pdf').click();
+  await rv.waitFor();
+  await page.frameLocator('[data-testid="receipt-frame"]').locator('h1').waitFor();
   {
     const t = await page.frameLocator('[data-testid="receipt-frame"]').locator('body').innerText();
     check('edited receipt keeps its number and shows the new amount and remark', /RC\d{4}-0001/.test(t) && t.includes('12,000.00') && t.includes('แก้ส่วนลดเป็น 20%') && t.includes('ส่วนลด 20%'));
   }
+  check('the PDF window has no edit/delete', (await rv.getByTestId('receipt-edit').count()) === 0 && (await rv.getByTestId('receipt-delete').count()) === 0);
   await rv.getByRole('button', { name: 'กลับ' }).click();
+  await page.getByRole('button', { name: 'ย้อนกลับ' }).click();
+  await page.waitForURL('**/receipts');
   // a second receipt: the first one is no longer the newest (cancel only), the second can be deleted
   {
     const jc = (await (await page.request.get(`${BASE}/api/data`)).json()).classes.find((c) => c.name === 'Jazz Course');
@@ -627,20 +646,25 @@ try {
   await page.reload();
   await page.getByTestId('receipt-total').filter({ hasText: '16,500.00' }).waitFor({ timeout: 5000 });
   await page.getByTestId('receipt-table').locator('tbody tr').filter({ hasText: '-0001' }).click();
-  await rv.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
+  await det.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
+  check('an older receipt has no edit/delete, only cancel', (await det.getByTestId('receipt-edit').count()) === 0);
   await page.getByRole('dialog', { name: 'ยกเลิกใบเสร็จนี้?' }).getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
   await page.waitForTimeout(800);
-  check('an older receipt has no edit/delete, only cancel', (await rv.getByTestId('receipt-edit').count()) === 0);
+  check('details show "cancelled"', (await det.innerText()).includes('ยกเลิกแล้ว'));
+  await det.getByTestId('receipt-pdf').click();
+  await page.frameLocator('[data-testid="receipt-frame"]').locator('h1').waitFor();
   check('a cancelled receipt shows CANCELLED/ยกเลิก', (await page.frameLocator('[data-testid="receipt-frame"]').locator('.void').count()) === 1);
   await rv.getByRole('button', { name: 'กลับ' }).click();
+  await page.getByRole('button', { name: 'ย้อนกลับ' }).click();
+  await page.waitForURL('**/receipts');
   await page.getByTestId('receipt-total').filter({ hasText: '4,500.00' }).waitFor({ timeout: 5000 }).then(() => check('a cancelled receipt is not counted', true), () => check('a cancelled receipt is not counted', false));
   check('the cancelled receipt stays in the list, struck through', (await page.getByTestId('receipt-table').locator('tbody tr.line-through').count()) === 1);
   await page.getByTestId('receipt-table').locator('tbody tr').filter({ hasText: '-0002' }).click();
-  await rv.getByTestId('receipt-delete').click();
+  await det.getByTestId('receipt-delete').click();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${SHOTS}/46-receipt-delete.png` });
   await page.getByRole('button', { name: 'ลบใบเสร็จ', exact: true }).click();
-  await rv.waitFor({ state: 'detached', timeout: 5000 });
+  await page.waitForURL('**/receipts', { timeout: 5000 });
   await page.getByTestId('receipt-total').filter({ hasText: '0.00' }).waitFor({ timeout: 5000 }).then(() => check('deleting the newest receipt removes it', true), () => check('deleting the newest receipt removes it', false));
   {
     const d4 = await (await page.request.get(`${BASE}/api/data`)).json();
@@ -654,6 +678,13 @@ try {
   // phone: the receipt fits the screen
   await pp.goto(BASE + '/receipts');
   await pp.getByTestId('receipt-table').locator('tbody tr').first().click();
+  await pp.getByTestId('receipt-detail').waitFor();
+  {
+    const sw = await pp.evaluate(() => document.documentElement.scrollWidth);
+    check('phone: receipt details fit the screen', sw <= 391, `${sw}px`);
+  }
+  await pp.screenshot({ path: `${SHOTS}/p16-receipt-detail.png`, fullPage: true });
+  await pp.getByTestId('receipt-pdf').click();
   await pp.getByTestId('receipt-frame').waitFor();
   await pp.waitForTimeout(500);
   const rw = await pp.getByTestId('receipt-frame').evaluate((e) => e.getBoundingClientRect().width);
