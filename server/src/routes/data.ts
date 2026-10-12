@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import type { DanceClass, Enrollment, Position, Schedule, Student, Teacher, User } from '@prisma/client';
 import { prisma } from '../lib/db.js';
 import { bad, notFound } from '../lib/http.js';
-import { MENU_KEYS, can, displayName, requireAuth, requirePerm } from '../lib/auth.js';
+import { MENU_KEYS, can, displayName, isOwner, requireAuth, requireOwner, requirePerm } from '../lib/auth.js';
 import { audit } from '../lib/audit.js';
 import { storeImage } from '../lib/images.js';
 import { isDate } from '../lib/dates.js';
@@ -30,13 +30,13 @@ const teacherOut = (t: Teacher) => ({
   id: t.id, image: t.image, prefix: t.prefix, firstName: t.firstName, lastName: t.lastName, nickname: t.nickname, phone: t.phone,
   email: t.email, lineId: t.lineId, specializations: list(t.specializations), status: t.status,
 });
-const classOut = (c: DanceClass) => ({ id: c.id, name: c.name, teacherId: c.teacherId ?? '', description: c.description, image: c.image, status: c.status, disabled: c.disabled, price: c.price });
+const classOut = (c: DanceClass) => ({ id: c.id, name: c.name, teacherId: c.teacherId ?? '', description: c.description, image: c.image, status: c.status, disabled: c.disabled, price: c.price, months: c.months });
 const enrollmentOut = (e: Enrollment) => ({
   id: e.id, studentId: e.studentId, classId: e.classId, joinedAt: iso(e.joinedAt), purchaseDate: e.purchaseDate, startDate: e.startDate,
   expiryDate: e.expiryDate, remark: e.remark, receiptImage: e.receiptImage,
 });
 const scheduleOut = (s: Schedule) => ({ id: s.id, classId: s.classId, date: s.date, start: s.startTime, end: s.endTime });
-const positionOut = (p: Position) => ({ id: p.id, name: p.name, description: p.description, isSystem: p.isSystem });
+const positionOut = (p: Position) => ({ id: p.id, name: p.name, description: p.description, isSystem: p.isSystem, kind: p.kind });
 const userOut = (u: User) => ({
   id: u.id, firstName: u.firstName, lastName: u.lastName, nickname: u.nickname, username: u.username, password: '', email: u.email,
   phone: u.phone, positionId: u.positionId ?? '', image: u.image, status: u.status, createdAt: iso(u.createdAt), superadmin: u.role === 'superadmin',
@@ -66,6 +66,10 @@ router.get('/data', requireAuth, async (req, res) => {
   }
   // Staff accounts are only listed to those who may see the Users page (the menu needs everyone's own name only).
   const seeUsers = await can(req.user, 'users', 'view');
+  // The SuperAdmin (Dev) account and its role are hidden from everyone else (owner 12/10/2026).
+  const dev = req.user!.role === 'superadmin';
+  const shownPositions = positions.filter((p) => dev || p.kind !== 'superadmin');
+  const shownUsers = users.filter((u) => u.id === req.user!.id || dev || u.role !== 'superadmin');
   res.json({
     students: live.map(studentOut),
     deletedStudentCodes: students.filter((s) => s.deletedAt).map((s) => s.code),
@@ -74,9 +78,10 @@ router.get('/data', requireAuth, async (req, res) => {
     enrollments: enrollments.filter((e) => liveIds.has(e.studentId)).map(enrollmentOut),
     schedules: schedules.map(scheduleOut),
     scheduleStudents: scheduleStudents.filter((x) => liveIds.has(x.studentId)),
-    positions: positions.map(positionOut),
-    systemUsers: (seeUsers ? users : users.filter((u) => u.id === req.user!.id)).map(userOut),
-    permissions,
+    positions: shownPositions.map(positionOut),
+    systemUsers: (seeUsers ? shownUsers : users.filter((u) => u.id === req.user!.id)).map(userOut),
+    permissions: Object.fromEntries(Object.entries(permissions).filter(([pid]) => shownPositions.some((p) => p.id === pid))),
+    owner: await isOwner(req.user),
   });
 });
 
@@ -244,6 +249,7 @@ router.delete('/teachers/:id', requirePerm('teachers', 'delete'), async (req, re
 const classBody = z.object({
   name: text(200).min(1), teacherId: z.union([id, z.literal('')]), description: text(2000), image: img,
   status: z.enum(['Active', 'Inactive']), price: z.number().min(0).max(10_000_000).nullable(),
+  months: z.number().int().min(1).max(120).default(1),
 });
 async function classData(b: z.infer<typeof classBody>) {
   if (b.teacherId) await liveTeacher(b.teacherId);
@@ -333,27 +339,33 @@ async function editablePosition(pid: string) {
   if (p.isSystem) throw bad('system_position');
   return p;
 }
-router.post('/positions', requirePerm('users', 'add'), async (req, res) => {
+// Built-in roles (Partner, Admin) keep their kind; only roles the Owner added can be deleted.
+async function deletablePosition(pid: string) {
+  const p = await editablePosition(pid);
+  if (p.kind) throw bad('builtin_role');
+  return p;
+}
+router.post('/positions', requireOwner, async (req, res) => {
   const { id: pid, ...b } = positionBody.extend({ id: id.optional() }).parse(req.body);
   const p = await prisma.position.create({ data: { ...(pid ? { id: pid } : {}), ...b } });
   await audit(req, 'insert', 'positions', p.id, p.name, null, p);
   res.status(201).json(positionOut(p));
 });
-router.put('/positions/:id', requirePerm('users', 'edit'), async (req, res) => {
+router.put('/positions/:id', requireOwner, async (req, res) => {
   const before = await editablePosition(param(req));
   const after = await prisma.position.update({ where: { id: before.id }, data: positionBody.parse(req.body) });
   await audit(req, 'update', 'positions', after.id, after.name, before, after);
   res.json(positionOut(after));
 });
-router.delete('/positions/:id', requirePerm('users', 'delete'), async (req, res) => {
-  const p = await editablePosition(param(req));
+router.delete('/positions/:id', requireOwner, async (req, res) => {
+  const p = await deletablePosition(param(req));
   if (await prisma.user.count({ where: { positionId: p.id, deletedAt: null } })) throw bad('position_in_use');
   await prisma.$transaction([prisma.positionPermission.deleteMany({ where: { positionId: p.id } }), prisma.position.delete({ where: { id: p.id } })]);
   await audit(req, 'delete', 'positions', p.id, p.name, p, null);
   res.json({ ok: true });
 });
 const flags = z.object({ view: z.boolean(), add: z.boolean(), edit: z.boolean(), delete: z.boolean() });
-router.put('/positions/:id/permissions', requirePerm('users', 'edit'), async (req, res) => {
+router.put('/positions/:id/permissions', requireOwner, async (req, res) => {
   const p = await editablePosition(param(req));
   const body = z.record(z.enum(MENU_KEYS), flags).parse(req.body);
   for (const [menuKey, f] of Object.entries(body)) {
@@ -371,8 +383,12 @@ const userBody = z.object({
   firstName: text(100), lastName: text(100), nickname: text(100), username, password: z.string().max(100),
   email: optEmail, phone: optPhone, positionId: z.union([id, z.literal('')]), image: img,
 });
-async function userData(b: z.infer<typeof userBody>, selfId?: string) {
-  if (b.positionId && !(await prisma.position.findUnique({ where: { id: b.positionId } }))) throw bad('unknown_position');
+async function userData(b: z.infer<typeof userBody>, selfId?: string, req?: Request, keepPositionId?: string | null) {
+  const pos = b.positionId ? await prisma.position.findUnique({ where: { id: b.positionId } }) : null;
+  if (b.positionId && !pos) throw bad('unknown_position');
+  const changed = !!pos && pos.id !== keepPositionId;
+  if (changed && pos.kind === 'superadmin' && req?.user?.role !== 'superadmin') throw bad('unknown_position');
+  if (changed && pos.isSystem && req && !(await isOwner(req.user))) throw bad('owner_only');
   const taken = await prisma.user.findFirst({ where: { username: b.username, ...(selfId ? { id: { not: selfId } } : {}) } });
   if (taken) throw bad('username_taken');
   return {
@@ -387,7 +403,7 @@ async function liveUser(uid: string) {
 }
 router.post('/users', requirePerm('users', 'add'), async (req, res) => {
   const b = userBody.extend({ password: z.string().min(6).max(100) }).parse(req.body);
-  const u = await prisma.user.create({ data: { ...(await userData(b)), passwordHash: await bcrypt.hash(b.password, 12) } });
+  const u = await prisma.user.create({ data: { ...(await userData(b, undefined, req)), passwordHash: await bcrypt.hash(b.password, 12) } });
   await audit(req, 'insert', 'profiles', u.id, u.username, null, u);
   res.status(201).json(userOut(u));
 });
@@ -402,7 +418,7 @@ router.put('/users/:id', requirePerm('users', 'edit'), async (req, res) => {
   }
   const after = await prisma.user.update({
     where: { id: before.id },
-    data: { ...(await userData(b, before.id)), ...(b.password ? { passwordHash: await bcrypt.hash(b.password, 12), tokenVersion: { increment: 1 } } : {}) },
+    data: { ...(await userData(b, before.id, req, before.positionId)), ...(b.password ? { passwordHash: await bcrypt.hash(b.password, 12), tokenVersion: { increment: 1 } } : {}) },
   });
   if (b.password) await dropPins(after.id, after.id === req.user!.id ? req : undefined);
   await audit(req, 'update', 'profiles', after.id, after.username, before, after);

@@ -390,6 +390,90 @@ try {
   await page.screenshot({ path: `${SHOTS}/30-sign-dialog.png` });
   await page.keyboard.press('Escape');
 
+  // ---------- roles, company settings, payment and receipts (owner 12/10/2026) ----------
+  await page.goto(BASE + '/permissions');
+  const pt = page.getByTestId('perm-table');
+  await pt.waitFor();
+  const heads = await pt.locator('thead th').allInnerTexts();
+  check('permissions: Owner, Partner and Admin columns', ['Owner', 'Partner', 'Admin'].every((x) => heads.includes(x)), heads.join(','));
+  await pt.getByRole('button', { name: 'Admin · ใบเสร็จรับเงิน · ยกเลิกใบเสร็จ' }).click();
+  await page.getByRole('button', { name: 'บันทึก', exact: true }).click();
+  await page.waitForTimeout(800);
+  {
+    const dd = await (await page.request.get(`${BASE}/api/data`)).json();
+    const ar = dd.positions.find((x) => x.kind === 'admin');
+    check('permissions: the Owner turns a right on for Admin', dd.permissions[ar.id].receipts.delete === true);
+  }
+  await page.screenshot({ path: `${SHOTS}/34-permissions.png`, fullPage: true });
+  await page.goto(BASE + '/company');
+  await page.getByText('ชื่อโรงเรียน / บริษัท (ตามจดทะเบียน)').waitFor();
+  const cbox = (t) => page.locator('label', { hasText: new RegExp('^' + t) }).first().locator('xpath=ancestor::div[1]').locator('input, textarea').first();
+  await cbox('ชื่อโรงเรียน').fill('บริษัท โยโด้ แดนซ์ จำกัด');
+  await cbox('ชื่อภาษาอังกฤษ').fill('YODO Dance Co., Ltd.');
+  await cbox('ที่อยู่').fill('99 ถนนสุขุมวิท กรุงเทพฯ 10110');
+  await cbox('เลขประจำตัวผู้เสียภาษี').fill('0105555555555');
+  await page.getByRole('button', { name: 'บันทึก', exact: true }).click();
+  await page.waitForTimeout(600);
+  check('company settings are saved', (await (await page.request.get(`${BASE}/api/settings/company`)).json()).taxId === '0105555555555');
+  await page.screenshot({ path: `${SHOTS}/35-company.png`, fullPage: true });
+  await post('/classes', { name: 'Ballet Course', teacherId: '', description: '', image: '', status: 'Active', price: 10000, months: 6 });
+  await page.goto(BASE + '/classes');
+  await page.getByText('10,000 บาท / 6 เดือน').first().waitFor().then(() => check('class card shows the course price and length', true), () => check('class card shows the course price and length', false));
+  await page.goto(BASE + '/students');
+  await page.getByRole('button', { name: /^เพิ่ม .*มะลิ.* เข้าคลาส$/ }).first().click();
+  const ed = page.getByRole('dialog');
+  await ed.getByRole('combobox').first().click();
+  await page.getByRole('option', { name: 'Ballet Course' }).click();
+  await page.waitForTimeout(300);
+  const pbox = ed.getByTestId('payment-box');
+  check('payment is on and the price comes from the course', (await pbox.locator('input[type="checkbox"]').isChecked()) && (await pbox.locator('input[type="number"]').first().inputValue()) === '10000');
+  await pbox.locator('input[type="number"]').nth(1).fill('500');
+  check('amount = price − discount', (await pbox.getByTestId('pay-amount').innerText()) === '9,500.00');
+  await page.screenshot({ path: `${SHOTS}/36-payment.png` });
+  await ed.getByRole('button', { name: 'บันทึกและออกใบเสร็จ' }).click();
+  const rv = page.getByTestId('receipt-view');
+  await rv.waitFor({ timeout: 8000 }).then(() => check('saving opens the new receipt', true), () => check('saving opens the new receipt', false));
+  const frame = page.frameLocator('[data-testid="receipt-frame"]');
+  await frame.locator('h1').waitFor();
+  const rtxt = await frame.locator('body').innerText();
+  check('receipt: running number, company, course, amount in Thai words', /RC\d{4}-0001/.test(rtxt) && rtxt.includes('บริษัท โยโด้ แดนซ์ จำกัด') && rtxt.includes('Ballet Course') && rtxt.includes('6 เดือน') && rtxt.includes('เก้าพันห้าร้อยบาทถ้วน'), rtxt.slice(0, 200));
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${SHOTS}/37-receipt-th.png` });
+  await rv.getByRole('group', { name: 'ภาษาของใบเสร็จ' }).getByRole('button', { name: 'EN' }).click();
+  await page.waitForTimeout(600);
+  const etxt = await page.frameLocator('[data-testid="receipt-frame"]').locator('body').innerText();
+  check('receipt has its own English version', etxt.includes('Receipt') && etxt.includes('Nine thousand five hundred baht only') && etxt.includes('YODO Dance Co., Ltd.'));
+  await page.screenshot({ path: `${SHOTS}/38-receipt-en.png` });
+  await rv.getByRole('button', { name: 'กลับ' }).click();
+  {
+    const st = (await (await page.request.get(`${BASE}/api/data`)).json()).students.find((x) => x.firstName === 'มะลิ');
+    const en = (await (await page.request.get(`${BASE}/api/data`)).json()).enrollments.find((x) => x.studentId === st.id && x.expiryDate);
+    check('the expiry date follows the course length', !!en && en.expiryDate > en.startDate);
+  }
+  await page.goto(BASE + '/receipts');
+  await page.getByTestId('receipt-total').filter({ hasText: '9,500.00' }).waitFor({ timeout: 5000 }).then(() => check('receipts page: the month total', true), () => check('receipts page: the month total', false));
+  await page.screenshot({ path: `${SHOTS}/39-receipts.png`, fullPage: true });
+  await page.getByTestId('receipt-table').locator('tbody tr').first().click();
+  await rv.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
+  await page.getByRole('dialog', { name: 'ยกเลิกใบเสร็จนี้?' }).getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
+  await page.waitForTimeout(800);
+  check('a cancelled receipt shows CANCELLED/ยกเลิก', (await page.frameLocator('[data-testid="receipt-frame"]').locator('.void').count()) === 1);
+  await rv.getByRole('button', { name: 'กลับ' }).click();
+  await page.getByTestId('receipt-total').filter({ hasText: '0.00' }).waitFor({ timeout: 5000 }).then(() => check('a cancelled receipt is not counted', true), () => check('a cancelled receipt is not counted', false));
+  check('the cancelled receipt stays in the list, struck through', (await page.getByTestId('receipt-table').locator('tbody tr.line-through').count()) === 1);
+  await page.goto(BASE + '/');
+  await page.getByTestId('money-card').waitFor({ timeout: 5000 }).then(() => check('dashboard shows the month\'s money to those allowed', true), () => check('dashboard shows the month\'s money to those allowed', false));
+  await page.screenshot({ path: `${SHOTS}/40-dashboard-money.png` });
+  // phone: the receipt fits the screen
+  await pp.goto(BASE + '/receipts');
+  await pp.getByTestId('receipt-table').locator('tbody tr').first().click();
+  await pp.getByTestId('receipt-frame').waitFor();
+  await pp.waitForTimeout(500);
+  const rw = await pp.getByTestId('receipt-frame').evaluate((e) => e.getBoundingClientRect().width);
+  check('phone: the receipt is shrunk to fit', rw <= 390, `${Math.round(rw)}px`);
+  await pp.screenshot({ path: `${SHOTS}/p12-receipt.png` });
+  await pp.getByRole('button', { name: 'กลับ' }).click();
+
   // ---------- notification settings and bell (owner 12/10/2026) ----------
   await page.goto(BASE + '/settings');
   await page.getByText('เรื่องที่อยากรับ').waitFor();
@@ -422,7 +506,7 @@ try {
   check('the language is kept with the account', (await (await page.request.get(`${BASE}/api/me`)).json()).lang === 'en');
   // typed data (names, class names) may be Thai; nothing else may be
   const TYPED = /บัลเล่ต์สำหรับเด็ก 4-7 ปี|มะลิ|ใจดี|ลิลี่|ต้นกล้า|สุขใจ|กล้า|แอนนา|บัลเล่ต์|แอน|บัลเล่ต์สำหรับเด็ก 4-7 ปี|ไมค์|ด\.ญ\.|ด\.ช\.|นางสาว/g;
-  for (const [pth, name] of [['/', 'e1-dashboard'], ['/students', 'e2-students'], ['/classes', 'e3-classes'], ['/teachers', 'e4-teachers'], ['/calendar', 'e5-calendar'], ['/users', 'e6-users'], ['/permissions', 'e7-permissions'], ['/audit-log', 'e8-audit'], ['/settings', 'e9-settings'], ['/import', 'e10-import']]) {
+  for (const [pth, name] of [['/', 'e1-dashboard'], ['/students', 'e2-students'], ['/classes', 'e3-classes'], ['/teachers', 'e4-teachers'], ['/calendar', 'e5-calendar'], ['/users', 'e6-users'], ['/permissions', 'e7-permissions'], ['/audit-log', 'e8-audit'], ['/settings', 'e9-settings'], ['/import', 'e10-import'], ['/receipts', 'e11-receipts'], ['/company', 'e12-company']]) {
     await page.goto(BASE + pth);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(300);

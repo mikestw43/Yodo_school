@@ -11,6 +11,7 @@ import { router as notices } from './routes/notices.js';
 import { router as importer } from './routes/importer.js';
 import { router as pin } from './routes/pin.js';
 import { router as signin } from './routes/signin.js';
+import { router as receipts } from './routes/receipts.js';
 
 export function createApp() {
   const app = express();
@@ -36,6 +37,7 @@ export function createApp() {
   api.use(pin);
   api.use(signin);
   api.use(data);
+  api.use(receipts);
   api.use(notices);
   api.use((_req, _res, next) => next(notFound()));
   api.use(errorHandler);

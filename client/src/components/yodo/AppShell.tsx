@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarHeart, ChevronDown, Crown, FileUp, History, LogOut, Menu, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, Settings, ShieldCheck, Sparkles, UserCog } from "lucide-react";
+import { CalendarHeart, ChevronDown, Crown, FileUp, History, LogOut, Menu, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog } from "lucide-react";
 import { api, getMe } from "@/lib/api";
 import { ROLE_LABEL } from "@/lib/auth-utils";
 import { Avatar, EmptyState } from "@/components/yodo/ui";
@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { NotificationBell } from "@/components/yodo/NotificationBell";
 import { LangToggle } from "@/components/yodo/LangToggle";
 import { L } from "@/lib/i18n";
+import { ReceiptHost } from "@/components/yodo/receipt";
 
 const NAV = [
   { to: "/", th: "ภาพรวม", en: "Dashboard", icon: Sparkles, key: "dashboard" },
@@ -18,6 +19,7 @@ const NAV = [
   { to: "/classes", th: "คลาส", en: "Classes", icon: Music4, key: "classes" },
   { to: "/teachers", th: "ครู", en: "Teachers", icon: Crown, key: "teachers" },
   { to: "/calendar", th: "ปฏิทิน", en: "Calendar", icon: CalendarHeart, key: "calendar" },
+  { to: "/receipts", th: "ใบเสร็จรับเงิน", en: "Receipts", icon: ReceiptText, key: "receipts" },
   { to: "/users", th: "ผู้ใช้ระบบ", en: "Users", icon: UserCog, key: "users" },
   { to: "/permissions", th: "สิทธิ์", en: "Permissions", icon: ShieldCheck, key: "users" },
   { to: "/audit-log", th: "ประวัติการแก้ไข", en: "Audit Log", icon: History, key: "auditlog" },
@@ -73,7 +75,7 @@ type Me = { name: string; role: string; image: string };
 
 /** Account menu at the top right (owner 12/10/2026): profile settings, import, sign out, version. */
 function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
-  const { me: who } = useYodo();
+  const { me: who, can } = useYodo();
   const version = useVersion();
   const signOut = useSignOut();
   return (
@@ -105,6 +107,13 @@ function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
             <Settings className="h-4 w-4" /> {L("ตั้งค่าโปรไฟล์", "Profile settings")}
           </Link>
         </DropdownMenuItem>
+        {can("company") && (
+          <DropdownMenuItem asChild>
+            <Link to="/company" className="flex cursor-pointer items-center gap-2">
+              <Building2 className="h-4 w-4" /> {L("ตั้งค่าบริษัท", "Company settings")}
+            </Link>
+          </DropdownMenuItem>
+        )}
         {who?.superadmin && (
           <DropdownMenuItem asChild>
             <Link to="/import" className="flex cursor-pointer items-center gap-2">
@@ -210,6 +219,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <div className="sticky top-0 z-20 hidden justify-end px-8 pt-4 md:flex"><div className="flex items-center gap-2"><LangToggle className="border border-border bg-background shadow-soft" /><NotificationBell className="border border-border bg-background shadow-soft" />{me && <AccountMenu me={me} />}</div></div>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8 md:pt-2"><Guarded>{children}</Guarded></main>
+        <ReceiptHost />
       </div>
     </div>
   );

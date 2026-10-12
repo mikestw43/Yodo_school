@@ -99,14 +99,28 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   terms switch changes only the terms and the two statements (owner: the rest stays in the app's language).
   Phones (owner 12/10/2026, layout broke): the in-app application keeps its A4 layout and is shrunk to the screen width
   (CSS `zoom` from a ResizeObserver in `StudentDocument`); the on-screen terms are numbered like the print.
-- 12/10/2026 roles + receipts (mockup 3gLnsvQrxnGWHKpPmbRxBA; owner's answers, NOT built yet, waiting for "ทำได้เลย" on the
-  updated boards 4-6): roles Owner / Partner / Admin shown, SuperAdmin (Dev) hidden (the owner's own account stays
-  SuperAdmin); default rights as on board 1 OK; the Owner can add more roles; ONLY the Owner edits rights. New rights:
-  receipts (view / issue / cancel), company settings, dashboard money. Receipts: number RC + YYMM + "-" + 4 digits,
-  restarting each month, never skipped; issued receipts are never deleted, only cancelled (kept, struck through, not
-  counted); A4; school details from a new "Company settings" page; a receipts page by month with totals. Class price is
-  the WHOLE COURSE (e.g. 10,000 baht for 6 months): class gets a course length in months, the expiry date follows from
-  it, the receipt line is the course (no price x months). VAT question not answered yet.
+- 12/10/2026 roles + receipts (mockup 3gLnsvQrxnGWHKpPmbRxBA, "ทำได้เลย"; built 12/10/2026):
+  - Roles = positions with `Position.kind`: superadmin (the first-run "SuperAdmin", hidden from everyone but the Dev; the
+    owner's own account stays SuperAdmin), owner (isSystem, full access, locked), partner, admin (seeded by
+    `ensureRoles()` in lib/roles.ts on start and after setup, with board 1's defaults), "" = roles the Owner adds. ONLY the
+    Owner/SuperAdmin (`isOwner`/`requireOwner` in lib/auth.ts) adds/renames/deletes roles and edits rights; built-in roles
+    cannot be deleted; only the Owner gives a full-access role. `GET /data` hides the SuperAdmin role and account from
+    others and returns `owner`. Permissions page = one table, menus x roles, chips (`ROWS` in permissions.tsx).
+    New menu keys: receipts (view / add = issue / delete = cancel), company (view / edit), money (view = dashboard money).
+  - Class price is the WHOLE course (`DanceClass.price`) with `months` (course length, default 1; old per-month prices
+    were left for the owner to fix). The add-to-class window fills the expiry = start + months − 1 day until typed.
+  - Payment box in the add-to-class window (receipts 'add'): price (from the class, editable), discount, amount,
+    cash / transfer / card, payment date, payer (default the emergency contact), slip for transfers; "บันทึกและออกใบเสร็จ"
+    saves the enrollment, then `POST /receipts` (routes/receipts.ts) and opens the receipt. Editing an enrollment lists
+    its receipts and can take a new payment.
+  - Receipt numbers RC + YYMM + "-" + 4 digits from the receipt date, restart monthly, never skipped (`@@unique([ym, seq])`);
+    never deleted, only cancelled (`/receipts/:id/cancel`, reason, kept, struck through, not counted). No VAT (owner).
+  - Receipt document `receiptHtml()` in lib/receipt-print.ts (A4, company details, amount in Thai/English words), shown in
+    the app by `ReceiptHost` (components/yodo/receipt.tsx, `openReceipt(id)`, iframe scaled to fit phones) with its own
+    TH/EN switch (owner: "ใบเสร็จขอ Eng"), print and cancel. Receipts page `/receipts` (month arrows, total, count,
+    cash/transfer/card, cancelled; menu between Calendar and Users). Company settings page `/company` (account menu):
+    name TH/EN, address, phone, email, 13-digit tax ID, branch, logo (empty = YODO), receiver's signature (optional),
+    stored in `Setting`. Dashboard money card for `money` 'view'.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
@@ -131,7 +145,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 - Student codes `YDO00001` are given by the server and never reused (soft-deleted students keep theirs).
 - Soft delete (`deletedAt`) for students, teachers, users; every change audited with before/after.
 - Every endpoint checks the position permission (`requirePerm(menu, action)`) and that the row exists.
-  SuperAdmin or a system position (`isSystem`) = everything. Menus: dashboard, students, classes, teachers, calendar, users, auditlog.
+  SuperAdmin or a system position (`isSystem`) = everything. Menus: dashboard, students, classes, teachers, calendar, users, auditlog,
+  receipts, company, money. Rights and roles: Owner only (`requireOwner`).
 - Fields can be added to `schema.prisma`, never removed or renamed.
 - Dates shown dd/mm/yyyy Christian era.
 

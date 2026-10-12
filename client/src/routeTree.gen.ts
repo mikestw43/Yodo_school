@@ -17,8 +17,10 @@ import { Route as AuthenticatedShellIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedShellAuditLogRouteImport } from './routes/_authenticated/_shell/audit-log'
 import { Route as AuthenticatedShellCalendarRouteImport } from './routes/_authenticated/_shell/calendar'
 import { Route as AuthenticatedShellClassesRouteImport } from './routes/_authenticated/_shell/classes'
+import { Route as AuthenticatedShellCompanyRouteImport } from './routes/_authenticated/_shell/company'
 import { Route as AuthenticatedShellImportRouteImport } from './routes/_authenticated/_shell/import'
 import { Route as AuthenticatedShellPermissionsRouteImport } from './routes/_authenticated/_shell/permissions'
+import { Route as AuthenticatedShellReceiptsRouteImport } from './routes/_authenticated/_shell/receipts'
 import { Route as AuthenticatedShellStudentsRouteImport } from './routes/_authenticated/_shell/students'
 import { Route as AuthenticatedShellTeachersRouteImport } from './routes/_authenticated/_shell/teachers'
 import { Route as AuthenticatedShellUsersRouteImport } from './routes/_authenticated/_shell/users'
@@ -64,6 +66,12 @@ const AuthenticatedShellClassesRoute =
     path: '/classes',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellCompanyRoute =
+  AuthenticatedShellCompanyRouteImport.update({
+    id: '/company',
+    path: '/company',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellImportRoute =
   AuthenticatedShellImportRouteImport.update({
     id: '/import',
@@ -74,6 +82,12 @@ const AuthenticatedShellPermissionsRoute =
   AuthenticatedShellPermissionsRouteImport.update({
     id: '/permissions',
     path: '/permissions',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellReceiptsRoute =
+  AuthenticatedShellReceiptsRouteImport.update({
+    id: '/receipts',
+    path: '/receipts',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellStudentsRoute =
@@ -101,8 +115,10 @@ export interface FileRoutesByFullPath {
   '/audit-log': typeof AuthenticatedShellAuditLogRoute
   '/calendar': typeof AuthenticatedShellCalendarRoute
   '/classes': typeof AuthenticatedShellClassesRoute
+  '/company': typeof AuthenticatedShellCompanyRoute
   '/import': typeof AuthenticatedShellImportRoute
   '/permissions': typeof AuthenticatedShellPermissionsRoute
+  '/receipts': typeof AuthenticatedShellReceiptsRoute
   '/students': typeof AuthenticatedShellStudentsRoute
   '/teachers': typeof AuthenticatedShellTeachersRoute
   '/users': typeof AuthenticatedShellUsersRoute
@@ -114,8 +130,10 @@ export interface FileRoutesByTo {
   '/audit-log': typeof AuthenticatedShellAuditLogRoute
   '/calendar': typeof AuthenticatedShellCalendarRoute
   '/classes': typeof AuthenticatedShellClassesRoute
+  '/company': typeof AuthenticatedShellCompanyRoute
   '/import': typeof AuthenticatedShellImportRoute
   '/permissions': typeof AuthenticatedShellPermissionsRoute
+  '/receipts': typeof AuthenticatedShellReceiptsRoute
   '/students': typeof AuthenticatedShellStudentsRoute
   '/teachers': typeof AuthenticatedShellTeachersRoute
   '/users': typeof AuthenticatedShellUsersRoute
@@ -129,8 +147,10 @@ export interface FileRoutesById {
   '/_authenticated/_shell/audit-log': typeof AuthenticatedShellAuditLogRoute
   '/_authenticated/_shell/calendar': typeof AuthenticatedShellCalendarRoute
   '/_authenticated/_shell/classes': typeof AuthenticatedShellClassesRoute
+  '/_authenticated/_shell/company': typeof AuthenticatedShellCompanyRoute
   '/_authenticated/_shell/import': typeof AuthenticatedShellImportRoute
   '/_authenticated/_shell/permissions': typeof AuthenticatedShellPermissionsRoute
+  '/_authenticated/_shell/receipts': typeof AuthenticatedShellReceiptsRoute
   '/_authenticated/_shell/students': typeof AuthenticatedShellStudentsRoute
   '/_authenticated/_shell/teachers': typeof AuthenticatedShellTeachersRoute
   '/_authenticated/_shell/users': typeof AuthenticatedShellUsersRoute
@@ -145,8 +165,10 @@ export interface FileRouteTypes {
     | '/audit-log'
     | '/calendar'
     | '/classes'
+    | '/company'
     | '/import'
     | '/permissions'
+    | '/receipts'
     | '/students'
     | '/teachers'
     | '/users'
@@ -158,8 +180,10 @@ export interface FileRouteTypes {
     | '/audit-log'
     | '/calendar'
     | '/classes'
+    | '/company'
     | '/import'
     | '/permissions'
+    | '/receipts'
     | '/students'
     | '/teachers'
     | '/users'
@@ -172,8 +196,10 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/audit-log'
     | '/_authenticated/_shell/calendar'
     | '/_authenticated/_shell/classes'
+    | '/_authenticated/_shell/company'
     | '/_authenticated/_shell/import'
     | '/_authenticated/_shell/permissions'
+    | '/_authenticated/_shell/receipts'
     | '/_authenticated/_shell/students'
     | '/_authenticated/_shell/teachers'
     | '/_authenticated/_shell/users'
@@ -243,6 +269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellClassesRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/company': {
+      id: '/_authenticated/_shell/company'
+      path: '/company'
+      fullPath: '/company'
+      preLoaderRoute: typeof AuthenticatedShellCompanyRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/import': {
       id: '/_authenticated/_shell/import'
       path: '/import'
@@ -255,6 +288,13 @@ declare module '@tanstack/react-router' {
       path: '/permissions'
       fullPath: '/permissions'
       preLoaderRoute: typeof AuthenticatedShellPermissionsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/receipts': {
+      id: '/_authenticated/_shell/receipts'
+      path: '/receipts'
+      fullPath: '/receipts'
+      preLoaderRoute: typeof AuthenticatedShellReceiptsRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/students': {
@@ -285,8 +325,10 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellAuditLogRoute: typeof AuthenticatedShellAuditLogRoute
   AuthenticatedShellCalendarRoute: typeof AuthenticatedShellCalendarRoute
   AuthenticatedShellClassesRoute: typeof AuthenticatedShellClassesRoute
+  AuthenticatedShellCompanyRoute: typeof AuthenticatedShellCompanyRoute
   AuthenticatedShellImportRoute: typeof AuthenticatedShellImportRoute
   AuthenticatedShellPermissionsRoute: typeof AuthenticatedShellPermissionsRoute
+  AuthenticatedShellReceiptsRoute: typeof AuthenticatedShellReceiptsRoute
   AuthenticatedShellStudentsRoute: typeof AuthenticatedShellStudentsRoute
   AuthenticatedShellTeachersRoute: typeof AuthenticatedShellTeachersRoute
   AuthenticatedShellUsersRoute: typeof AuthenticatedShellUsersRoute
@@ -297,8 +339,10 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellAuditLogRoute: AuthenticatedShellAuditLogRoute,
   AuthenticatedShellCalendarRoute: AuthenticatedShellCalendarRoute,
   AuthenticatedShellClassesRoute: AuthenticatedShellClassesRoute,
+  AuthenticatedShellCompanyRoute: AuthenticatedShellCompanyRoute,
   AuthenticatedShellImportRoute: AuthenticatedShellImportRoute,
   AuthenticatedShellPermissionsRoute: AuthenticatedShellPermissionsRoute,
+  AuthenticatedShellReceiptsRoute: AuthenticatedShellReceiptsRoute,
   AuthenticatedShellStudentsRoute: AuthenticatedShellStudentsRoute,
   AuthenticatedShellTeachersRoute: AuthenticatedShellTeachersRoute,
   AuthenticatedShellUsersRoute: AuthenticatedShellUsersRoute,

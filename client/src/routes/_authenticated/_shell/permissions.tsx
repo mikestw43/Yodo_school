@@ -1,21 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { CalendarHeart, Crown, Music4, PersonStanding, Sparkles, UserCog , History } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Lock, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { EmptyState, Field, NativeSelect, PageHeader } from "@/components/yodo/ui";
-import { emptyPerms, MENU_KEYS, useYodo, type MenuKey, type PermAction, type PositionPerms } from "@/lib/yodo-store";
+import { EmptyState, PageHeader } from "@/components/yodo/ui";
+import { emptyPerms, useYodo, type MenuKey, type PermAction, type PermissionMap, type Position } from "@/lib/yodo-store";
 import { L } from "@/lib/i18n";
+import { PositionDialog } from "./users";
 
 export const Route = createFileRoute("/_authenticated/_shell/permissions")({
   head: () => ({
     meta: [
       { title: "YODO" },
-      { name: "description", content: L("กำหนดสิทธิ์การใช้งานแต่ละเมนูตามตำแหน่งของทีมงาน YODO", "Set what each YODO staff position can use in every menu") },
+      { name: "description", content: L("กำหนดสิทธิ์การใช้งานแต่ละเมนูตาม Role ของทีมงาน YODO", "Set what each YODO role can use in every menu") },
       { property: "og:title", content: "YODO" },
-      { property: "og:description", content: L("กำหนดสิทธิ์การใช้งานแต่ละเมนูตามตำแหน่งของทีมงาน YODO", "Set what each YODO staff position can use in every menu") },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -23,90 +22,114 @@ export const Route = createFileRoute("/_authenticated/_shell/permissions")({
   component: PermissionsPage,
 });
 
-const MENU_LABEL = (): Record<MenuKey, string> => ({ dashboard: L("ภาพรวม", "Dashboard"), students: L("นักเรียน", "Students"), classes: L("คลาส", "Classes"), teachers: L("ครู", "Teachers"), calendar: L("ปฏิทิน", "Calendar"), users: L("ผู้ใช้ระบบ", "Users"), auditlog: L("ประวัติการแก้ไข", "Audit Log") });
-const ACTIONS = (): { key: PermAction; label: string }[] => [
-  { key: "view", label: L("ดู", "View") }, { key: "add", label: L("เพิ่ม", "Add") }, { key: "edit", label: L("แก้ไข", "Edit") }, { key: "delete", label: L("ลบ", "Delete") },
+type Chip = { menu: MenuKey; action: PermAction; label: string };
+const VAED = (menu: MenuKey): Chip[] => [
+  { menu, action: "view", label: L("ดู", "View") }, { menu, action: "add", label: L("เพิ่ม", "Add") },
+  { menu, action: "edit", label: L("แก้ไข", "Edit") }, { menu, action: "delete", label: L("ลบ", "Delete") },
 ];
-const ACTION_HINT = (): Record<PermAction, string> => ({
-  view: L("เห็นข้อมูลในหน้านี้", "Can see this page"), add: L("เพิ่มรายการใหม่ได้", "Can add new items"), edit: L("แก้ไขข้อมูลเดิมได้", "Can change existing items"), delete: L("ลบรายการได้", "Can delete items"),
-});
-const MENU_ICON: Record<MenuKey, typeof Sparkles> = { dashboard: Sparkles, students: PersonStanding, classes: Music4, teachers: Crown, calendar: CalendarHeart, users: UserCog, auditlog: History };
+// One row per menu, each with the switches that mean something there (owner 12/10/2026, mockup board 1).
+const ROWS = (): { label: string; isNew?: boolean; chips: Chip[] }[] => [
+  { label: L("ภาพรวม", "Dashboard"), chips: [{ menu: "dashboard", action: "view", label: L("ดู", "View") }, { menu: "money", action: "view", label: L("ดูยอดเงิน", "See money") }] },
+  { label: L("นักเรียน", "Students"), chips: VAED("students") },
+  { label: L("คลาส", "Classes"), chips: VAED("classes") },
+  { label: L("ครู", "Teachers"), chips: VAED("teachers") },
+  { label: L("ปฏิทิน", "Calendar"), chips: VAED("calendar") },
+  { label: L("ใบเสร็จรับเงิน", "Receipts"), isNew: true, chips: [{ menu: "receipts", action: "view", label: L("ดู", "View") }, { menu: "receipts", action: "add", label: L("ออกใบเสร็จ", "Issue") }, { menu: "receipts", action: "delete", label: L("ยกเลิกใบเสร็จ", "Cancel") }] },
+  { label: L("ตั้งค่าบริษัท", "Company settings"), isNew: true, chips: [{ menu: "company", action: "view", label: L("ดู", "View") }, { menu: "company", action: "edit", label: L("แก้ไข", "Edit") }] },
+  { label: L("ผู้ใช้ระบบ", "Users"), chips: VAED("users") },
+  { label: L("ประวัติการแก้ไข", "Audit log"), chips: [{ menu: "auditlog", action: "view", label: L("ดู", "View") }] },
+];
+
+const roleOrder = (p: Position) => ({ superadmin: 0, owner: 1, partner: 2, admin: 3 } as Record<string, number>)[p.kind ?? ""] ?? 4;
 
 function PermissionsPage() {
-  const { data, setPositionPermissions, can } = useYodo();
-  const menuLabel = MENU_LABEL(), actions = ACTIONS(), actionHint = ACTION_HINT();
-  const [positionId, setPositionId] = useState(data.positions[0]?.id ?? "");
-  const validId = data.positions.some((p) => p.id === positionId) ? positionId : (data.positions[0]?.id ?? "");
-  const saved = (validId && data.permissions[validId]) || emptyPerms();
-  const locked = data.positions.find((p) => p.id === validId)?.isSystem === true || !can("users", "edit");
-  const [draft, setDraft] = useState<PositionPerms>(saved);
-  useEffect(() => { setDraft({ ...emptyPerms(), ...((validId && data.permissions[validId]) || {}) }); }, [validId, data.permissions]);
+  const { data, setPositionPermissions } = useYodo();
+  const owner = data.owner === true;
+  const rows = ROWS();
+  const roles = useMemo(() => [...data.positions].sort((a, b) => roleOrder(a) - roleOrder(b)), [data.positions]);
+  const [draft, setDraft] = useState<PermissionMap>(data.permissions);
+  const [addOpen, setAddOpen] = useState(false);
+  useEffect(() => { setDraft(data.permissions); }, [data.permissions]);
+  const dirty = roles.filter((r) => !r.isSystem && JSON.stringify(draft[r.id]) !== JSON.stringify(data.permissions[r.id]));
 
-  const toggle = (m: MenuKey, action: PermAction, on: boolean) => setDraft((d) => {
-    const cur = { ...d[m], [action]: on };
-    if (action === "view" && !on) { cur.add = false; cur.edit = false; cur.delete = false; }
-    if (action !== "view" && on) cur.view = true;
-    return { ...d, [m]: cur };
+  const toggle = (rid: string, c: Chip) => setDraft((d) => {
+    const perms = { ...emptyPerms(), ...(d[rid] ?? {}) };
+    const cur = { ...perms[c.menu] };
+    const on = !cur[c.action];
+    cur[c.action] = on;
+    if (c.action === "view" && !on) { cur.add = false; cur.edit = false; cur.delete = false; }
+    if (c.action !== "view" && on) cur.view = true;
+    return { ...d, [rid]: { ...perms, [c.menu]: cur } };
   });
-  const toggleRow = (m: MenuKey, on: boolean) => setDraft((d) => ({ ...d, [m]: { view: on, add: on, edit: on, delete: on } }));
+  const save = () => {
+    for (const r of dirty) setPositionPermissions(r.id, { ...emptyPerms(), ...draft[r.id] });
+    toast.success(L("บันทึกสิทธิ์แล้ว", "Access saved"));
+  };
 
-  if (data.positions.length === 0) {
+  if (roles.length === 0) {
     return (
       <>
-        <PageHeader title={L("สิทธิ์การใช้งาน", "Permissions")} subtitle={L("สิทธิ์การใช้งานตามตำแหน่ง", "Access by position")} />
-        <EmptyState title={L("ยังไม่มีตำแหน่ง", "No positions yet")} text={L("เพิ่มตำแหน่งในหน้าผู้ใช้ระบบก่อนเพื่อกำหนดสิทธิ์", "Add a position on the Users page first to set its access")} />
+        <PageHeader title={L("สิทธิ์การใช้งาน", "Permissions")} subtitle={L("สิทธิ์การใช้งานตาม Role", "Access by role")} />
+        <EmptyState title={L("ยังไม่มี Role", "No roles yet")} />
       </>
     );
   }
   return (
     <>
-      <PageHeader title={L("สิทธิ์การใช้งาน", "Permissions")} subtitle={L("สิทธิ์การใช้งานตามตำแหน่ง", "Access by position")} />
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <Field label={L("เลือกตำแหน่ง", "Position")} className="w-64">
-          <NativeSelect value={validId} onValueChange={setPositionId}>
-            {data.positions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </NativeSelect>
-        </Field>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {MENU_KEYS.map((m) => {
-          const row = draft[m];
-          const allOn = actions.every((a) => row[a.key]);
-          const Icon = MENU_ICON[m];
-          return (
-            <Card key={m} className="flex flex-col rounded-3xl p-6">
-              <div className="mb-2 flex items-center justify-between gap-3 border-b border-border pb-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Icon className="h-5 w-5" /></span>
-                  <h3 className="truncate font-display text-lg font-semibold">{L(`สิทธิ์ ${menuLabel[m]}`, `${menuLabel[m]} access`)}</h3>
-                </div>
-                <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm">
-                  <Checkbox checked={allOn} disabled={locked} onCheckedChange={(v) => toggleRow(m, v === true)} aria-label={L(`ทั้งหมด ${menuLabel[m]}`, `All ${menuLabel[m]}`)} /> {L("ทั้งหมด", "All")}
-                </label>
-              </div>
-              <ul className="flex-1 divide-y divide-border/60">
-                {actions.map((a) => (
-                  <li key={a.key} className="flex items-center justify-between gap-4 py-3">
-                    <div className="min-w-0">
-                      <p className="font-medium">{a.label}</p>
-                      <p className="text-xs text-muted-foreground">{actionHint[a.key]}</p>
-                    </div>
-                    <Checkbox checked={row[a.key]} disabled={locked} onCheckedChange={(v) => toggle(m, a.key, v === true)} aria-label={`${a.label} ${menuLabel[m]}`} />
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          );
-        })}
-      </div>
-      {locked ? (
-        <p className="mt-4 text-right text-sm text-muted-foreground">{can("users", "edit") ? L("ตำแหน่งระบบนี้มีสิทธิ์เต็มทุกเมนู และแก้ไขไม่ได้", "This system position has full access to every menu and cannot be changed") : L("คุณดูสิทธิ์ได้อย่างเดียว ไม่มีสิทธิ์แก้ไข", "You can only view access, not change it")}</p>
-      ) : (
+      <PageHeader
+        title={L("สิทธิ์การใช้งาน", "Permissions")}
+        subtitle={owner ? L("แต่ละคนมี 1 Role · กดที่ช่องเพื่อเปิด/ปิด", "Each person has one role · tap a switch to turn it on or off") : L("เฉพาะ Owner แก้สิทธิ์ได้ คุณดูได้อย่างเดียว", "Only the Owner changes access; you can only look")}
+        action={owner ? <Button className="rounded-full" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" /> {L("เพิ่ม Role", "Add role")}</Button> : undefined}
+      />
+      <Card className="overflow-hidden rounded-3xl p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm" data-testid="perm-table">
+            <thead>
+              <tr className="bg-muted/50 text-left">
+                <th className="sticky left-0 z-10 bg-muted px-4 py-3 font-semibold">{L("เมนู", "Menu")}</th>
+                {roles.map((r) => <th key={r.id} className="px-4 py-3 font-semibold">{r.name}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.label} className="border-t border-border/60 align-top">
+                  <td className="sticky left-0 z-10 bg-card px-4 py-3 font-medium">
+                    {row.label}
+                    {row.isNew && <span className="ml-1.5 rounded-lg bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">{L("ใหม่", "New")}</span>}
+                  </td>
+                  {roles.map((r) => (
+                    <td key={r.id} className="px-4 py-3">
+                      {r.isSystem ? (
+                        <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Lock className="h-3.5 w-3.5" /> {L("ทำได้ทุกอย่าง", "Everything")}</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {row.chips.map((c) => {
+                            const on = !!draft[r.id]?.[c.menu]?.[c.action];
+                            return (
+                              <button key={c.menu + c.action} type="button" disabled={!owner} aria-pressed={on} onClick={() => toggle(r.id, c)}
+                                aria-label={`${r.name} · ${row.label} · ${c.label}`}
+                                className={`rounded-lg px-2.5 py-1 text-xs transition-colors disabled:cursor-default ${on ? "bg-primary text-primary-foreground" : "border border-dashed border-border text-muted-foreground"} ${owner ? "hover:opacity-80" : ""}`}>
+                                {c.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+      {owner && (
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setDraft({ ...emptyPerms(), ...saved })}>{L("ยกเลิกการแก้ไข", "Discard changes")}</Button>
-          <Button className="rounded-full" onClick={() => { setPositionPermissions(validId, draft); toast.success(L("บันทึกสิทธิ์แล้ว", "Access saved")); }}>{L("บันทึก", "Save")}</Button>
+          <Button variant="ghost" disabled={dirty.length === 0} onClick={() => setDraft(data.permissions)}>{L("ยกเลิกการแก้ไข", "Discard changes")}</Button>
+          <Button className="rounded-full" disabled={dirty.length === 0} onClick={save}>{L("บันทึก", "Save")}</Button>
         </div>
       )}
+      <PositionDialog open={addOpen} onOpenChange={setAddOpen} position={null} />
     </>
   );
 }

@@ -87,7 +87,7 @@ function ClassesPage() {
                       <StatusBadge status={statusOf(c)} />
                     </div>
                     <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{c.description || "-"}</p>
-                    <p className="text-sm font-semibold text-primary">{c.price != null ? L(`${c.price.toLocaleString("th-TH")} บาท/เดือน`, `${c.price.toLocaleString("th-TH")} baht/month`) : "-"}</p>
+                    <p className="text-sm font-semibold text-primary">{coursePrice(c)}</p>
                     <div className="flex items-center justify-between gap-3 rounded-2xl bg-accent/30 px-4 py-2.5 text-sm">
                       <span className="flex min-w-0 items-center gap-2.5"><Avatar src={t?.image} name={t?.nickname ?? "?"} className="h-8 w-8 text-sm" /><span className="truncate">{t ? t.nickname : L("ไม่มีครู", "No teacher")}</span></span>
                       <span className="flex shrink-0 items-center gap-1.5 text-muted-foreground"><UsersRound className="h-4 w-4 text-primary/70" /> {count}</span>
@@ -118,7 +118,11 @@ function ClassesPage() {
   );
 }
 
-const emptyClass: ClassInput = { name: "", teacherId: "", description: "", image: "", status: "Active", price: null };
+const emptyClass: ClassInput = { name: "", teacherId: "", description: "", image: "", status: "Active", price: null, months: 1 };
+
+/** "10,000 บาท / 6 เดือน" (owner 12/10/2026: the price is for the whole course). */
+export const coursePrice = (c: { price: number | null; months: number }) =>
+  c.price != null ? L(`${c.price.toLocaleString("th-TH")} บาท / ${c.months} เดือน`, `${c.price.toLocaleString("th-TH")} baht / ${c.months} ${c.months === 1 ? "month" : "months"}`) : "-";
 
 function ClassForm({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (o: boolean) => void; editing: DanceClass | null }) {
   const { data, addClass, updateClass } = useYodo();
@@ -129,7 +133,7 @@ function ClassForm({ open, onOpenChange, editing }: { open: boolean; onOpenChang
     setLastOpen(open);
     if (open) {
       setErrors({});
-      setF(editing ? { name: editing.name, teacherId: editing.teacherId, description: editing.description, image: editing.image, status: editing.status, price: editing.price } : emptyClass);
+      setF(editing ? { name: editing.name, teacherId: editing.teacherId, description: editing.description, image: editing.image, status: editing.status, price: editing.price, months: editing.months || 1 } : emptyClass);
     }
   }
   const teachers = data.teachers.filter((t) => t.status === "Active" || t.id === f.teacherId);
@@ -162,8 +166,11 @@ function ClassForm({ open, onOpenChange, editing }: { open: boolean; onOpenChang
             </NativeSelect>
           </Field>
           <Field label={L("คำอธิบาย", "Description")} error={errors.description}><Textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
-          <Field label={L("ราคา (บาท/เดือน)", "Price (baht/month)")}>
-            <Input type="number" min={0} step="1" placeholder={L("เช่น 5000", "e.g. 5000")} value={f.price ?? ""} onChange={(e) => setF({ ...f, price: e.target.value === "" ? null : Math.max(0, Number(e.target.value)) })} />
+          <Field label={L("ราคาคอร์ส (บาท)", "Course price (baht)")}>
+            <Input type="number" min={0} step="1" placeholder={L("เช่น 10000", "e.g. 10000")} value={f.price ?? ""} onChange={(e) => setF({ ...f, price: e.target.value === "" ? null : Math.max(0, Number(e.target.value)) })} />
+          </Field>
+          <Field label={L("อายุคอร์ส (เดือน)", "Course length (months)")}>
+            <Input type="number" min={1} max={120} step="1" value={f.months} onChange={(e) => setF({ ...f, months: Math.min(120, Math.max(1, Math.round(Number(e.target.value) || 1))) })} />
           </Field>
           <Field label={L("สถานะคลาส", "Class Status")}>
             <NativeSelect value={f.status} onValueChange={(value) => setF({ ...f, status: value as ClassInput["status"] })}>
@@ -198,7 +205,7 @@ function ClassDetail({ classId, onClose }: { classId: string | null; onClose: ()
               <SheetTitle className="font-display text-2xl">{c.name}</SheetTitle>
               <div><StatusBadge status={statusOf(c)} /></div>
               <p className="text-sm text-muted-foreground">{c.description}</p>
-              <p className="text-sm font-semibold text-primary">{c.price != null ? L(`${c.price.toLocaleString("th-TH")} บาท/เดือน`, `${c.price.toLocaleString("th-TH")} baht/month`) : "-"}</p>
+              <p className="text-sm font-semibold text-primary">{coursePrice(c)}</p>
             </SheetHeader>
             <div className="space-y-6">
               <div className="flex items-center gap-3 rounded-2xl bg-muted/60 p-3">

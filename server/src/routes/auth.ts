@@ -9,6 +9,7 @@ import { prisma } from '../lib/db.js';
 import { DATA_DIR } from '../lib/config.js';
 import { bad, forbidden, HttpError } from '../lib/http.js';
 import { clearSession, displayName, requireAuth, setSession } from '../lib/auth.js';
+import { ensureRoles } from '../lib/roles.js';
 import { audit } from '../lib/audit.js';
 import { storeImage } from '../lib/images.js';
 import { dropPins } from './pin.js';
@@ -44,14 +45,16 @@ router.post('/setup', async (req, res) => {
   const expected = fs.existsSync(SETUP_FILE) ? fs.readFileSync(SETUP_FILE, 'utf8').trim() : '';
   if (!expected || !crypto.timingSafeEqual(Buffer.from(body.code.padEnd(8)), Buffer.from(expected.padEnd(8)))) throw forbidden('wrong_setup_code');
   const user = await prisma.$transaction(async (db) => {
-    let pos = await db.position.findFirst({ where: { isSystem: true } });
-    if (!pos) pos = await db.position.create({ data: { name: 'SuperAdmin', description: 'ผู้ดูแลระบบ เข้าถึงได้ทุกเมนู', isSystem: true } });
+    // The first account is the hidden SuperAdmin (Dev); the Owner / Partner / Admin roles are made by ensureRoles.
+    let pos = await db.position.findFirst({ where: { kind: 'superadmin' } });
+    if (!pos) pos = await db.position.create({ data: { name: 'SuperAdmin', description: 'ผู้ดูแลระบบ เข้าถึงได้ทุกเมนู', isSystem: true, kind: 'superadmin' } });
     return db.user.create({ data: {
       username: body.username, passwordHash: await bcrypt.hash(body.password, 12), role: 'superadmin',
       firstName: body.firstName, lastName: body.lastName, positionId: pos.id,
     } });
   });
   fs.unlinkSync(SETUP_FILE);
+  await ensureRoles();
   req.user = { id: user.id, username: user.username, name: displayName(user), role: user.role, positionId: user.positionId };
   await audit(req, 'insert', 'profiles', user.id, user.username, null, { ...user, passwordHash: undefined });
   setSession(req, res, user);

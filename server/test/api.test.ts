@@ -117,6 +117,62 @@ describe('school data', () => {
   });
 });
 
+describe('roles and receipts (owner 12/10/2026)', () => {
+  it('Owner, Partner and Admin exist; the SuperAdmin is hidden; only the Owner edits rights', async () => {
+    const d = (await admin.get('/api/data')).body;
+    const kinds = d.positions.map((p: { kind: string }) => p.kind);
+    for (const k of ['superadmin', 'owner', 'partner', 'admin']) expect(kinds).toContain(k);
+    expect(d.owner).toBe(true);
+    const partner = d.positions.find((p: { kind: string }) => p.kind === 'partner');
+    const adminRole = d.positions.find((p: { kind: string }) => p.kind === 'admin');
+    expect(d.permissions[adminRole.id].receipts).toEqual({ view: true, add: true, edit: false, delete: false });
+    const u = await admin.post('/api/users').set(H).send({ firstName: 'Pat', lastName: '', nickname: '', username: 'pat', password: 'secret3', email: '', phone: '', positionId: partner.id, image: '' });
+    expect(u.status).toBe(201);
+    const pat = await login('pat', 'secret3');
+    const pd = (await pat.get('/api/data')).body;
+    expect(pd.owner).toBe(false);
+    expect(pd.positions.some((p: { kind: string }) => p.kind === 'superadmin')).toBe(false);
+    expect(pd.systemUsers.some((x: { superadmin: boolean }) => x.superadmin)).toBe(false);
+    expect((await pat.put(`/api/positions/${adminRole.id}/permissions`).set(H).send({})).status).toBe(403);
+    expect((await pat.post('/api/positions').set(H).send({ name: 'Teacher', description: '' })).status).toBe(403);
+    expect((await admin.post('/api/positions').set(H).send({ name: 'Teacher', description: '' })).status).toBe(201);
+    expect((await admin.delete(`/api/positions/${adminRole.id}`).set(H)).status).toBe(400); // built-in roles stay
+  });
+  it('receipt numbers run per month, never skip, cancel keeps the number and drops it from the total', async () => {
+    const c = await admin.post('/api/classes').set(H).send({ name: 'Course 6m', teacherId: '', description: '', image: '', status: 'Active', price: 10000, months: 6 });
+    expect(c.body.months).toBe(6);
+    const e = await admin.post('/api/enrollments').set(H).send({ studentId, classId: c.body.id, purchaseDate: '2026-10-12', startDate: '2026-10-12', expiryDate: '2027-04-11', remark: '', receiptImage: '' });
+    const pay = (date: string, extra = {}) => admin.post('/api/receipts').set(H).send({ enrollmentId: e.body.id, date, price: 10000, discount: 500, method: 'transfer', payer: 'คุณแม่', slip: PNG, ...extra });
+    const r1 = await pay('2026-10-12');
+    expect(r1.status).toBe(201);
+    expect(r1.body.no).toBe('RC2610-0001');
+    expect(r1.body.amount).toBe(9500);
+    expect(r1.body.months).toBe(6);
+    expect((await pay('2026-10-13')).body.no).toBe('RC2610-0002');
+    expect((await pay('2026-11-01')).body.no).toBe('RC2611-0001');
+    expect((await pay('2026-10-14', { discount: 20000 })).status).toBe(400);
+    await admin.post(`/api/receipts/${r1.body.id}/cancel`).set(H).send({ reason: 'ผิด' }).expect(200);
+    expect((await admin.post(`/api/receipts/${r1.body.id}/cancel`).set(H).send({})).status).toBe(400);
+    expect((await pay('2026-10-20')).body.no).toBe('RC2610-0003'); // a cancelled number is never reused
+    const sum = (await admin.get('/api/receipts/summary?month=2026-10')).body;
+    expect(sum).toMatchObject({ total: 19000, count: 2, cancelled: 1, transfer: 19000 });
+    const list = (await admin.get('/api/receipts?month=2026-10')).body;
+    expect(list.map((x: { no: string }) => x.no)).toEqual(['RC2610-0003', 'RC2610-0002', 'RC2610-0001']);
+    // company details come with a receipt; an Admin may issue but not cancel
+    await admin.put('/api/settings/company').set(H).send({ name: 'YODO Co., Ltd.', nameEn: 'YODO', address: 'Bangkok', phone: '02', email: '', taxId: '1234567890123', branch: 'HQ', logo: '', sign: '' }).expect(200);
+    expect((await admin.put('/api/settings/company').set(H).send({ name: '', nameEn: '', address: '', phone: '', email: '', taxId: '12', branch: '', logo: '', sign: '' })).status).toBe(400);
+    expect((await admin.get(`/api/receipts/${r1.body.id}`)).body.company.taxId).toBe('1234567890123');
+    const adminRole = (await admin.get('/api/data')).body.positions.find((p: { kind: string }) => p.kind === 'admin');
+    await admin.post('/api/users').set(H).send({ firstName: 'Ann', lastName: '', nickname: '', username: 'ann', password: 'secret4', email: '', phone: '', positionId: adminRole.id, image: '' }).expect(201);
+    const ann = await login('ann', 'secret4');
+    expect((await ann.post('/api/receipts').set(H).send({ enrollmentId: e.body.id, date: '2026-10-21', price: 10000, discount: 0, method: 'cash' })).status).toBe(201);
+    const last = (await ann.get('/api/receipts?month=2026-10')).body[0];
+    expect((await ann.post(`/api/receipts/${last.id}/cancel`).set(H).send({})).status).toBe(403);
+    expect((await ann.put('/api/settings/company').set(H).send({})).status).toBe(403);
+    expect((await ann.get('/api/receipts/summary?month=2026-10')).status).toBe(200);
+  });
+});
+
 describe('positions and permissions', () => {
   it('a staff member only does what their position allows', async () => {
     const p = await admin.post('/api/positions').set(H).send({ name: 'ครูประจำ', description: '' });

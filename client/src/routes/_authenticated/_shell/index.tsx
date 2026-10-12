@@ -1,10 +1,13 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { addDays, format, startOfWeek } from "date-fns";
-import { CalendarHeart, Crown, Music4, PersonStanding } from "lucide-react";
+import { Banknote, CalendarHeart, Crown, Music4, PersonStanding } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Avatar, PageHeader } from "@/components/yodo/ui";
 import { ageText, classColor, fullName, useYodo } from "@/lib/yodo-store";
-import { L, fDayMonth } from "@/lib/i18n";
+import { L, fDayMonth, fMonthYear } from "@/lib/i18n";
+import { api } from "@/lib/api";
+import { money } from "@/lib/receipt-print";
 
 export const Route = createFileRoute("/_authenticated/_shell/")({
   head: () => ({
@@ -21,7 +24,11 @@ export const Route = createFileRoute("/_authenticated/_shell/")({
 });
 
 function Dashboard() {
-  const { data } = useYodo();
+  const { data, can } = useYodo();
+  // Money in this month, only for roles allowed to see money (owner 12/10/2026).
+  const seeMoney = can("money");
+  const [sum, setSum] = useState<{ total: number; count: number } | null>(null);
+  useEffect(() => { if (seeMoney) api<{ total: number; count: number }>("/receipts/summary").then(setSum).catch(() => setSum(null)); }, [seeMoney]);
   const today = format(new Date(), "yyyy-MM-dd");
   const ws = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekDates = new Set(Array.from({ length: 7 }, (_, i) => format(addDays(ws, i), "yyyy-MM-dd")));
@@ -52,6 +59,16 @@ function Dashboard() {
         </div>
       </div>
 
+      {seeMoney && sum && (
+        <Card className="mb-4 flex-row items-center gap-4 rounded-3xl border-0 bg-primary p-5 text-primary-foreground" data-testid="money-card">
+          <Banknote className="h-7 w-7 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs opacity-85">{L(`รับเงิน ${fMonthYear(new Date())}`, `Money in, ${fMonthYear(new Date())}`)}</p>
+            <p className="font-display text-3xl font-semibold">{money(sum.total)} {L("บาท", "THB")}</p>
+          </div>
+          {can("receipts") && <Link to="/receipts" className="shrink-0 rounded-full bg-primary-foreground/15 px-4 py-2 text-sm hover:bg-primary-foreground/25">{L(`${sum.count} ใบเสร็จ`, `${sum.count} receipts`)}</Link>}
+        </Card>
+      )}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s) => (
           <Link key={s.label} to={s.to}>

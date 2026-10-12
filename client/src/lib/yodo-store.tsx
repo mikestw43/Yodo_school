@@ -74,7 +74,10 @@ export interface DanceClass {
   image: string;
   status: "Active" | "Inactive";
   disabled: boolean;
+  /** Baht for the whole course (owner 12/10/2026). */
   price: number | null;
+  /** Course length in months; the expiry date follows from it. */
+  months: number;
 }
 export type ClassInput = Omit<DanceClass, "id" | "disabled">;
 
@@ -90,6 +93,14 @@ export interface Enrollment {
   receiptImage: string;
 }
 export type EnrollmentInput = Omit<Enrollment, "id" | "studentId" | "joinedAt">;
+/** Money taken for a class purchase; the server makes the receipt from it (owner 12/10/2026). */
+export interface PaymentInput { date: string; price: number; discount: number; method: "cash" | "transfer" | "card"; slip: string; payer: string; remark: string }
+export interface Receipt {
+  id: string; no: string; date: string; studentId: string; enrollmentId: string; classId: string; item: string; months: number;
+  startDate: string; expiryDate: string; price: number; discount: number; amount: number; method: "cash" | "transfer" | "card";
+  slip: string; payer: string; remark: string; receivedByName: string; cancelled: boolean; cancelledAt: string; cancelReason: string;
+  cancelledBy: string; createdAt: string;
+}
 export interface Schedule {
   id: string;
   classId: string;
@@ -106,6 +117,8 @@ export interface Position {
   name: string;
   description: string;
   isSystem?: boolean;
+  /** superadmin (hidden) | owner | partner | admin | "" = a role the Owner added */
+  kind?: string;
 }
 export interface SystemUser {
   id: string;
@@ -124,7 +137,7 @@ export interface SystemUser {
 }
 export type SystemUserInput = Omit<SystemUser, "id" | "status" | "createdAt">;
 
-export const MENU_KEYS = ["dashboard", "students", "classes", "teachers", "calendar", "users", "auditlog"] as const;
+export const MENU_KEYS = ["dashboard", "students", "classes", "teachers", "calendar", "users", "auditlog", "receipts", "company", "money"] as const;
 export type MenuKey = (typeof MENU_KEYS)[number];
 export type PermAction = "view" | "add" | "edit" | "delete";
 export type MenuPerm = Record<PermAction, boolean>;
@@ -144,6 +157,8 @@ export interface YodoData {
   positions: Position[];
   systemUsers: SystemUser[];
   permissions: PermissionMap;
+  /** The signed-in person is the Owner (or the hidden SuperAdmin): only they edit rights and roles. */
+  owner?: boolean;
   /** Codes of soft-deleted students, kept so new codes never reuse them. */
   deletedStudentCodes: string[];
 }
@@ -193,8 +208,8 @@ interface Ctx {
   updateStudent: (id: string, s: StudentInput, sign?: Sign) => void;
   setStudentStatus: (id: string, status: Status) => void;
   signStudent: (id: string, signature: string, signedAt: string) => void;
-  enroll: (studentId: string, input: EnrollmentInput) => void;
-  updateEnrollment: (id: string, input: EnrollmentInput) => void;
+  enroll: (studentId: string, input: EnrollmentInput, pay?: PaymentInput, onReceipt?: (r: Receipt) => void) => void;
+  updateEnrollment: (id: string, input: EnrollmentInput, pay?: PaymentInput, onReceipt?: (r: Receipt) => void) => void;
   unenroll: (studentId: string, classId: string) => void;
   addTeacher: (t: TeacherInput) => void;
   updateTeacher: (id: string, t: TeacherInput) => void;
@@ -281,17 +296,24 @@ export function YodoProvider({ children }: { children: ReactNode }) {
       setData((d) => ({ ...d, students: d.students.map((s) => (s.id === id ? { ...s, status } : s)) }));
       run(api(`/students/${id}/status`, { body: { status } }));
     },
-    enroll: (studentId, input) => {
+    enroll: (studentId, input, pay, onReceipt) => {
       if (data.enrollments.some((e) => e.studentId === studentId && e.classId === input.classId)) return;
       const e: Enrollment = { ...input, id: newId(), studentId, joinedAt: new Date().toISOString() };
       setData((d) => ({ ...d, enrollments: [...d.enrollments, e] }));
-      run(api<Enrollment>("/enrollments", { body: { id: e.id, studentId, ...input } }), (r) =>
-        setData((d) => ({ ...d, enrollments: d.enrollments.map((x) => (x.id === r.id ? r : x)) })));
+      const saved = api<Enrollment>("/enrollments", { body: { id: e.id, studentId, ...input } }).then((r) => {
+        setData((d) => ({ ...d, enrollments: d.enrollments.map((x) => (x.id === r.id ? r : x)) }));
+        return r;
+      });
+      // The receipt is made only once the enrollment is saved (its number comes from the server).
+      run(pay ? saved.then((r) => api<Receipt>("/receipts", { body: { ...pay, enrollmentId: r.id } })).then((rc) => { onReceipt?.(rc); }) : saved.then(() => undefined));
     },
-    updateEnrollment: (id, input) => {
+    updateEnrollment: (id, input, pay, onReceipt) => {
       setData((d) => ({ ...d, enrollments: d.enrollments.map((e) => (e.id === id ? { ...e, ...input } : e)) }));
-      run(api<Enrollment>(`/enrollments/${id}`, { method: "PUT", body: input }), (r) =>
-        setData((d) => ({ ...d, enrollments: d.enrollments.map((x) => (x.id === r.id ? r : x)) })));
+      const saved = api<Enrollment>(`/enrollments/${id}`, { method: "PUT", body: input }).then((r) => {
+        setData((d) => ({ ...d, enrollments: d.enrollments.map((x) => (x.id === r.id ? r : x)) }));
+        return r;
+      });
+      run(pay ? saved.then(() => api<Receipt>("/receipts", { body: { ...pay, enrollmentId: id } })).then((rc) => { onReceipt?.(rc); }) : saved.then(() => undefined));
     },
     unenroll: (studentId, classId) => {
       const scheduleIds = data.schedules.filter((s) => s.classId === classId).map((s) => s.id);
@@ -370,7 +392,7 @@ export function YodoProvider({ children }: { children: ReactNode }) {
     addPosition: (p) => {
       const id = newId();
       setData((d) => ({ ...d, positions: [...d.positions, { ...p, id }], permissions: { ...d.permissions, [id]: emptyPerms() } }));
-      run(api("/positions", { body: { id, name: p.name, description: p.description } }));
+      runReload(api("/positions", { body: { id, name: p.name, description: p.description } }));
     },
     updatePosition: (id, p) => {
       if (data.positions.find((x) => x.id === id)?.isSystem) return;
@@ -386,7 +408,7 @@ export function YodoProvider({ children }: { children: ReactNode }) {
     setPositionPermissions: (positionId, perms) => {
       if (data.positions.find((x) => x.id === positionId)?.isSystem) return;
       setData((d) => ({ ...d, permissions: { ...d.permissions, [positionId]: perms } }));
-      run(api(`/positions/${positionId}/permissions`, { method: "PUT", body: perms }));
+      runReload(api(`/positions/${positionId}/permissions`, { method: "PUT", body: perms }));
     },
     addSystemUser: (u) => { runReload(api("/users", { body: u })); },
     updateSystemUser: (id, u) => {

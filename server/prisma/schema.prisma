@@ -41,11 +41,12 @@ model User {
 }
 
 model Position {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
-  description String    @default("")
-  isSystem    Boolean   @default(false) // full access, cannot be edited
-  createdAt   DateTime  @default(now())
+  description String   @default("")
+  isSystem    Boolean  @default(false) // full access, cannot be edited
+  kind        String   @default("") // superadmin (hidden, Dev) | owner | partner | admin | "" = a role the Owner added
+  createdAt   DateTime @default(now())
 }
 
 model PositionPermission {
@@ -83,7 +84,8 @@ model DanceClass {
   image       String   @default("")
   status      String   @default("Active") // Active | Inactive
   disabled    Boolean  @default(false)
-  price       Float?   // baht per month
+  price       Float? // baht for the whole course (owner 12/10/2026; was per month)
+  months      Int      @default(1) // course length in months; the expiry date follows from it
   createdAt   DateTime @default(now())
 }
 
@@ -211,6 +213,16 @@ model Setting {
   id             Int      @id @default(1)
   googleClientId String   @default("")
   expiryDays     Int      @default(7) // "class ending soon" warning, days before the expiry date
+  // Company details printed on receipts (owner 12/10/2026, "Company settings" page)
+  companyName    String   @default("")
+  companyNameEn  String   @default("")
+  companyAddress String   @default("")
+  companyPhone   String   @default("")
+  companyEmail   String   @default("")
+  companyTaxId   String   @default("")
+  companyBranch  String   @default("")
+  receiptLogo    String   @default("") // "" = the YODO logo
+  receiptSign    String   @default("") // signature of the person receiving money, optional
   updatedAt      DateTime @updatedAt
 }
 
@@ -239,4 +251,36 @@ model DevicePin {
   fails      Int       @default(0)
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime?
+}
+
+// Receipts for class purchases (owner 12/10/2026). Number RC + YYMM + "-" + 4 digits, restarting each month, never
+// skipped: a receipt is never deleted, only cancelled (kept, shown struck through, not counted).
+model Receipt {
+  id             String    @id @default(uuid())
+  no             String    @unique // RC2610-0001
+  ym             String // "2610" (year + month of the receipt date)
+  seq            Int
+  date           String // YYYY-MM-DD, the day the money came in
+  studentId      String
+  enrollmentId   String    @default("")
+  classId        String    @default("")
+  item           String // class name at the time
+  months         Int       @default(1)
+  startDate      String    @default("")
+  expiryDate     String    @default("")
+  price          Float
+  discount       Float     @default(0)
+  amount         Float
+  method         String // cash | transfer | card
+  slip           String    @default("")
+  payer          String    @default("")
+  remark         String    @default("")
+  receivedById   String    @default("")
+  receivedByName String    @default("")
+  cancelledAt    DateTime?
+  cancelReason   String    @default("")
+  cancelledBy    String    @default("")
+  createdAt      DateTime  @default(now())
+
+  @@unique([ym, seq])
 }
