@@ -10,14 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Field, ImageUpload, onlyDigits10, PageHeader } from "@/components/yodo/ui";
 import { api, errorText, getMe } from "@/lib/api";
 import { ROLE_LABEL } from "@/lib/auth-utils";
+import { L } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
       { title: "YODO" },
-      { name: "description", content: "แก้ไขข้อมูลส่วนตัวและรูปโปรไฟล์ของบัญชีผู้ใช้ YODO ของคุณ" },
+      { name: "description", content: L("แก้ไขข้อมูลส่วนตัวและรูปโปรไฟล์ของบัญชีผู้ใช้ YODO ของคุณ", "Edit the personal details and profile picture of your YODO account") },
       { property: "og:title", content: "YODO" },
-      { property: "og:description", content: "แก้ไขข้อมูลส่วนตัวและรูปโปรไฟล์ของบัญชีผู้ใช้ YODO ของคุณ" },
+      { property: "og:description", content: L("แก้ไขข้อมูลส่วนตัวและรูปโปรไฟล์ของบัญชีผู้ใช้ YODO ของคุณ", "Edit the personal details and profile picture of your YODO account") },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -60,8 +61,8 @@ function SettingsPage() {
 
   const save = async () => {
     const e: Partial<Record<keyof ProfileForm, string>> = {};
-    if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = "อีเมลไม่ถูกต้อง";
-    if (f.phone && !/^\d{10}$/.test(f.phone)) e.phone = "เบอร์โทรต้องมี 10 หลัก";
+    if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = L("อีเมลไม่ถูกต้อง", "The email is not valid");
+    if (f.phone && !/^\d{10}$/.test(f.phone)) e.phone = L("เบอร์โทรต้องมี 10 หลัก", "The phone number needs 10 digits");
     setErrors(e);
     if (Object.keys(e).length) return;
     setSaving(true);
@@ -69,12 +70,12 @@ function SettingsPage() {
       await api("/me", { method: "PATCH", body: f });
     } catch (err) {
       setSaving(false);
-      toast.error("บันทึกไม่สำเร็จ: " + errorText(err));
+      toast.error(L("บันทึกไม่สำเร็จ: ", "Could not save: ") + errorText(err));
       return;
     }
     setSaving(false);
     window.dispatchEvent(new Event("yodo:me-updated"));
-    toast.success("บันทึกโปรไฟล์แล้ว");
+    toast.success(L("บันทึกโปรไฟล์แล้ว", "Profile saved"));
   };
 
   const openPwDialog = () => {
@@ -85,20 +86,20 @@ function SettingsPage() {
   };
 
   const verifyCurrent = async () => {
-    if (!pw.current) { setPwErrors({ current: "กรุณากรอกรหัสผ่านปัจจุบัน" }); return; }
+    if (!pw.current) { setPwErrors({ current: L("กรุณากรอกรหัสผ่านปัจจุบัน", "Please enter your current password") }); return; }
     setPwSaving(true);
     const ok = await api("/me/password/check", { body: { current: pw.current } }).then(() => true, () => false);
     setPwSaving(false);
-    if (!ok) { setPwErrors({ current: "รหัสผ่านปัจจุบันไม่ถูกต้อง" }); return; }
+    if (!ok) { setPwErrors({ current: L("รหัสผ่านปัจจุบันไม่ถูกต้อง", "The current password is wrong") }); return; }
     setPwErrors({});
     setPwStep(2);
   };
 
   const changePassword = async () => {
     const e: Partial<Record<"next" | "confirm", string>> = {};
-    if (pw.next.length < 6) e.next = "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
-    else if (pw.next === pw.current) e.next = "รหัสผ่านใหม่ต้องไม่เหมือนรหัสผ่านเดิม";
-    if (pw.confirm !== pw.next) e.confirm = "ยืนยันรหัสผ่านไม่ตรงกัน";
+    if (pw.next.length < 6) e.next = L("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร", "The new password needs at least 6 characters");
+    else if (pw.next === pw.current) e.next = L("รหัสผ่านใหม่ต้องไม่เหมือนรหัสผ่านเดิม", "The new password must be different from the old one");
+    if (pw.confirm !== pw.next) e.confirm = L("ยืนยันรหัสผ่านไม่ตรงกัน", "The passwords do not match");
     setPwErrors(e);
     if (Object.keys(e).length) return;
     setPwSaving(true);
@@ -106,53 +107,53 @@ function SettingsPage() {
       await api("/me/password", { body: { current: pw.current, next: pw.next } });
     } catch (err) {
       setPwSaving(false);
-      toast.error("เปลี่ยนรหัสผ่านไม่สำเร็จ: " + errorText(err));
+      toast.error(L("เปลี่ยนรหัสผ่านไม่สำเร็จ: ", "Could not change the password: ") + errorText(err));
       return;
     }
     setPwSaving(false);
     setPwOpen(false);
-    toast.success("เปลี่ยนรหัสผ่านเรียบร้อยแล้ว");
+    toast.success(L("เปลี่ยนรหัสผ่านเรียบร้อยแล้ว", "Password changed"));
   };
 
-  if (loading) return <p className="py-20 text-center text-sm text-muted-foreground">กำลังโหลด...</p>;
+  if (loading) return <p className="py-20 text-center text-sm text-muted-foreground">{L("กำลังโหลด...", "Loading...")}</p>;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <Button variant="ghost" onClick={() => router.history.back()} className="mb-4 -ml-2 gap-2 rounded-full text-muted-foreground">
-        <ArrowLeft className="h-4 w-4" /> ย้อนกลับ
+        <ArrowLeft className="h-4 w-4" /> {L("ย้อนกลับ", "Back")}
       </Button>
-      <PageHeader title="ตั้งค่าโปรไฟล์" subtitle="แก้ไขข้อมูลส่วนตัวและรูปโปรไฟล์ของคุณ" />
+      <PageHeader title={L("ตั้งค่าโปรไฟล์", "Profile settings")} subtitle={L("แก้ไขข้อมูลส่วนตัวและรูปโปรไฟล์ของคุณ", "Edit your personal details and profile picture")} />
       <Card className="flex flex-col gap-5 rounded-3xl p-7">
-        <Field label="Profile Image">
+        <Field label={L("รูปโปรไฟล์", "Profile Image")}>
           <ImageUpload value={f.image} onChange={(v) => set("image", v)} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="ชื่อ"><Input value={f.firstName} onChange={(e) => set("firstName", e.target.value)} /></Field>
-          <Field label="นามสกุล"><Input value={f.lastName} onChange={(e) => set("lastName", e.target.value)} /></Field>
-          <Field label="ชื่อเล่น"><Input value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></Field>
-          <Field label="เบอร์โทร" error={errors.phone}><Input inputMode="numeric" value={f.phone} onChange={(e) => set("phone", onlyDigits10(e.target.value))} /></Field>
-          <Field label="อีเมล" error={errors.email} className="sm:col-span-2"><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
+          <Field label={L("ชื่อ", "First name")}><Input value={f.firstName} onChange={(e) => set("firstName", e.target.value)} /></Field>
+          <Field label={L("นามสกุล", "Last name")}><Input value={f.lastName} onChange={(e) => set("lastName", e.target.value)} /></Field>
+          <Field label={L("ชื่อเล่น", "Nickname")}><Input value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></Field>
+          <Field label={L("เบอร์โทร", "Phone")} error={errors.phone}><Input inputMode="numeric" value={f.phone} onChange={(e) => set("phone", onlyDigits10(e.target.value))} /></Field>
+          <Field label={L("อีเมล", "Email")} error={errors.email} className="sm:col-span-2"><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
         </div>
         <div className="grid gap-4 rounded-2xl bg-accent/40 p-4 text-sm sm:grid-cols-3">
-          <div><p className="text-xs text-muted-foreground">Username</p><p className="font-medium">{username}</p></div>
-          <div><p className="text-xs text-muted-foreground">ตำแหน่ง</p><p className="font-medium">{positionName}</p></div>
-          <div><p className="text-xs text-muted-foreground">บทบาท</p><p className="font-medium">{roleLabel}</p></div>
+          <div><p className="text-xs text-muted-foreground">{L("ชื่อผู้ใช้", "Username")}</p><p className="font-medium">{username}</p></div>
+          <div><p className="text-xs text-muted-foreground">{L("ตำแหน่ง", "Position")}</p><p className="font-medium">{positionName}</p></div>
+          <div><p className="text-xs text-muted-foreground">{L("บทบาท", "Role")}</p><p className="font-medium">{roleLabel}</p></div>
         </div>
         <div className="flex items-center justify-end">
-          <Button onClick={save} disabled={saving} className="rounded-full px-8">{saving ? "กำลังบันทึก..." : "บันทึก"}</Button>
+          <Button onClick={save} disabled={saving} className="rounded-full px-8">{saving ? L("กำลังบันทึก...", "Saving...") : L("บันทึก", "Save")}</Button>
         </div>
       </Card>
       <Card className="mt-6 gap-0 rounded-3xl py-2">
-        <h2 className="px-5 pb-1 pt-3 font-semibold">การเข้าสู่ระบบของฉัน</h2>
+        <h2 className="px-5 pb-1 pt-3 font-semibold">{L("การเข้าสู่ระบบของฉัน", "My sign-in")}</h2>
         <SecurityCard>
           {google.clientId && (
-            <Row icon={<Link2 className="h-4 w-4" />} title="บัญชี Google"
-              sub={google.linked ? f.email || "ผูกแล้ว" : "ยังไม่ผูก: ใส่อีเมล Gmail ด้านบน แล้วกด \"เข้าด้วย Google\" ที่หน้าเข้าสู่ระบบหนึ่งครั้ง"}>
-              {google.linked && <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><Check className="h-3.5 w-3.5" />ผูกแล้ว</span>}
+            <Row icon={<Link2 className="h-4 w-4" />} title={L("บัญชี Google", "Google account")}
+              sub={google.linked ? f.email || L("ผูกแล้ว", "Linked") : L("ยังไม่ผูก: ใส่อีเมล Gmail ด้านบน แล้วกด \"เข้าด้วย Google\" ที่หน้าเข้าสู่ระบบหนึ่งครั้ง", "Not linked yet: enter your Gmail address above, then tap \"Continue with Google\" on the sign-in page once.")}>
+              {google.linked && <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><Check className="h-3.5 w-3.5" />{L("ผูกแล้ว", "Linked")}</span>}
             </Row>
           )}
           <button type="button" onClick={openPwDialog} className="w-full text-left hover:bg-muted/50">
-            <Row icon={<KeyRound className="h-4 w-4" />} title="เปลี่ยนรหัสผ่าน"><ChevronRight className="h-4 w-4 text-muted-foreground" /></Row>
+            <Row icon={<KeyRound className="h-4 w-4" />} title={L("เปลี่ยนรหัสผ่าน", "Change password")}><ChevronRight className="h-4 w-4 text-muted-foreground" /></Row>
           </button>
         </SecurityCard>
       </Card>
@@ -160,12 +161,12 @@ function SettingsPage() {
       <Dialog open={pwOpen} onOpenChange={setPwOpen}>
         <DialogContent className="max-w-md rounded-3xl">
           <DialogHeader>
-            <DialogTitle>เปลี่ยนรหัสผ่าน</DialogTitle>
+            <DialogTitle>{L("เปลี่ยนรหัสผ่าน", "Change password")}</DialogTitle>
           </DialogHeader>
           {pwStep === 1 ? (
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">กรอกรหัสผ่านปัจจุบันเพื่อยืนยันตัวตนก่อนตั้งรหัสผ่านใหม่</p>
-              <Field label="รหัสผ่านปัจจุบัน" error={pwErrors.current}>
+              <p className="text-sm text-muted-foreground">{L("กรอกรหัสผ่านปัจจุบันเพื่อยืนยันตัวตนก่อนตั้งรหัสผ่านใหม่", "Enter your current password to confirm it is you before setting a new one.")}</p>
+              <Field label={L("รหัสผ่านปัจจุบัน", "Current password")} error={pwErrors.current}>
                 <Input
                   type="password"
                   value={pw.current}
@@ -176,13 +177,13 @@ function SettingsPage() {
                 />
               </Field>
               <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setPwOpen(false)} className="rounded-full">ยกเลิก</Button>
-                <Button onClick={verifyCurrent} disabled={pwSaving} className="rounded-full px-6">{pwSaving ? "กำลังตรวจสอบ..." : "ถัดไป"}</Button>
+                <Button variant="ghost" onClick={() => setPwOpen(false)} className="rounded-full">{L("ยกเลิก", "Cancel")}</Button>
+                <Button onClick={verifyCurrent} disabled={pwSaving} className="rounded-full px-6">{pwSaving ? L("กำลังตรวจสอบ...", "Checking...") : L("ถัดไป", "Next")}</Button>
               </div>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <Field label="รหัสผ่านใหม่" error={pwErrors.next}>
+              <Field label={L("รหัสผ่านใหม่", "New password")} error={pwErrors.next}>
                 <Input
                   type="password"
                   value={pw.next}
@@ -192,7 +193,7 @@ function SettingsPage() {
 
                 />
               </Field>
-              <Field label="ยืนยันรหัสผ่านใหม่" error={pwErrors.confirm}>
+              <Field label={L("ยืนยันรหัสผ่านใหม่", "Confirm new password")} error={pwErrors.confirm}>
                 <Input
                   type="password"
                   value={pw.confirm}
@@ -202,8 +203,8 @@ function SettingsPage() {
                 />
               </Field>
               <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => { setPwStep(1); setPwErrors({}); }} className="rounded-full">ย้อนกลับ</Button>
-                <Button onClick={changePassword} disabled={pwSaving} className="rounded-full px-6">{pwSaving ? "กำลังเปลี่ยน..." : "ยืนยันเปลี่ยนรหัสผ่าน"}</Button>
+                <Button variant="ghost" onClick={() => { setPwStep(1); setPwErrors({}); }} className="rounded-full">{L("ย้อนกลับ", "Back")}</Button>
+                <Button onClick={changePassword} disabled={pwSaving} className="rounded-full px-6">{pwSaving ? L("กำลังเปลี่ยน...", "Changing...") : L("ยืนยันเปลี่ยนรหัสผ่าน", "Change password")}</Button>
               </div>
             </div>
           )}
@@ -219,18 +220,18 @@ function GoogleSetupCard({ value, onSaved }: { value: string; onSaved: (v: strin
   const [busy, setBusy] = useState(false);
   const save = async () => {
     setBusy(true);
-    try { await api("/settings/google", { method: "PUT", body: { googleClientId: v.trim() } }); onSaved(v.trim()); toast.success(v.trim() ? "บันทึกแล้ว ปุ่มเข้าด้วย Google จะขึ้นที่หน้าเข้าสู่ระบบ" : "ปิดการเข้าด้วย Google แล้ว"); }
+    try { await api("/settings/google", { method: "PUT", body: { googleClientId: v.trim() } }); onSaved(v.trim()); toast.success(v.trim() ? L("บันทึกแล้ว ปุ่มเข้าด้วย Google จะขึ้นที่หน้าเข้าสู่ระบบ", "Saved. The Google button will show on the sign-in page") : L("ปิดการเข้าด้วย Google แล้ว", "Google sign-in turned off")); }
     catch (e) { toast.error(errorText(e)); }
     setBusy(false);
   };
   return (
     <Card className="mt-6 flex flex-col gap-3 rounded-3xl p-7">
       <div>
-        <h2 className="font-semibold">เข้าด้วย Google (ทั้งโรงเรียน)</h2>
-        <p className="text-xs text-muted-foreground">เห็นเฉพาะ SuperAdmin · วาง Client ID จาก Google (ใช้ตัวเดียวกับ FinHR ได้) เว้นว่าง = ปิดปุ่ม Google</p>
+        <h2 className="font-semibold">{L("เข้าด้วย Google (ทั้งโรงเรียน)", "Sign in with Google (whole school)")}</h2>
+        <p className="text-xs text-muted-foreground">{L("เห็นเฉพาะ SuperAdmin · วาง Client ID จาก Google (ใช้ตัวเดียวกับ FinHR ได้) เว้นว่าง = ปิดปุ่ม Google", "Only SuperAdmin sees this · paste the Client ID from Google (the same one as FinHR works). Leave it empty to turn the Google button off.")}</p>
       </div>
       <Field label="Google Client ID"><Input value={v} placeholder="xxxx.apps.googleusercontent.com" onChange={(e) => setV(e.target.value)} /></Field>
-      <div className="flex justify-end"><Button onClick={save} disabled={busy || v.trim() === value} className="rounded-full px-8">บันทึก</Button></div>
+      <div className="flex justify-end"><Button onClick={save} disabled={busy || v.trim() === value} className="rounded-full px-8">{L("บันทึก", "Save")}</Button></div>
     </Card>
   );
 }

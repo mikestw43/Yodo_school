@@ -12,6 +12,8 @@ import { useYodo } from "@/lib/yodo-store";
 import loginImg from "@/assets/login-ballet.jpg";
 import { PinLogin, markSignedOut } from "@/components/yodo/Pin";
 import { loadGoogle } from "@/lib/signin";
+import { getLang, L } from "@/lib/i18n";
+import { LangToggle } from "@/components/yodo/LangToggle";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -46,8 +48,8 @@ function AuthPage() {
     if (loading) return;
     setFormError("");
     const errs: typeof errors = {};
-    if (!identifier.trim()) errs.identifier = "กรุณากรอก Username หรือ Email";
-    if (!password) errs.password = "กรุณากรอก Password";
+    if (!identifier.trim()) errs.identifier = L("กรุณากรอกชื่อผู้ใช้หรืออีเมล", "Please enter your username or email");
+    if (!password) errs.password = L("กรุณากรอกรหัสผ่าน", "Please enter your password");
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setLoading(true);
@@ -77,6 +79,10 @@ function AuthPage() {
         </div>
       </header>
 
+      <div className="absolute right-5 top-5 z-20 md:right-10 md:top-10">
+        <LangToggle signedIn={false} className="border border-white/50 bg-card/80 shadow-soft backdrop-blur-xl" />
+      </div>
+
       <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-24">
         <div className="w-full max-w-[400px]">
           {needsSetup ? <SetupCard onDone={signedIn} /> : pin?.on && !usePassword ? (
@@ -86,20 +92,20 @@ function AuthPage() {
           ) : (
           <Card className="gap-6 rounded-3xl border border-white/50 bg-card/80 p-8 shadow-soft backdrop-blur-xl">
             <div>
-              <h1 className="font-display text-3xl font-bold">Welcome Back</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Sign in to continue to YODO</p>
+              <h1 className="font-display text-3xl font-bold">{L("ยินดีต้อนรับกลับ", "Welcome Back")}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{L("เข้าสู่ระบบเพื่อใช้งาน YODO", "Sign in to continue to YODO")}</p>
             </div>
             <form onSubmit={submit} className="space-y-4" noValidate>
               <div className="space-y-2">
-                <Label htmlFor="identifier">Username / Email</Label>
+                <Label htmlFor="identifier">{L("ชื่อผู้ใช้ / อีเมล", "Username / Email")}</Label>
                 <Input id="identifier" autoComplete="username" value={identifier} aria-invalid={!!errors.identifier} onChange={(e) => setIdentifier(e.target.value)} />
                 {errors.identifier && <p className="text-xs text-destructive">{errors.identifier}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{L("รหัสผ่าน", "Password")}</Label>
                 <div className="relative">
                   <Input id="password" type={show ? "text" : "password"} autoComplete="current-password" className="pr-10" value={password} aria-invalid={!!errors.password} onChange={(e) => setPassword(e.target.value)} />
-                  <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? L("ซ่อนรหัสผ่าน", "Hide password") : L("แสดงรหัสผ่าน", "Show password")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
@@ -107,13 +113,13 @@ function AuthPage() {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <label className="flex cursor-pointer items-center gap-2">
-                  <Checkbox checked={remember} onCheckedChange={(v) => setRemember(v === true)} /> Remember me
+                  <Checkbox checked={remember} onCheckedChange={(v) => setRemember(v === true)} /> {L("จดจำฉันไว้", "Remember me")}
                 </label>
-                <button type="button" className="text-primary hover:underline" onClick={() => toast.info("กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน")}>Forgot password?</button>
+                <button type="button" className="text-primary hover:underline" onClick={() => toast.info(L("กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน", "Please ask an administrator to reset your password"))}>{L("ลืมรหัสผ่าน?", "Forgot password?")}</button>
               </div>
               {formError && <p className="rounded-2xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{formError}</p>}
               <Button type="submit" className="w-full rounded-full" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />} Sign In
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />} {L("เข้าสู่ระบบ", "Sign In")}
               </Button>
             </form>
             {googleId && <GoogleButton clientId={googleId} onSignedIn={signedIn} onError={setFormError} />}
@@ -134,9 +140,9 @@ function SetupCard({ onDone }: { onDone: () => Promise<void> }) {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr("");
-    if (!f.code.trim() || !f.firstName.trim() || !f.username.trim()) { setErr("กรุณากรอกให้ครบ"); return; }
-    if (f.password.length < 6) { setErr("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"); return; }
-    if (f.password !== f.confirm) { setErr("ยืนยันรหัสผ่านไม่ตรงกัน"); return; }
+    if (!f.code.trim() || !f.firstName.trim() || !f.username.trim()) { setErr(L("กรุณากรอกให้ครบ", "Please fill in every field")); return; }
+    if (f.password.length < 6) { setErr(L("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", "The password needs at least 6 characters")); return; }
+    if (f.password !== f.confirm) { setErr(L("ยืนยันรหัสผ่านไม่ตรงกัน", "The passwords do not match")); return; }
     setBusy(true);
     try {
       await api("/setup", { body: { code: f.code.trim(), firstName: f.firstName, lastName: f.lastName, username: f.username, password: f.password } });
@@ -146,20 +152,20 @@ function SetupCard({ onDone }: { onDone: () => Promise<void> }) {
   return (
     <Card className="gap-5 rounded-3xl border border-white/50 bg-card/80 p-8 shadow-soft backdrop-blur-xl">
       <div>
-        <h1 className="font-display text-3xl font-bold">ตั้งค่าครั้งแรก</h1>
-        <p className="mt-1 text-sm text-muted-foreground">สร้างบัญชีผู้ดูแลระบบ (SuperAdmin) รหัสตั้งค่าอยู่ในไฟล์ setup-code.txt ในโฟลเดอร์ data บน NAS</p>
+        <h1 className="font-display text-3xl font-bold">{L("ตั้งค่าครั้งแรก", "First-time setup")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{L("สร้างบัญชีผู้ดูแลระบบ (SuperAdmin) รหัสตั้งค่าอยู่ในไฟล์ setup-code.txt ในโฟลเดอร์ data บน NAS", "Create the administrator (SuperAdmin) account. The setup code is in the file setup-code.txt in the data folder on the NAS.")}</p>
       </div>
       <form onSubmit={submit} className="space-y-3" noValidate>
-        <div className="space-y-2"><Label htmlFor="s-code">รหัสตั้งค่า (8 หลัก)</Label><Input id="s-code" inputMode="numeric" value={f.code} onChange={(e) => set("code", e.target.value)} /></div>
+        <div className="space-y-2"><Label htmlFor="s-code">{L("รหัสตั้งค่า (8 หลัก)", "Setup code (8 digits)")}</Label><Input id="s-code" inputMode="numeric" value={f.code} onChange={(e) => set("code", e.target.value)} /></div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2"><Label htmlFor="s-first">ชื่อ</Label><Input id="s-first" value={f.firstName} onChange={(e) => set("firstName", e.target.value)} /></div>
-          <div className="space-y-2"><Label htmlFor="s-last">นามสกุล</Label><Input id="s-last" value={f.lastName} onChange={(e) => set("lastName", e.target.value)} /></div>
+          <div className="space-y-2"><Label htmlFor="s-first">{L("ชื่อ", "First name")}</Label><Input id="s-first" value={f.firstName} onChange={(e) => set("firstName", e.target.value)} /></div>
+          <div className="space-y-2"><Label htmlFor="s-last">{L("นามสกุล", "Last name")}</Label><Input id="s-last" value={f.lastName} onChange={(e) => set("lastName", e.target.value)} /></div>
         </div>
-        <div className="space-y-2"><Label htmlFor="s-user">Username</Label><Input id="s-user" autoComplete="username" value={f.username} onChange={(e) => set("username", e.target.value)} /></div>
-        <div className="space-y-2"><Label htmlFor="s-pw">Password</Label><Input id="s-pw" type="password" autoComplete="new-password" value={f.password} onChange={(e) => set("password", e.target.value)} /></div>
-        <div className="space-y-2"><Label htmlFor="s-pw2">ยืนยัน Password</Label><Input id="s-pw2" type="password" autoComplete="new-password" value={f.confirm} onChange={(e) => set("confirm", e.target.value)} /></div>
+        <div className="space-y-2"><Label htmlFor="s-user">{L("ชื่อผู้ใช้", "Username")}</Label><Input id="s-user" autoComplete="username" value={f.username} onChange={(e) => set("username", e.target.value)} /></div>
+        <div className="space-y-2"><Label htmlFor="s-pw">{L("รหัสผ่าน", "Password")}</Label><Input id="s-pw" type="password" autoComplete="new-password" value={f.password} onChange={(e) => set("password", e.target.value)} /></div>
+        <div className="space-y-2"><Label htmlFor="s-pw2">{L("ยืนยันรหัสผ่าน", "Confirm password")}</Label><Input id="s-pw2" type="password" autoComplete="new-password" value={f.confirm} onChange={(e) => set("confirm", e.target.value)} /></div>
         {err && <p className="rounded-2xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{err}</p>}
-        <Button type="submit" className="w-full rounded-full" disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} สร้างบัญชี</Button>
+        <Button type="submit" className="w-full rounded-full" disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} {L("สร้างบัญชี", "Create account")}</Button>
       </form>
     </Card>
   );
@@ -181,15 +187,15 @@ function GoogleButton({ clientId, onSignedIn, onError }: { clientId: string; onS
           catch (e) { onError(errorText(e)); }
         },
       });
-      g.accounts.id.renderButton(box.current, { theme: "outline", size: "large", shape: "pill", text: "continue_with", locale: "th", width: Math.min(336, box.current.clientWidth || 336) });
+      g.accounts.id.renderButton(box.current, { theme: "outline", size: "large", shape: "pill", text: "continue_with", locale: getLang(), width: Math.min(336, box.current.clientWidth || 336) });
     }).catch(() => setFailed(true));
     return () => { live = false; };
   }, [clientId]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />หรือ<span className="h-px flex-1 bg-border" /></div>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />{L("หรือ", "or")}<span className="h-px flex-1 bg-border" /></div>
       <div ref={box} className="flex min-h-10 justify-center" />
-      {failed && <p className="text-center text-xs text-muted-foreground">โหลดปุ่ม Google ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่</p>}
+      {failed && <p className="text-center text-xs text-muted-foreground">{L("โหลดปุ่ม Google ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่", "Could not load the Google button. Check the internet and try again.")}</p>}
     </div>
   );
 }

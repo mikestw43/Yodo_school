@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import { format } from "date-fns";
 import type { Student } from "@/lib/yodo-store";
 import { ageDetail, displayDate, terms } from "@/lib/student-print";
+import { L, fd, opt, prefixed } from "@/lib/i18n";
 import logoUrlRaw from "@/assets/yodo-logo.png";
 const logo = { url: logoUrlRaw };
 
@@ -35,25 +35,25 @@ export const SignCanvas = forwardRef<SignCanvasHandle, { onDirty: () => void }>(
 function SignatureBlock({ student, signMode, canvasRef, onDirty, showOld = false }: {
   student: Student; showOld?: boolean; signMode: boolean; canvasRef?: React.Ref<SignCanvasHandle> | undefined; onDirty?: (() => void) | undefined;
 }) {
-  const date = student.signedAt ? student.signedAt.split("-").reverse().join("/") : format(new Date(), "dd/MM/yyyy");
+  const date = student.signedAt ? fd(student.signedAt) : fd(new Date());
   return (
     <div className="ydoc-signature">
       <div className="ydoc-sign-line">
-        <span>ลายเซ็นต์</span>
+        <span>{L("ลายเซ็นต์", "Signature")}</span>
         <span className="ydoc-line">
           {signMode ? (
             <>
               {showOld && student.signature
-                ? <img className="ydoc-sign-img" src={student.signature} alt="ลายเซ็นเดิม" />
-                : <span className="ydoc-sign-hint">เซ็นที่นี่</span>}
+                ? <img className="ydoc-sign-img" src={student.signature} alt={L("ลายเซ็นเดิม", "Previous signature")} />
+                : <span className="ydoc-sign-hint">{L("เซ็นที่นี่", "Sign here")}</span>}
               <SignCanvas ref={canvasRef} onDirty={onDirty ?? (() => {})} />
             </>
           ) : student.signature ? (
-            <img className="ydoc-sign-img" src={student.signature} alt="ลายเซ็น" />
+            <img className="ydoc-sign-img" src={student.signature} alt={L("ลายเซ็น", "Signature")} />
           ) : null}
         </span>
       </div>
-      <div className="ydoc-sign-date"><span>วันที่</span><span>{date}</span></div>
+      <div className="ydoc-sign-date"><span>{L("วันที่", "Date")}</span><span>{date}</span></div>
     </div>
   );
 }
@@ -67,7 +67,7 @@ export function StudentDocument({ student, signMode = false, canvasRefs, onDirty
   canvasRefs?: [React.Ref<SignCanvasHandle>, React.Ref<SignCanvasHandle>] | undefined;
   onDirty?: ((index: number) => void) | undefined;
 }) {
-  const nationality = student.nationality === "Other" ? student.nationalityOther : student.nationality;
+  const nationality = student.nationality === "Other" ? student.nationalityOther : opt(student.nationality);
   const photo = student.image && (/^data:image\//i.test(student.image) || /^https?:\/\//i.test(student.image));
   return (
     <div className="ydoc-root">
@@ -93,27 +93,27 @@ export function StudentDocument({ student, signMode = false, canvasRefs, onDirty
       <section className="ydoc-sheet">
         <img className="ydoc-logo" src={logo.url} alt="YODO You Only Dance Once" />
         <div className="ydoc-terms">
-          <p className="ydoc-terms-title">ข้อตกลงและเงื่อนไขของโรงเรียน</p>
-          <ol>{terms.map((term, i) => <li key={i}>{term}</li>)}</ol>
+          <p className="ydoc-terms-title">{L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions")}</p>
+          <ol>{terms().map((term, i) => <li key={i}>{term}</li>)}</ol>
         </div>
         <SignatureBlock key={resetKey} showOld={showOld} student={student} signMode={signMode} canvasRef={canvasRefs?.[0]} onDirty={() => onDirty?.(0)} />
       </section>
       <section className="ydoc-sheet">
         <img className="ydoc-logo" src={logo.url} alt="YODO You Only Dance Once" />
         {photo
-          ? <img className="ydoc-photo" src={student.image!} alt="รูปนักเรียน" />
+          ? <img className="ydoc-photo" src={student.image!} alt={L("รูปนักเรียน", "Student photo")} />
           : <div className="ydoc-photo-empty" />}
         <table className="ydoc-table"><tbody>
-          <tr><th>ชื่อ</th><td>{student.prefix} {student.firstName}</td><th>นามสกุล</th><td>{student.lastName}</td><th>ชื่อเล่น</th><td>{student.nickname}</td></tr>
-          <tr><th>วันเกิด</th><td>{displayDate(student.dob)}</td><th>อายุ</th><td colSpan={3}>{ageDetail(student.dob)}</td></tr>
-          <tr><th>เชื้อชาติ</th><td></td><th>สัญชาติ</th><td>{nationality}</td><th>ศาสนา</th><td>{student.religion}</td></tr>
-          <tr><th>ที่อยู่</th><td colSpan={5}>{student.address}</td></tr>
-          <tr><th>เบอร์โทร</th><td>{student.phone}</td><th>E-mail</th><td>{student.email}</td><th>Line ID</th><td>{student.lineId}</td></tr>
-          <tr><th>ผู้ติดต่อฉุกเฉิน</th><td colSpan={2}>{student.emergencyName}</td><th>เบอร์โทร</th><td colSpan={2}>{student.emergencyPhone}</td></tr>
-          <tr><th>มีความสัมพันธ์เป็น</th><td colSpan={5}>{student.relationship}</td></tr>
-          <tr><th>คลาสเต้นที่สนใจ</th><td colSpan={5}>{student.interested.join(", ")}</td></tr>
-          <tr><th>เคยเรียนเต้นมาก่อนหรือไม่</th><td colSpan={2}>{student.hasExperience ? "เคย" : "ไม่เคย"}</td><th>หากเคย โปรดระบุ</th><td colSpan={2}>{student.hasExperience ? student.experienceDetail : ""}</td></tr>
-          <tr><th>รู้จัก Y.O.D.O. จากช่องทางไหน</th><td colSpan={2}>{student.source}</td><th>อื่นๆ โปรดระบุ</th><td colSpan={2}>{student.source === "Other" ? student.sourceOther : ""}</td></tr>
+          <tr><th>{L("ชื่อ", "First name")}</th><td>{prefixed(student.prefix, student.firstName)}</td><th>{L("นามสกุล", "Last name")}</th><td>{student.lastName}</td><th>{L("ชื่อเล่น", "Nickname")}</th><td>{student.nickname}</td></tr>
+          <tr><th>{L("วันเกิด", "Date of birth")}</th><td>{displayDate(student.dob)}</td><th>{L("อายุ", "Age")}</th><td colSpan={3}>{ageDetail(student.dob)}</td></tr>
+          <tr><th>{L("เชื้อชาติ", "Ethnicity")}</th><td></td><th>{L("สัญชาติ", "Nationality")}</th><td>{nationality}</td><th>{L("ศาสนา", "Religion")}</th><td>{student.religion ? opt(student.religion) : ""}</td></tr>
+          <tr><th>{L("ที่อยู่", "Address")}</th><td colSpan={5}>{student.address}</td></tr>
+          <tr><th>{L("เบอร์โทร", "Phone")}</th><td>{student.phone}</td><th>E-mail</th><td>{student.email}</td><th>Line ID</th><td>{student.lineId}</td></tr>
+          <tr><th>{L("ผู้ติดต่อฉุกเฉิน", "Emergency contact")}</th><td colSpan={2}>{student.emergencyName}</td><th>{L("เบอร์โทร", "Phone")}</th><td colSpan={2}>{student.emergencyPhone}</td></tr>
+          <tr><th>{L("มีความสัมพันธ์เป็น", "Relationship")}</th><td colSpan={5}>{student.relationship}</td></tr>
+          <tr><th>{L("คลาสเต้นที่สนใจ", "Interested dance classes")}</th><td colSpan={5}>{student.interested.join(", ")}</td></tr>
+          <tr><th>{L("เคยเรียนเต้นมาก่อนหรือไม่", "Danced before?")}</th><td colSpan={2}>{student.hasExperience ? L("เคย", "Yes") : L("ไม่เคย", "No")}</td><th>{L("หากเคย โปรดระบุ", "If yes, please specify")}</th><td colSpan={2}>{student.hasExperience ? student.experienceDetail : ""}</td></tr>
+          <tr><th>{L("รู้จัก Y.O.D.O. จากช่องทางไหน", "How did you hear about Y.O.D.O.?")}</th><td colSpan={2}>{student.source ? opt(student.source) : ""}</td><th>{L("อื่นๆ โปรดระบุ", "Other, please specify")}</th><td colSpan={2}>{student.source === "Other" ? student.sourceOther : ""}</td></tr>
         </tbody></table>
         <SignatureBlock key={resetKey} showOld={showOld} student={student} signMode={signMode} canvasRef={canvasRefs?.[1]} onDirty={() => onDirty?.(1)} />
       </section>
