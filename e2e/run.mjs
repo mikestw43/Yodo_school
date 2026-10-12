@@ -469,25 +469,44 @@ try {
   await post('/classes', { name: 'Ballet Course', teacherId: '', description: '', image: '', status: 'Active', price: 10000, months: 6 });
   await page.goto(BASE + '/classes');
   await page.getByText('10,000 บาท / 6 เดือน').first().waitFor().then(() => check('class card shows the course price and length', true), () => check('class card shows the course price and length', false));
+  await post('/classes', { name: 'Jazz Course', teacherId: '', description: '', image: '', status: 'Active', price: 4500, months: 3 });
+  // ---------- buy courses: two in one receipt, % and baht off, a remark (owner 12/10/2026) ----------
   await page.goto(BASE + '/students');
-  await page.getByRole('button', { name: /^เพิ่ม .*มะลิ.* เข้าคลาส$/ }).first().click();
-  const ed = page.getByRole('dialog');
+  await page.getByRole('button', { name: /^ซื้อคอร์สให้ .*มะลิ/ }).first().click();
+  const ed = page.getByTestId('buy-dialog');
   await ed.getByRole('combobox').first().click();
   await page.getByRole('option', { name: 'Ballet Course' }).click();
   await page.waitForTimeout(300);
   const pbox = ed.getByTestId('payment-box');
-  check('payment is on and the price comes from the course', (await pbox.locator('input[type="checkbox"]').isChecked()) && (await pbox.locator('input[type="number"]').first().inputValue()) === '10000');
+  const l1 = ed.getByTestId('buy-line').first();
+  check('payment is on and the price comes from the course', (await pbox.locator('input[type="checkbox"]').isChecked()) && (await l1.getByTestId('line-price').inputValue()) === '10000');
   check('payer starts empty', (await pbox.getByTestId('pay-payer').inputValue()) === '');
-  await pbox.locator('input[type="number"]').nth(1).fill('500');
-  check('amount = price − discount', (await pbox.getByTestId('pay-amount').innerText()) === '9,500.00');
+  await l1.getByTestId('line-discount').fill('10');
+  await l1.getByRole('button', { name: '%', exact: true }).click();
+  check('a % discount: 10% of 10,000', (await l1.getByTestId('line-amount').innerText()) === '9,000.00');
+  await ed.getByRole('button', { name: 'เพิ่มคอร์ส' }).click();
+  const l2 = ed.getByTestId('buy-line').nth(1);
+  await l2.getByRole('combobox').click();
+  await page.getByRole('option', { name: 'Jazz Course' }).click();
+  await page.waitForTimeout(200);
+  await l2.getByTestId('line-discount').fill('500');
+  check('two courses in one bill, baht and % off', (await ed.getByTestId('buy-total').innerText()) === '13,000.00', await ed.getByTestId('buy-total').innerText());
+  await pbox.getByTestId('pay-remark').fill('แถมชุดเต้น 1 ชุด');
   await page.screenshot({ path: `${SHOTS}/36-payment.png` });
+  await pp.goto(BASE + '/students');
+  await pp.getByRole('button', { name: /^ซื้อคอร์สให้ / }).first().click();
+  await pp.getByTestId('buy-dialog').waitFor();
+  await pp.waitForTimeout(500);
+  await pp.screenshot({ path: `${SHOTS}/p14-buy.png` });
+  await pp.keyboard.press('Escape');
   await ed.getByRole('button', { name: 'บันทึกและออกใบเสร็จ' }).click();
   const rv = page.getByTestId('receipt-view');
   await rv.waitFor({ timeout: 8000 }).then(() => check('saving opens the new receipt', true), () => check('saving opens the new receipt', false));
   const frame = page.frameLocator('[data-testid="receipt-frame"]');
   await frame.locator('h1').waitFor();
   const rtxt = await frame.locator('body').innerText();
-  check('receipt: running number, company, course, amount in Thai words', /RC\d{4}-0001/.test(rtxt) && rtxt.includes('บริษัท โยโด้ แดนซ์ จำกัด') && rtxt.includes('Ballet Course') && rtxt.includes('6 เดือน') && rtxt.includes('เก้าพันห้าร้อยบาทถ้วน'), rtxt.slice(0, 200));
+  check('receipt: running number, company, both courses, amount in Thai words', /RC\d{4}-0001/.test(rtxt) && rtxt.includes('บริษัท โยโด้ แดนซ์ จำกัด') && rtxt.includes('Ballet Course') && rtxt.includes('Jazz Course') && rtxt.includes('6 เดือน') && rtxt.includes('3 เดือน') && rtxt.includes('หนึ่งหมื่นสามพันบาทถ้วน'), rtxt.slice(0, 300));
+  check('receipt shows each line\'s discount and the remark', rtxt.includes('ส่วนลด 10%') && rtxt.includes('แถมชุดเต้น 1 ชุด'));
   check('receipt prints the receiver name typed in Company settings', rtxt.includes('(ครูพรกันยา)'));
   check('receipt shows the stamp and the signature', (await frame.locator('img.stamp').count()) === 1 && (await frame.locator('.sign .line img').count()) === 1);
   await page.waitForTimeout(600);
@@ -498,16 +517,78 @@ try {
   await rv.getByRole('group', { name: 'ภาษาของใบเสร็จ' }).getByRole('button', { name: 'EN' }).click();
   await page.waitForTimeout(600);
   const etxt = await page.frameLocator('[data-testid="receipt-frame"]').locator('body').innerText();
-  check('receipt has its own English version', etxt.includes('Receipt') && etxt.includes('Nine thousand five hundred baht only') && etxt.includes('YODO Dance Co., Ltd.'));
+  check('receipt has its own English version', etxt.includes('Receipt') && etxt.includes('Thirteen thousand baht only') && etxt.includes('YODO Dance Co., Ltd.'));
   await page.screenshot({ path: `${SHOTS}/38-receipt-en.png` });
   await rv.getByRole('button', { name: 'กลับ' }).click();
   {
     const st = (await (await page.request.get(`${BASE}/api/data`)).json()).students.find((x) => x.firstName === 'มะลิ');
-    const en = (await (await page.request.get(`${BASE}/api/data`)).json()).enrollments.find((x) => x.studentId === st.id && x.expiryDate);
-    check('the expiry date follows the course length', !!en && en.expiryDate > en.startDate);
+    const en = (await (await page.request.get(`${BASE}/api/data`)).json()).enrollments.filter((x) => x.studentId === st.id);
+    check('the expiry date follows the course length', en.length === 3 && en.every((x) => x.expiryDate > x.startDate));
   }
+  // ---------- courses page, renew, extend, the student's history (owner 12/10/2026) ----------
+  await page.goto(BASE + '/');
+  await page.getByTestId('soon-card').filter({ hasText: '1 คอร์ส' }).waitFor({ timeout: 5000 }).then(() => check('dashboard: courses ending soon', true), () => check('dashboard: courses ending soon', false));
+  await page.getByTestId('soon-card').click();
+  await page.waitForURL('**/courses');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/41-courses.png`, fullPage: true });
+  const crow = page.locator('table [data-testid="course-row"]').filter({ hasText: s1.firstName }).filter({ hasText: 'Ballet Kids' });
+  await crow.first().waitFor({ timeout: 5000 }).then(() => check('courses page lists what ends soon, with days left', true), () => check('courses page lists what ends soon, with days left', false));
+  check('days left are counted', (await crow.locator('[data-state="soon"]').first().innerText()).includes('เหลือ 5 วัน'));
+  await page.screenshot({ path: `${SHOTS}/41-courses.png`, fullPage: true });
+  await crow.getByRole('button', { name: 'ต่อคอร์ส' }).first().click();
+  const bd = page.getByTestId('buy-dialog');
+  await bd.waitFor();
+  check('renew: the class is picked and starts the day after the old end', (await bd.getByTestId('buy-line').first().innerText()).includes('Ballet Kids'));
+  await bd.getByTestId('payment-box').locator('input[type="checkbox"]').uncheck();
+  await bd.getByRole('button', { name: 'บันทึก', exact: true }).click();
+  await bd.waitFor({ state: 'detached' });
+  await page.waitForTimeout(600);
+  {
+    const d2 = await (await page.request.get(`${BASE}/api/data`)).json();
+    const e1 = d2.enrollments.find((x) => x.studentId === s1.id && x.classId === c1.id);
+    check('renewing adds the course length after the old end, the start stays', e1.startDate === today && e1.expiryDate > plus(30), JSON.stringify(e1));
+  }
+  await page.getByTestId('filter-active').click();
+  const r2row = page.locator('table [data-testid="course-row"]').filter({ hasText: s2.firstName }).filter({ hasText: 'Jazz Teens' });
+  await r2row.getByRole('button', { name: 'ขยายเวลา' }).first().click();
+  const xd = page.getByTestId('extend-dialog');
+  await xd.waitFor();
+  await xd.getByTestId('extend-reason').fill('ครูป่วย 1 สัปดาห์');
+  await page.screenshot({ path: `${SHOTS}/43-extend.png` });
+  await xd.getByRole('button', { name: 'ขยายเวลา', exact: true }).click();
+  await xd.waitFor({ state: 'detached' });
+  await page.waitForTimeout(600);
+  {
+    const d3 = await (await page.request.get(`${BASE}/api/data`)).json();
+    const e2 = d3.enrollments.find((x) => x.studentId === s2.id && x.classId === c2.id);
+    check('extend 7 days: new expiry, kept in the history', e2.expiryDate === plus(67) && d3.purchases.some((p) => p.kind === 'extend' && p.reason === 'ครูป่วย 1 สัปดาห์'), e2.expiryDate);
+  }
+  await page.locator('table [data-testid="course-row"]').filter({ hasText: s2.firstName }).first().getByRole('link').click();
+  await page.waitForURL('**/students');
+  await page.getByRole('tab', { name: /คอร์ส/ }).click();
+  const sc = page.getByTestId('student-courses');
+  await sc.waitFor();
+  check('student details: current courses and the purchase history', (await sc.getByTestId('course-card').count()) === 3 && (await sc.getByTestId('history-row').count()) === 3);
+  await page.screenshot({ path: `${SHOTS}/42-student-courses.png` });
+  await page.keyboard.press('Escape');
+  await page.goto(BASE + '/classes');
+  await page.getByTestId('class-counts').first().waitFor();
+  await page.getByRole('button', { name: 'ดูนักเรียนใน Ballet Course' }).click();
+  await page.getByTestId('class-students').waitFor({ timeout: 5000 }).then(() => check('class: who bought it and when it ends', true), () => check('class: who bought it and when it ends', false));
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${SHOTS}/44-class.png` });
+  await page.keyboard.press('Escape');
+  await pp.goto(BASE + '/courses');
+  await pp.getByTestId('filter-all').click();
+  await pp.waitForTimeout(400);
+  {
+    const sw = await pp.evaluate(() => document.documentElement.scrollWidth);
+    check('phone: courses page fits the screen', sw <= 391, `${sw}px`);
+  }
+  await pp.screenshot({ path: `${SHOTS}/p13-courses.png`, fullPage: true });
   await page.goto(BASE + '/receipts');
-  await page.getByTestId('receipt-total').filter({ hasText: '9,500.00' }).waitFor({ timeout: 5000 }).then(() => check('receipts page: the month total', true), () => check('receipts page: the month total', false));
+  await page.getByTestId('receipt-total').filter({ hasText: '13,000.00' }).waitFor({ timeout: 5000 }).then(() => check('receipts page: the month total', true), () => check('receipts page: the month total', false));
   await page.screenshot({ path: `${SHOTS}/39-receipts.png`, fullPage: true });
   await page.getByTestId('receipt-table').locator('tbody tr').first().click();
   await rv.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
@@ -562,7 +643,7 @@ try {
   check('the language is kept with the account', (await (await page.request.get(`${BASE}/api/me`)).json()).lang === 'en');
   // typed data (names, class names) may be Thai; nothing else may be
   const TYPED = /บัลเล่ต์สำหรับเด็ก 4-7 ปี|มะลิ|ใจดี|ลิลี่|ต้นกล้า|สุขใจ|กล้า|แอนนา|บัลเล่ต์|แอน|บัลเล่ต์สำหรับเด็ก 4-7 ปี|ไมค์|ด\.ญ\.|ด\.ช\.|นางสาว/g;
-  for (const [pth, name] of [['/', 'e1-dashboard'], ['/students', 'e2-students'], ['/classes', 'e3-classes'], ['/teachers', 'e4-teachers'], ['/calendar', 'e5-calendar'], ['/users', 'e6-users'], ['/permissions', 'e7-permissions'], ['/audit-log', 'e8-audit'], ['/settings', 'e9-settings'], ['/import', 'e10-import'], ['/receipts', 'e11-receipts'], ['/company', 'e12-company']]) {
+  for (const [pth, name] of [['/', 'e1-dashboard'], ['/students', 'e2-students'], ['/classes', 'e3-classes'], ['/teachers', 'e4-teachers'], ['/calendar', 'e5-calendar'], ['/users', 'e6-users'], ['/permissions', 'e7-permissions'], ['/audit-log', 'e8-audit'], ['/settings', 'e9-settings'], ['/import', 'e10-import'], ['/receipts', 'e11-receipts'], ['/company', 'e12-company'], ['/courses', 'e13-courses']]) {
     await page.goto(BASE + pth);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(300);

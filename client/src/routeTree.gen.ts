@@ -18,6 +18,7 @@ import { Route as AuthenticatedShellAuditLogRouteImport } from './routes/_authen
 import { Route as AuthenticatedShellCalendarRouteImport } from './routes/_authenticated/_shell/calendar'
 import { Route as AuthenticatedShellClassesRouteImport } from './routes/_authenticated/_shell/classes'
 import { Route as AuthenticatedShellCompanyRouteImport } from './routes/_authenticated/_shell/company'
+import { Route as AuthenticatedShellCoursesRouteImport } from './routes/_authenticated/_shell/courses'
 import { Route as AuthenticatedShellImportRouteImport } from './routes/_authenticated/_shell/import'
 import { Route as AuthenticatedShellPermissionsRouteImport } from './routes/_authenticated/_shell/permissions'
 import { Route as AuthenticatedShellReceiptsRouteImport } from './routes/_authenticated/_shell/receipts'
@@ -72,6 +73,12 @@ const AuthenticatedShellCompanyRoute =
     path: '/company',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellCoursesRoute =
+  AuthenticatedShellCoursesRouteImport.update({
+    id: '/courses',
+    path: '/courses',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellImportRoute =
   AuthenticatedShellImportRouteImport.update({
     id: '/import',
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof AuthenticatedShellCalendarRoute
   '/classes': typeof AuthenticatedShellClassesRoute
   '/company': typeof AuthenticatedShellCompanyRoute
+  '/courses': typeof AuthenticatedShellCoursesRoute
   '/import': typeof AuthenticatedShellImportRoute
   '/permissions': typeof AuthenticatedShellPermissionsRoute
   '/receipts': typeof AuthenticatedShellReceiptsRoute
@@ -131,6 +139,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof AuthenticatedShellCalendarRoute
   '/classes': typeof AuthenticatedShellClassesRoute
   '/company': typeof AuthenticatedShellCompanyRoute
+  '/courses': typeof AuthenticatedShellCoursesRoute
   '/import': typeof AuthenticatedShellImportRoute
   '/permissions': typeof AuthenticatedShellPermissionsRoute
   '/receipts': typeof AuthenticatedShellReceiptsRoute
@@ -148,6 +157,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/calendar': typeof AuthenticatedShellCalendarRoute
   '/_authenticated/_shell/classes': typeof AuthenticatedShellClassesRoute
   '/_authenticated/_shell/company': typeof AuthenticatedShellCompanyRoute
+  '/_authenticated/_shell/courses': typeof AuthenticatedShellCoursesRoute
   '/_authenticated/_shell/import': typeof AuthenticatedShellImportRoute
   '/_authenticated/_shell/permissions': typeof AuthenticatedShellPermissionsRoute
   '/_authenticated/_shell/receipts': typeof AuthenticatedShellReceiptsRoute
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/classes'
     | '/company'
+    | '/courses'
     | '/import'
     | '/permissions'
     | '/receipts'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/classes'
     | '/company'
+    | '/courses'
     | '/import'
     | '/permissions'
     | '/receipts'
@@ -197,6 +209,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/calendar'
     | '/_authenticated/_shell/classes'
     | '/_authenticated/_shell/company'
+    | '/_authenticated/_shell/courses'
     | '/_authenticated/_shell/import'
     | '/_authenticated/_shell/permissions'
     | '/_authenticated/_shell/receipts'
@@ -276,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellCompanyRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/courses': {
+      id: '/_authenticated/_shell/courses'
+      path: '/courses'
+      fullPath: '/courses'
+      preLoaderRoute: typeof AuthenticatedShellCoursesRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/import': {
       id: '/_authenticated/_shell/import'
       path: '/import'
@@ -326,6 +346,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellCalendarRoute: typeof AuthenticatedShellCalendarRoute
   AuthenticatedShellClassesRoute: typeof AuthenticatedShellClassesRoute
   AuthenticatedShellCompanyRoute: typeof AuthenticatedShellCompanyRoute
+  AuthenticatedShellCoursesRoute: typeof AuthenticatedShellCoursesRoute
   AuthenticatedShellImportRoute: typeof AuthenticatedShellImportRoute
   AuthenticatedShellPermissionsRoute: typeof AuthenticatedShellPermissionsRoute
   AuthenticatedShellReceiptsRoute: typeof AuthenticatedShellReceiptsRoute
@@ -340,6 +361,7 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellCalendarRoute: AuthenticatedShellCalendarRoute,
   AuthenticatedShellClassesRoute: AuthenticatedShellClassesRoute,
   AuthenticatedShellCompanyRoute: AuthenticatedShellCompanyRoute,
+  AuthenticatedShellCoursesRoute: AuthenticatedShellCoursesRoute,
   AuthenticatedShellImportRoute: AuthenticatedShellImportRoute,
   AuthenticatedShellPermissionsRoute: AuthenticatedShellPermissionsRoute,
   AuthenticatedShellReceiptsRoute: AuthenticatedShellReceiptsRoute,

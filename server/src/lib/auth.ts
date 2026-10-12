@@ -7,8 +7,9 @@ import { HttpError, forbidden } from './http.js';
 // Own cookie names: another app (FinHR) runs on the same NAS address, and cookies are shared across ports.
 export const COOKIE = 'yodo_session';
 
-// receipts: view / add = issue / delete = cancel; company: view / edit; money: view = see money on the dashboard (owner 12/10/2026)
-export const MENU_KEYS = ['dashboard', 'students', 'classes', 'teachers', 'calendar', 'users', 'auditlog', 'receipts', 'company', 'money'] as const;
+// receipts: view / add = issue / delete = cancel; company: view / edit; money: view = see money on the dashboard;
+// courses: view = the Courses page / edit = extend a course for free (owner 12/10/2026)
+export const MENU_KEYS = ['dashboard', 'students', 'classes', 'teachers', 'calendar', 'users', 'auditlog', 'receipts', 'company', 'money', 'courses'] as const;
 export type MenuKey = (typeof MENU_KEYS)[number];
 export type PermAction = 'view' | 'add' | 'edit' | 'delete';
 

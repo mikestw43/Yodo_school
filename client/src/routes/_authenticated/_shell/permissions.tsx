@@ -31,6 +31,7 @@ const VAED = (menu: MenuKey): Chip[] => [
 const ROWS = (): { label: string; isNew?: boolean; chips: Chip[] }[] => [
   { label: L("ภาพรวม", "Dashboard"), chips: [{ menu: "dashboard", action: "view", label: L("ดู", "View") }, { menu: "money", action: "view", label: L("ดูยอดเงิน", "See money") }] },
   { label: L("นักเรียน", "Students"), chips: VAED("students") },
+  { label: L("คอร์ส", "Courses"), isNew: true, chips: [{ menu: "courses", action: "view", label: L("ดู", "View") }, { menu: "courses", action: "edit", label: L("ขยายเวลา", "Extend") }] },
   { label: L("คลาส", "Classes"), chips: VAED("classes") },
   { label: L("ครู", "Teachers"), chips: VAED("teachers") },
   { label: L("ปฏิทิน", "Calendar"), chips: VAED("calendar") },

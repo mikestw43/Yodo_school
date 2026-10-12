@@ -93,13 +93,24 @@ export interface Enrollment {
   receiptImage: string;
 }
 export type EnrollmentInput = Omit<Enrollment, "id" | "studentId" | "joinedAt">;
-/** Money taken for a class purchase; the server makes the receipt from it (owner 12/10/2026). */
-export interface PaymentInput { date: string; price: number; discount: number; method: "cash" | "transfer" | "card"; slip: string; payer: string; remark: string }
+/** Money taken for courses; the server makes one receipt for all of them (owner 12/10/2026). */
+export interface PaymentInput { date: string; method: "cash" | "transfer" | "card"; slip: string; payer: string; remark: string }
+/** One course in the "Buy courses" window. */
+export interface BuyLine { classId: string; startDate: string; expiryDate: string; price: number; discountType: "baht" | "pct"; discountValue: number }
+/** A course bought (kind buy, a receipt line) or extended for free (kind extend): the student's course history. */
+export interface Purchase {
+  id: string; studentId: string; classId: string; enrollmentId: string; kind: "buy" | "extend"; date: string; item: string; months: number;
+  startDate: string; expiryDate: string; fromExpiry: string; reason: string; byName: string; receiptId: string; receiptNo: string; cancelled: boolean; createdAt: string;
+  /** Money: only for those who may see it. */
+  price?: number; discountType?: "baht" | "pct"; discountValue?: number; discount?: number; amount?: number;
+}
 export interface Receipt {
   id: string; no: string; date: string; studentId: string; enrollmentId: string; classId: string; item: string; months: number;
   startDate: string; expiryDate: string; price: number; discount: number; amount: number; method: "cash" | "transfer" | "card";
   slip: string; payer: string; remark: string; receivedByName: string; cancelled: boolean; cancelledAt: string; cancelReason: string;
   cancelledBy: string; createdAt: string;
+  /** The courses on the receipt (GET /receipts/:id). */
+  lines?: Purchase[];
 }
 export interface Schedule {
   id: string;
@@ -137,7 +148,7 @@ export interface SystemUser {
 }
 export type SystemUserInput = Omit<SystemUser, "id" | "status" | "createdAt">;
 
-export const MENU_KEYS = ["dashboard", "students", "classes", "teachers", "calendar", "users", "auditlog", "receipts", "company", "money"] as const;
+export const MENU_KEYS = ["dashboard", "students", "classes", "teachers", "calendar", "users", "auditlog", "receipts", "company", "money", "courses"] as const;
 export type MenuKey = (typeof MENU_KEYS)[number];
 export type PermAction = "view" | "add" | "edit" | "delete";
 export type MenuPerm = Record<PermAction, boolean>;
@@ -152,6 +163,9 @@ export interface YodoData {
   teachers: Teacher[];
   classes: DanceClass[];
   enrollments: Enrollment[];
+  purchases: Purchase[];
+  /** "Ending soon" = this many days or fewer left (Settings > notifications). */
+  expiryDays: number;
   schedules: Schedule[];
   scheduleStudents: ScheduleStudent[];
   positions: Position[];
@@ -197,7 +211,7 @@ export const fullName = (p: { prefix: string; firstName: string; lastName: strin
 // Same API the pages always used. Changes show at once (optimistic) and are sent to our server;
 // if the server refuses, the error is shown and everything is reloaded from the server.
 const newId = () => crypto.randomUUID();
-const EMPTY: YodoData = { students: [], teachers: [], classes: [], enrollments: [], schedules: [], scheduleStudents: [], positions: [], systemUsers: [], permissions: {}, deletedStudentCodes: [] };
+const EMPTY: YodoData = { students: [], teachers: [], classes: [], enrollments: [], purchases: [], expiryDays: 7, schedules: [], scheduleStudents: [], positions: [], systemUsers: [], permissions: {}, deletedStudentCodes: [] };
 
 interface Ctx {
   data: YodoData;
@@ -208,8 +222,10 @@ interface Ctx {
   updateStudent: (id: string, s: StudentInput, sign?: Sign) => void;
   setStudentStatus: (id: string, status: Status) => void;
   signStudent: (id: string, signature: string, signedAt: string) => void;
-  enroll: (studentId: string, input: EnrollmentInput, pay?: PaymentInput, onReceipt?: (r: Receipt) => void) => void;
-  updateEnrollment: (id: string, input: EnrollmentInput, pay?: PaymentInput, onReceipt?: (r: Receipt) => void) => void;
+  updateEnrollment: (id: string, input: EnrollmentInput) => void;
+  /** Buy one or more courses; with a payment, one receipt for all. Resolves with the receipt (or null). */
+  buyCourses: (studentId: string, lines: BuyLine[], pay?: PaymentInput) => Promise<Receipt | null>;
+  extendCourse: (enrollmentId: string, expiryDate: string, reason: string) => Promise<void>;
   unenroll: (studentId: string, classId: string) => void;
   addTeacher: (t: TeacherInput) => void;
   updateTeacher: (id: string, t: TeacherInput) => void;
@@ -296,24 +312,21 @@ export function YodoProvider({ children }: { children: ReactNode }) {
       setData((d) => ({ ...d, students: d.students.map((s) => (s.id === id ? { ...s, status } : s)) }));
       run(api(`/students/${id}/status`, { body: { status } }));
     },
-    enroll: (studentId, input, pay, onReceipt) => {
-      if (data.enrollments.some((e) => e.studentId === studentId && e.classId === input.classId)) return;
-      const e: Enrollment = { ...input, id: newId(), studentId, joinedAt: new Date().toISOString() };
-      setData((d) => ({ ...d, enrollments: [...d.enrollments, e] }));
-      const saved = api<Enrollment>("/enrollments", { body: { id: e.id, studentId, ...input } }).then((r) => {
-        setData((d) => ({ ...d, enrollments: d.enrollments.map((x) => (x.id === r.id ? r : x)) }));
-        return r;
-      });
-      // The receipt is made only once the enrollment is saved (its number comes from the server).
-      run(pay ? saved.then((r) => api<Receipt>("/receipts", { body: { ...pay, enrollmentId: r.id } })).then((rc) => { onReceipt?.(rc); }) : saved.then(() => undefined));
-    },
-    updateEnrollment: (id, input, pay, onReceipt) => {
+    updateEnrollment: (id, input) => {
       setData((d) => ({ ...d, enrollments: d.enrollments.map((e) => (e.id === id ? { ...e, ...input } : e)) }));
-      const saved = api<Enrollment>(`/enrollments/${id}`, { method: "PUT", body: input }).then((r) => {
-        setData((d) => ({ ...d, enrollments: d.enrollments.map((x) => (x.id === r.id ? r : x)) }));
-        return r;
-      });
-      run(pay ? saved.then(() => api<Receipt>("/receipts", { body: { ...pay, enrollmentId: id } })).then((rc) => { onReceipt?.(rc); }) : saved.then(() => undefined));
+      run(api<Enrollment>(`/enrollments/${id}`, { method: "PUT", body: input }), (r) => setData((d) => ({ ...d, enrollments: d.enrollments.map((x) => (x.id === r.id ? r : x)) })));
+    },
+    // Not optimistic: the dates and the receipt number come from the server, then everything is reloaded.
+    buyCourses: async (studentId, lines, pay) => {
+      try {
+        const r = await api<{ receipt: Receipt | null }>("/courses/buy", { body: { studentId, lines, ...(pay ? { pay } : {}) } });
+        await reload();
+        return r.receipt;
+      } catch (e) { toast.error(L("บันทึกไม่สำเร็จ: ", "Could not save: ") + errorText(e)); throw e; }
+    },
+    extendCourse: async (enrollmentId, expiryDate, reason) => {
+      try { await api("/courses/extend", { body: { enrollmentId, expiryDate, reason } }); await reload(); }
+      catch (e) { toast.error(L("บันทึกไม่สำเร็จ: ", "Could not save: ") + errorText(e)); throw e; }
     },
     unenroll: (studentId, classId) => {
       const scheduleIds = data.schedules.filter((s) => s.classId === classId).map((s) => s.id);

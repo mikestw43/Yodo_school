@@ -138,39 +138,61 @@ describe('roles and receipts (owner 12/10/2026)', () => {
     expect((await admin.post('/api/positions').set(H).send({ name: 'Teacher', description: '' })).status).toBe(201);
     expect((await admin.delete(`/api/positions/${adminRole.id}`).set(H)).status).toBe(400); // built-in roles stay
   });
-  it('receipt numbers run per month, never skip, cancel keeps the number and drops it from the total', async () => {
+  it('buying courses: several in one receipt, % or baht off, renewals, cancel takes the period back, free extensions', async () => {
     const c = await admin.post('/api/classes').set(H).send({ name: 'Course 6m', teacherId: '', description: '', image: '', status: 'Active', price: 10000, months: 6 });
     expect(c.body.months).toBe(6);
-    const e = await admin.post('/api/enrollments').set(H).send({ studentId, classId: c.body.id, purchaseDate: '2026-10-12', startDate: '2026-10-12', expiryDate: '2027-04-11', remark: '', receiptImage: '' });
-    const pay = (date: string, extra = {}) => admin.post('/api/receipts').set(H).send({ enrollmentId: e.body.id, date, price: 10000, discount: 500, method: 'transfer', payer: 'คุณแม่', slip: PNG, ...extra });
-    const r1 = await pay('2026-10-12');
-    expect(r1.status).toBe(201);
-    expect(r1.body.no).toBe('RC2610-0001');
-    expect(r1.body.amount).toBe(9500);
-    expect(r1.body.months).toBe(6);
-    expect((await pay('2026-10-13')).body.no).toBe('RC2610-0002');
-    expect((await pay('2026-11-01')).body.no).toBe('RC2611-0001');
-    expect((await pay('2026-10-14', { discount: 20000 })).status).toBe(400);
-    await admin.post(`/api/receipts/${r1.body.id}/cancel`).set(H).send({ reason: 'ผิด' }).expect(200);
-    expect((await admin.post(`/api/receipts/${r1.body.id}/cancel`).set(H).send({})).status).toBe(400);
-    expect((await pay('2026-10-20')).body.no).toBe('RC2610-0003'); // a cancelled number is never reused
+    const j = await admin.post('/api/classes').set(H).send({ name: 'Jazz 3m', teacherId: '', description: '', image: '', status: 'Active', price: 4500, months: 3 });
+    const line = (classId: string, startDate: string, expiryDate: string, price: number, discountType: string, discountValue: number) => ({ classId, startDate, expiryDate, price, discountType, discountValue });
+    const pay = (date: string) => ({ date, method: 'transfer', payer: 'คุณแม่', slip: PNG, remark: 'ชุดฟรี 1 ชุด' });
+    const buy = (lines: unknown[], date: string, who = admin) => who.post('/api/courses/buy').set(H).send({ studentId, lines, pay: pay(date) });
+    const r1 = await buy([line(c.body.id, '2026-10-12', '2027-04-11', 10000, 'pct', 10), line(j.body.id, '2026-10-12', '2027-01-11', 4500, 'baht', 500)], '2026-10-12');
+    expect(r1.status, JSON.stringify(r1.body)).toBe(201);
+    expect(r1.body.receipt.no).toBe('RC2610-0001');
+    expect(r1.body.receipt.amount).toBe(13000);
+    expect(r1.body.receipt.discount).toBe(1500);
+    const full = (await admin.get(`/api/receipts/${r1.body.receipt.id}`)).body;
+    expect(full.receipt.lines.map((l: { item: string; amount: number }) => [l.item, l.amount])).toEqual([['Course 6m', 9000], ['Jazz 3m', 4000]]);
+    expect(full.receipt.remark).toBe('ชุดฟรี 1 ชุด');
+    const en6 = () => admin.get('/api/data').then((r) => r.body.enrollments.find((e: { classId: string }) => e.classId === c.body.id));
+    // renewed before the end: the start stays, the expiry moves on
+    const r2 = await buy([line(c.body.id, '2027-04-12', '2027-10-11', 10000, 'baht', 0)], '2026-10-13');
+    expect(r2.body.receipt.no).toBe('RC2610-0002');
+    expect(await en6()).toMatchObject({ startDate: '2026-10-12', expiryDate: '2027-10-11' });
+    expect((await buy([line(j.body.id, '2027-01-12', '2027-04-11', 4500, 'baht', 0)], '2026-11-01')).body.receipt.no).toBe('RC2611-0001');
+    expect((await buy([line(c.body.id, '2027-10-12', '2028-04-11', 10000, 'pct', 150)], '2026-10-14')).status).toBe(400);
+    expect((await buy([line(c.body.id, '2027-10-12', '2028-04-11', 10000, 'baht', 20000)], '2026-10-14')).status).toBe(400);
+    expect((await buy([line(c.body.id, '2027-10-12', '2028-04-11', 10000, 'baht', 0), line(c.body.id, '2027-10-12', '2028-04-11', 10000, 'baht', 0)], '2026-10-14')).status).toBe(400);
+    // cancelling the renewal takes its period back
+    await admin.post(`/api/receipts/${r2.body.receipt.id}/cancel`).set(H).send({ reason: 'ผิด' }).expect(200);
+    expect((await admin.post(`/api/receipts/${r2.body.receipt.id}/cancel`).set(H).send({})).status).toBe(400);
+    expect((await en6()).expiryDate).toBe('2027-04-11');
+    expect((await buy([line(c.body.id, '2027-04-12', '2027-10-11', 10000, 'baht', 500)], '2026-10-20')).body.receipt.no).toBe('RC2610-0003'); // never reused
+    // a free extension, kept in the history
+    const e6 = await en6();
+    expect((await admin.post('/api/courses/extend').set(H).send({ enrollmentId: e6.id, expiryDate: '2027-10-01', reason: 'x' })).status).toBe(400);
+    expect((await admin.post('/api/courses/extend').set(H).send({ enrollmentId: e6.id, expiryDate: '2027-10-18', reason: 'ครูป่วย' })).status).toBe(201);
+    const hist = (await admin.get('/api/data')).body.purchases.filter((p: { enrollmentId: string }) => p.enrollmentId === e6.id);
+    expect(hist.map((p: { kind: string; cancelled: boolean }) => `${p.kind}${p.cancelled ? '-x' : ''}`)).toEqual(['buy', 'buy-x', 'buy', 'extend']);
+    expect(hist[3]).toMatchObject({ fromExpiry: '2027-10-11', expiryDate: '2027-10-18', reason: 'ครูป่วย' });
     const sum = (await admin.get('/api/receipts/summary?month=2026-10')).body;
-    expect(sum).toMatchObject({ total: 19000, count: 2, cancelled: 1, transfer: 19000 });
+    expect(sum).toMatchObject({ total: 22500, count: 2, cancelled: 1, transfer: 22500 });
     const list = (await admin.get('/api/receipts?month=2026-10')).body;
     expect(list.map((x: { no: string }) => x.no)).toEqual(['RC2610-0003', 'RC2610-0002', 'RC2610-0001']);
-    // company details come with a receipt; an Admin may issue but not cancel
-    await admin.put('/api/settings/company').set(H).send({ name: 'YODO Co., Ltd.', nameEn: 'YODO', address: 'Bangkok', phone: '02', email: '', taxId: '1234567890123', branch: 'HQ', logo: '', sign: '', stamp: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' }).expect(200);
-    expect((await admin.get('/api/settings/company')).body.stamp).toMatch(/^\/api\/files\/.+\.png$/);
+    // company details come with a receipt; an Admin may issue but not cancel or extend, and sees no money in the history
+    await admin.put('/api/settings/company').set(H).send({ name: 'YODO Co., Ltd.', nameEn: 'YODO', address: 'Bangkok', phone: '02', email: '', taxId: '1234567890123', branch: 'HQ', logo: '', sign: '', stamp: PNG, signName: 'ครูพร' }).expect(200);
+    expect((await admin.get('/api/settings/company')).body).toMatchObject({ stamp: expect.stringMatching(/^\/api\/files\/.+\.png$/), signName: 'ครูพร' });
     expect((await admin.put('/api/settings/company').set(H).send({ name: '', nameEn: '', address: '', phone: '', email: '', taxId: '12', branch: '', logo: '', sign: '' })).status).toBe(400);
-    expect((await admin.get(`/api/receipts/${r1.body.id}`)).body.company.taxId).toBe('1234567890123');
+    expect((await admin.get(`/api/receipts/${r1.body.receipt.id}`)).body.company.taxId).toBe('1234567890123');
     const adminRole = (await admin.get('/api/data')).body.positions.find((p: { kind: string }) => p.kind === 'admin');
     await admin.post('/api/users').set(H).send({ firstName: 'Ann', lastName: '', nickname: '', username: 'ann', password: 'secret4', email: '', phone: '', positionId: adminRole.id, image: '' }).expect(201);
     const ann = await login('ann', 'secret4');
-    expect((await ann.post('/api/receipts').set(H).send({ enrollmentId: e.body.id, date: '2026-10-21', price: 10000, discount: 0, method: 'cash' })).status).toBe(201);
+    expect((await buy([line(j.body.id, '2027-04-12', '2027-07-11', 4500, 'baht', 0)], '2026-10-21', ann)).status).toBe(201);
     const last = (await ann.get('/api/receipts?month=2026-10')).body[0];
     expect((await ann.post(`/api/receipts/${last.id}/cancel`).set(H).send({})).status).toBe(403);
+    expect((await ann.post('/api/courses/extend').set(H).send({ enrollmentId: e6.id, expiryDate: '2027-12-01' })).status).toBe(403);
     expect((await ann.put('/api/settings/company').set(H).send({})).status).toBe(403);
     expect((await ann.get('/api/receipts/summary?month=2026-10')).status).toBe(200);
+    expect((await ann.get('/api/data')).body.purchases[0].amount).toBeDefined(); // Admin may view receipts
   });
 });
 

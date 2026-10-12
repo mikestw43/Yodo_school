@@ -142,6 +142,23 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 - 12/10/2026 (owner): Company settings has a typed "receiver's name" under the signature (`Setting.receiptSignName`,
   `signName` in `/settings/company`); receipts print it under the signature line, empty = the person who issued the
   receipt (`receivedByName`). The payer box in the payment window starts empty (empty = the student's name on the receipt).
+- 12/10/2026 courses (mockup WTr5LoqwQAEnSrKDuzZiMi, owner "ตามนี้" = all my suggestions): history in `CoursePurchase`
+  (kind buy = a receipt line or a purchase without payment, kind extend = free extension; `fromStart/fromExpiry` = the
+  period before), the `Enrollment` keeps the current period. `POST /courses/buy` (routes/courses.ts, students 'edit',
+  + receipts 'add' with a payment): several courses, ONE receipt (`Receipt` totals, lines = its purchases, receipt shows
+  one row per course with its discount), discount per line in % or baht (no whole-bill discount), a renewal while the
+  course still runs starts the day after it ends (`nextStart` in client lib/courses.ts) and keeps the start. Payment
+  window has a remark printed on the receipt. Cancelling a receipt cancels its lines and takes their period back
+  (`cancelPurchases`). `POST /courses/extend` = new right `courses` 'edit' (menu key `courses`: view = Courses page;
+  Partner view+edit, Admin view, added once to existing roles by ensureRoles). Old enrollments/receipts were copied into
+  the history once at start (`ensureCourseHistory`, key `once:course-history`). Screens: "Buy courses" window
+  (`openBuy`, `CourseHosts` in components/yodo/courses.tsx; the student list's add button opens it), student details
+  tabs Details / Courses (current courses with days left, Renew / Extend / fix dates, purchase history with receipt
+  numbers, paid in total), Courses page `/courses` (menu after Students: ending soon (= `Setting.expiryDays`) / not ended /
+  ended in 30 days / all, renew + extend per row, name -> `/students?view=<id>`), class cards: bought / not ended / ending
+  soon + list in the class panel, dashboard card "courses ending within n days". Expiry bell notices open /courses.
+  Money in the history only for receipts or money 'view'. The old "Edit enrollment" window only fixes dates/remark or
+  removes from the class (no payment there now).
 - 12/10/2026 speed (owner: clicks felt slow/stuck over the internet): every page change waited for `GET /me` (route
   `beforeLoad`) and the first visit of each page waited for its own script file. Now `getMeCached()` (lib/api.ts) answers
   from the last result and refreshes in the background (401 -> /auth; cleared on sign-in/out), the client is one bundle
@@ -172,7 +189,7 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 - Soft delete (`deletedAt`) for students, teachers, users; every change audited with before/after.
 - Every endpoint checks the position permission (`requirePerm(menu, action)`) and that the row exists.
   SuperAdmin or a system position (`isSystem`) = everything. Menus: dashboard, students, classes, teachers, calendar, users, auditlog,
-  receipts, company, money. Rights and roles: Owner only (`requireOwner`).
+  receipts, company, money, courses. Rights and roles: Owner only (`requireOwner`).
 - Fields can be added to `schema.prisma`, never removed or renamed.
 - Dates shown dd/mm/yyyy Christian era.
 

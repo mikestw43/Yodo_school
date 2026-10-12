@@ -10,13 +10,14 @@ const DEFAULTS: { kind: 'partner' | 'admin'; name: string; description: string; 
     perms: {
       dashboard: { view: true }, money: { view: true }, students: all, classes: all, teachers: all, calendar: all,
       receipts: { view: true, add: true, delete: true }, users: { view: true }, auditlog: { view: true }, company: { view: true },
+      courses: { view: true, edit: true },
     },
   },
   {
     kind: 'admin', name: 'Admin', description: 'แอดมินหน้าร้าน',
     perms: {
       dashboard: { view: true }, students: { view: true, add: true, edit: true }, classes: { view: true }, teachers: { view: true },
-      calendar: { view: true, add: true, edit: true }, receipts: { view: true, add: true },
+      calendar: { view: true, add: true, edit: true }, receipts: { view: true, add: true }, courses: { view: true },
     },
   },
 ];
@@ -29,7 +30,16 @@ export async function ensureRoles() {
     await prisma.position.create({ data: { name: 'Owner', description: 'เจ้าของ', isSystem: true, kind: 'owner' } });
   }
   for (const d of DEFAULTS) {
-    if (await prisma.position.findFirst({ where: { kind: d.kind } })) continue;
+    const had = await prisma.position.findFirst({ where: { kind: d.kind } });
+    if (had) {
+      // Menus added later (courses, 12/10/2026) get the role's default once; the Owner's own choice is kept after that.
+      for (const [menuKey, f] of Object.entries(d.perms)) {
+        if (await prisma.positionPermission.findFirst({ where: { positionId: had.id, menuKey } })) continue;
+        if (menuKey !== 'courses') continue;
+        await prisma.positionPermission.create({ data: { positionId: had.id, menuKey, canView: !!f.view, canAdd: !!f.add, canEdit: !!f.edit, canDelete: !!f.delete } });
+      }
+      continue;
+    }
     const p = await prisma.position.create({ data: { name: d.name, description: d.description, kind: d.kind } });
     for (const [menuKey, f] of Object.entries(d.perms)) {
       await prisma.positionPermission.create({ data: { positionId: p.id, menuKey, canView: !!f.view, canAdd: !!f.add, canEdit: !!f.edit, canDelete: !!f.delete } });

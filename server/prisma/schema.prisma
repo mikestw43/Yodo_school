@@ -286,3 +286,34 @@ model Receipt {
 
   @@unique([ym, seq])
 }
+
+// One course bought (a receipt line, or a purchase without payment) or one free extension (owner 12/10/2026,
+// mockup WTr5LoqwQAEnSrKDuzZiMi). The student's history; the Enrollment keeps the current period.
+model CoursePurchase {
+  id            String    @id @default(uuid())
+  studentId     String
+  classId       String
+  enrollmentId  String
+  kind          String // buy | extend
+  date          String // YYYY-MM-DD: paid / extended on
+  item          String    @default("") // class name at the time
+  months        Int       @default(0)
+  startDate     String    @default("")
+  expiryDate    String    @default("")
+  fromStart     String    @default("") // the enrollment's period before this row (to undo a cancelled receipt)
+  fromExpiry    String    @default("")
+  price         Float     @default(0)
+  discountType  String    @default("baht") // baht | pct
+  discountValue Float     @default(0)
+  discount      Float     @default(0) // baht
+  amount        Float     @default(0)
+  receiptId     String    @default("")
+  reason        String    @default("") // extension reason
+  byName        String    @default("")
+  cancelledAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([studentId])
+  @@index([enrollmentId])
+  @@index([receiptId])
+}

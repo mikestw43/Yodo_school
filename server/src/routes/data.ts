@@ -11,6 +11,7 @@ import { isDate } from '../lib/dates.js';
 import { fdate, notifyAll } from '../lib/notify.js';
 import { optEmail, optPhone, username } from './auth.js';
 import { dropPins } from './pin.js';
+import { purchaseOut, seesMoney } from './courses.js';
 
 // The school's data, in the same shape the old app's pages used (src/lib/yodo-store.tsx on the client).
 export const router = Router();
@@ -45,7 +46,7 @@ const userOut = (u: User) => ({
 const emptyPerms = () => Object.fromEntries(MENU_KEYS.map((k) => [k, { view: false, add: false, edit: false, delete: false }]));
 
 router.get('/data', requireAuth, async (req, res) => {
-  const [students, teachers, classes, enrollments, schedules, scheduleStudents, positions, perms, users] = await Promise.all([
+  const [students, teachers, classes, enrollments, schedules, scheduleStudents, positions, perms, users, purchases, setting] = await Promise.all([
     prisma.student.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.teacher.findMany({ where: { deletedAt: null }, orderBy: { createdAt: 'asc' } }),
     prisma.danceClass.findMany({ orderBy: { createdAt: 'asc' } }),
@@ -55,7 +56,10 @@ router.get('/data', requireAuth, async (req, res) => {
     prisma.position.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.positionPermission.findMany(),
     prisma.user.findMany({ where: { deletedAt: null }, orderBy: { createdAt: 'asc' } }),
+    prisma.coursePurchase.findMany({ orderBy: { createdAt: 'asc' } }),
+    prisma.setting.findUnique({ where: { id: 1 } }),
   ]);
+  const receiptNos = new Map((await prisma.receipt.findMany({ select: { id: true, no: true } })).map((r) => [r.id, r.no]));
   const live = students.filter((s) => !s.deletedAt);
   const liveIds = new Set(live.map((s) => s.id));
   const permissions: Record<string, Record<string, { view: boolean; add: boolean; edit: boolean; delete: boolean }>> = {};
@@ -66,6 +70,7 @@ router.get('/data', requireAuth, async (req, res) => {
   }
   // Staff accounts are only listed to those who may see the Users page (the menu needs everyone's own name only).
   const seeUsers = await can(req.user, 'users', 'view');
+  const money = await seesMoney(req);
   // The SuperAdmin (Dev) account and its role are hidden from everyone else (owner 12/10/2026).
   const dev = req.user!.role === 'superadmin';
   const shownPositions = positions.filter((p) => dev || p.kind !== 'superadmin');
@@ -76,6 +81,9 @@ router.get('/data', requireAuth, async (req, res) => {
     teachers: teachers.map(teacherOut),
     classes: classes.map(classOut),
     enrollments: enrollments.filter((e) => liveIds.has(e.studentId)).map(enrollmentOut),
+    // Course history (owner 12/10/2026); amounts only for those who may see money.
+    purchases: purchases.filter((p) => liveIds.has(p.studentId)).map((p) => purchaseOut(p, money, receiptNos.get(p.receiptId) ?? '')),
+    expiryDays: setting?.expiryDays ?? 7,
     schedules: schedules.map(scheduleOut),
     scheduleStudents: scheduleStudents.filter((x) => liveIds.has(x.studentId)),
     positions: shownPositions.map(positionOut),

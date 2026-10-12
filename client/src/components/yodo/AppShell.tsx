@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarHeart, ChevronDown, Crown, FileUp, History, LogOut, Menu, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog } from "lucide-react";
+import { CalendarHeart, ChevronDown, Hourglass, Crown, FileUp, History, LogOut, Menu, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog } from "lucide-react";
 import { api, clearMeCache, getMe } from "@/lib/api";
 import { ROLE_LABEL } from "@/lib/auth-utils";
 import { Avatar, EmptyState } from "@/components/yodo/ui";
@@ -12,12 +12,14 @@ import { NotificationBell } from "@/components/yodo/NotificationBell";
 import { LangToggle } from "@/components/yodo/LangToggle";
 import { L } from "@/lib/i18n";
 import { ReceiptHost } from "@/components/yodo/receipt";
+import { CourseHosts } from "@/components/yodo/courses";
 import logoImg from "@/assets/yodo-logo.png";
 import markImg from "@/assets/yodo-mark.png";
 
 const NAV = [
   { to: "/", th: "ภาพรวม", en: "Dashboard", icon: Sparkles, key: "dashboard" },
   { to: "/students", th: "นักเรียน", en: "Students", icon: PersonStanding, key: "students" },
+  { to: "/courses", th: "คอร์ส", en: "Courses", icon: Hourglass, key: "courses" },
   { to: "/classes", th: "คลาส", en: "Classes", icon: Music4, key: "classes" },
   { to: "/teachers", th: "ครู", en: "Teachers", icon: Crown, key: "teachers" },
   { to: "/calendar", th: "ปฏิทิน", en: "Calendar", icon: CalendarHeart, key: "calendar" },
@@ -73,7 +75,7 @@ export function useSignOut() {
 function Guarded({ children }: { children: ReactNode }) {
   const { can, loading, me } = useYodo();
   const path = useLocation({ select: (l) => l.pathname });
-  const item = [...NAV].reverse().find((n) => (n.to === "/" ? path === "/" : path.startsWith(n.to)));
+  const item = [...NAV, ...ADMIN].reverse().find((n) => (n.to === "/" ? path === "/" : path.startsWith(n.to)));
   if (loading || !me || !item || can(item.key)) return <>{children}</>;
   return <EmptyState title={L("ไม่มีสิทธิ์เข้าถึงหน้านี้", "You don't have access to this page")} text={L("ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์การใช้งานเมนูนี้", "Ask an administrator for access to this menu.")} />;
 }
@@ -238,6 +240,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <div className="sticky top-0 z-20 hidden justify-end px-8 pt-4 md:flex"><div className="flex items-center gap-2"><LangToggle className="border border-border bg-background shadow-soft" /><NotificationBell className="border border-border bg-background shadow-soft" />{me && <AccountMenu me={me} />}</div></div>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8 md:pt-2"><Guarded>{children}</Guarded></main>
+        <CourseHosts />
         <ReceiptHost />
       </div>
     </div>

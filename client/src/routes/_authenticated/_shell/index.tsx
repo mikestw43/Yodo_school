@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { addDays, format, startOfWeek } from "date-fns";
-import { Banknote, CalendarHeart, Crown, Music4, PersonStanding } from "lucide-react";
+import { Banknote, CalendarHeart, ChevronRight, Crown, Hourglass, Music4, PersonStanding } from "lucide-react";
+import { courseState } from "@/lib/courses";
 import { Card } from "@/components/ui/card";
 import { Avatar, PageHeader } from "@/components/yodo/ui";
 import { ageText, classColor, fullName, useYodo } from "@/lib/yodo-store";
@@ -40,6 +41,7 @@ function Dashboard() {
     { label: L("คาบเรียนสัปดาห์นี้", "Lessons this week"), value: data.schedules.filter((s) => weekDates.has(s.date)).length, icon: CalendarHeart, to: "/calendar" as const },
 
   ];
+  const soon = data.enrollments.filter((e) => courseState(e.expiryDate, data.expiryDays) === "soon").length;
   const todays = data.schedules.filter((s) => s.date === today).sort((a, b) => a.start.localeCompare(b.start));
   const recent = [...data.students].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
   const maxCount = Math.max(1, ...liveClasses.map((c) => data.enrollments.filter((e) => e.classId === c.id).length));
@@ -68,6 +70,19 @@ function Dashboard() {
           </div>
           {can("receipts") && <Link to="/receipts" className="shrink-0 rounded-full bg-primary-foreground/15 px-4 py-2 text-sm hover:bg-primary-foreground/25">{L(`${sum.count} ใบเสร็จ`, `${sum.count} receipts`)}</Link>}
         </Card>
+      )}
+      {/* Courses ending soon (owner 12/10/2026): tap = the Courses page */}
+      {can("courses") && (
+        <Link to="/courses" className="mb-4 block" data-testid="soon-card">
+          <Card className="flex-row items-center gap-4 rounded-3xl border-orange-200 bg-orange-50 p-5 text-orange-900 transition-shadow hover:shadow-soft">
+            <Hourglass className="h-6 w-6 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs">{L(`คอร์สที่จะหมดอายุใน ${data.expiryDays} วัน`, `Courses ending within ${data.expiryDays} days`)}</p>
+              <p className="font-display text-2xl font-semibold">{L(`${soon} คอร์ส`, `${soon} ${soon === 1 ? "course" : "courses"}`)}</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0" />
+          </Card>
+        </Link>
       )}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s) => (

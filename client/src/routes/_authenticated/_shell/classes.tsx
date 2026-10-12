@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { Ban, Eye, Pencil, Plus, RotateCcw, Search, UsersRound } from "lucide-react";
+import { Ban, Eye, Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,18 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Avatar, ClassCover, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, usePagination } from "@/components/yodo/ui";
 
 import { ageText, classColor, fullName, useYodo, type ClassInput, type DanceClass } from "@/lib/yodo-store";
-import { L, dayShort, fDayMonth, opt } from "@/lib/i18n";
+import { L, dayShort, fDayMonth, fd, opt } from "@/lib/i18n";
+import { courseState } from "@/lib/courses";
+import { DaysBadge } from "@/components/yodo/courses";
+import type { YodoData } from "@/lib/yodo-store";
+
+/** Bought (anyone who ever bought it), not ended yet, ending soon. */
+function countsFor(data: YodoData, cid: string) {
+  const en = data.enrollments.filter((e) => e.classId === cid);
+  const bought = new Set([...data.purchases.filter((p) => p.classId === cid && p.kind === "buy" && !p.cancelled).map((p) => p.studentId), ...en.map((e) => e.studentId)]);
+  const st = en.map((e) => courseState(e.expiryDate, data.expiryDays));
+  return { bought: bought.size, active: st.filter((x) => x !== "ended").length, soon: st.filter((x) => x === "soon").length };
+}
 
 export const Route = createFileRoute("/_authenticated/_shell/classes")({
   head: () => ({
@@ -38,6 +49,7 @@ function ClassesPage() {
   const [editing, setEditing] = useState<DanceClass | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
   const [disabling, setDisabling] = useState<DanceClass | null>(null);
+  const classCounts = (cid: string) => countsFor(data, cid);
 
   const list = useMemo(() => {
     const k = q.trim().toLowerCase();
@@ -77,7 +89,7 @@ function ClassesPage() {
           <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3">
             {pg.pageItems.map((c) => {
               const t = data.teachers.find((x) => x.id === c.teacherId);
-              const count = data.enrollments.filter((e) => e.classId === c.id).length;
+              const k = classCounts(c.id);
               return (
                 <Card key={c.id} className={`gap-0 overflow-hidden rounded-3xl p-0 ${c.disabled ? "opacity-60" : ""}`}>
                    <div className="aspect-[12/5] w-full"><ClassCover src={c.image} name={c.name} color={classColor(data.classes, c.id)} /></div>
@@ -90,8 +102,13 @@ function ClassesPage() {
                     <p className="text-sm font-semibold text-primary">{coursePrice(c)}</p>
                     <div className="flex items-center justify-between gap-3 rounded-2xl bg-accent/30 px-4 py-2.5 text-sm">
                       <span className="flex min-w-0 items-center gap-2.5"><Avatar src={t?.image} name={t?.nickname ?? "?"} className="h-8 w-8 text-sm" /><span className="truncate">{t ? t.nickname : L("ไม่มีครู", "No teacher")}</span></span>
-                      <span className="flex shrink-0 items-center gap-1.5 text-muted-foreground"><UsersRound className="h-4 w-4 text-primary/70" /> {count}</span>
                     </div>
+                    {/* Bought / not ended / ending soon (owner 12/10/2026, mockup WTr5LoqwQAEnSrKDuzZiMi board 4) */}
+                    <button type="button" onClick={() => setViewId(c.id)} className="grid grid-cols-3 gap-2 text-center" data-testid="class-counts" aria-label={L(`ดูนักเรียนใน ${c.name}`, `See the students of ${c.name}`)}>
+                      <span className="rounded-2xl bg-muted/70 py-2"><span className="block text-xl font-bold">{k.bought}</span><span className="block text-[11px] text-muted-foreground">{L("เคยซื้อ", "Bought")}</span></span>
+                      <span className="rounded-2xl bg-emerald-50 py-2 text-emerald-800"><span className="block text-xl font-bold">{k.active}</span><span className="block text-[11px]">{L("ยังไม่หมดอายุ", "Not ended")}</span></span>
+                      <span className="rounded-2xl bg-orange-50 py-2 text-orange-800"><span className="block text-xl font-bold">{k.soon}</span><span className="block text-[11px]">{L("ใกล้หมด", "Ending soon")}</span></span>
+                    </button>
                     <div className="mt-auto flex gap-1 border-t border-border pt-4">
                       <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ดูข้อมูล", "View")} aria-label={L(`ดูข้อมูล ${c.name}`, `View ${c.name}`)} onClick={() => setViewId(c.id)}><Eye strokeWidth={1.6} /></Button>
                       {can("classes", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("แก้ไข", "Edit")} aria-label={L(`แก้ไข ${c.name}`, `Edit ${c.name}`)} onClick={() => { setEditing(c); setFormOpen(true); }}><Pencil strokeWidth={1.6} /></Button>}
@@ -192,7 +209,13 @@ function ClassDetail({ classId, onClose }: { classId: string | null; onClose: ()
   const { data } = useYodo();
   const c = data.classes.find((x) => x.id === classId);
   const t = data.teachers.find((x) => x.id === c?.teacherId);
-  const students = data.enrollments.filter((e) => e.classId === classId).map((e) => data.students.find((s) => s.id === e.studentId)).filter((s) => !!s);
+  const [show, setShow] = useState<"active" | "ended" | "all">("active");
+  const rows = data.enrollments.filter((e) => e.classId === classId)
+    .map((e) => ({ e, s: data.students.find((x) => x.id === e.studentId), st: courseState(e.expiryDate, data.expiryDays) }))
+    .filter((r) => !!r.s)
+    .sort((a, b) => (a.e.expiryDate || "9999").localeCompare(b.e.expiryDate || "9999"));
+  const counts = { active: rows.filter((r) => r.st !== "ended").length, ended: rows.filter((r) => r.st === "ended").length, all: rows.length };
+  const students = rows.filter((r) => show === "all" || (show === "ended" ? r.st === "ended" : r.st !== "ended"));
   const today = format(new Date(), "yyyy-MM-dd");
   const upcoming = data.schedules.filter((s) => s.classId === classId && s.date >= today).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)).slice(0, 8);
   return (
@@ -216,14 +239,20 @@ function ClassDetail({ classId, onClose }: { classId: string | null; onClose: ()
                 </div>
               </div>
               <div>
-                <p className="mb-2 font-semibold">{L(`นักเรียนในคลาส · ${students.length} คน`, `Students in this class · ${students.length}`)}</p>
+                <p className="mb-2 font-semibold">{L("นักเรียนในคลาส", "Students in this class")}</p>
+                <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label={L("แสดง", "Show")}>
+                  {([["active", L(`ยังไม่หมดอายุ ${counts.active}`, `Not ended ${counts.active}`)], ["ended", L(`หมดแล้ว ${counts.ended}`, `Ended ${counts.ended}`)], ["all", L(`ทั้งหมด ${counts.all}`, `All ${counts.all}`)]] as const).map(([k, t]) => (
+                    <button key={k} type="button" aria-pressed={show === k} onClick={() => setShow(k)}
+                      className={`h-8 rounded-full px-3 text-xs font-semibold ${show === k ? "bg-primary text-primary-foreground" : "border border-border bg-background hover:bg-muted"}`}>{t}</button>
+                  ))}
+                </div>
                 {students.length === 0 ? <p className="text-sm text-muted-foreground">{L("ยังไม่มีนักเรียน", "No students yet")}</p> : (
-                  <ul className="space-y-2">
-                    {students.map((s) => (
-                      <li key={s.id} className="flex items-center gap-3">
+                  <ul className="space-y-2" data-testid="class-students">
+                    {students.map(({ e, s }) => s && (
+                      <li key={e.id} className="flex items-center gap-3">
                         <Avatar src={s.image} name={s.firstName} className="h-8 w-8 text-sm" />
-                        <span className="flex-1 text-sm">{fullName(s)} <span className="text-muted-foreground">({s.nickname}, {ageText(s.dob)})</span></span>
-                        <StatusBadge status={s.status} />
+                        <span className="min-w-0 flex-1 text-sm"><span className="block truncate">{fullName(s)} <span className="text-muted-foreground">({s.nickname || "-"}, {ageText(s.dob)})</span></span><span className="block text-xs text-muted-foreground">{fd(e.startDate)} – {fd(e.expiryDate)}</span></span>
+                        <DaysBadge expiry={e.expiryDate} />
                       </li>
                     ))}
                   </ul>

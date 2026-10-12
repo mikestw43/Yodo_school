@@ -101,7 +101,7 @@ export async function expiryNotices() {
       ]);
       if (!s || !c) continue;
       await prisma.noticeKey.create({ data: { key } });
-      await notifyAll({ kind: 'expiry', ref: key, url: '/students', text: (l) => l === 'th'
+      await notifyAll({ kind: 'expiry', ref: key, url: '/courses', text: (l) => l === 'th'
         ? { title: 'คลาสใกล้หมดอายุ', body: `${s.code} ${s.firstName} → ${c.name} หมดอายุ ${fdate(e.expiryDate)}` }
         : { title: 'Class ending soon', body: `${s.code} ${s.firstName} → ${c.name} ends ${fdate(e.expiryDate)}` } });
     }

@@ -17,6 +17,17 @@ type Full = { receipt: Receipt; company: Company; student: ReceiptStudent };
 const EVT = "yodo:open-receipt";
 export const openReceipt = (id: string) => window.dispatchEvent(new CustomEvent(EVT, { detail: id }));
 export const RECEIPTS_CHANGED = "yodo:receipts-changed";
+/** Windows underneath hide while a receipt is open (a window under a full-screen one blocks scrolling). */
+export const RECEIPT_OPEN = "yodo:receipt-open";
+export function useReceiptOpen() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const on = (e: Event) => setOpen((e as CustomEvent<boolean>).detail);
+    window.addEventListener(RECEIPT_OPEN, on);
+    return () => window.removeEventListener(RECEIPT_OPEN, on);
+  }, []);
+  return open;
+}
 
 const A4_W = 794, A4_H = 1123;
 
@@ -37,7 +48,7 @@ export function ReceiptHost() {
     return () => window.removeEventListener(EVT, on);
   }, [appLang]);
   const load = (rid: string) => api<Full>(`/receipts/${rid}`).then(setFull).catch((e) => { toast.error(errorText(e)); setId(null); });
-  useEffect(() => { setFull(null); if (id) void load(id); }, [id]);
+  useEffect(() => { setFull(null); if (id) void load(id); window.dispatchEvent(new CustomEvent(RECEIPT_OPEN, { detail: !!id })); }, [id]);
   useEffect(() => {
     const el = box.current;
     if (!el || !id) return;

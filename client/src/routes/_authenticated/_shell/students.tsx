@@ -3,7 +3,7 @@ import { differenceInCalendarMonths, format, isValid, parseISO } from "date-fns"
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Ban, Banknote, ChevronLeft, FileText, PenLine, Pencil, Plus, Printer, RotateCcw, Search, Trash2, UserRoundPlus, X } from "lucide-react";
+import { Ban, ChevronLeft, FileText, PenLine, Pencil, Plus, Printer, RotateCcw, Search, Trash2, UserRoundPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,17 +13,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, ChipSelect, ConfirmDialog, DateField, EmptyState, Field, ImageUpload, NativeSelect, ReceiptUpload, PageHeader, Pagination, SectionTitle, StatusBadge, onlyDigits10, usePagination } from "@/components/yodo/ui";
 
-import { methodLabel, money } from "@/lib/receipt-print";
-import { openReceipt } from "@/components/yodo/receipt";
-import { coursePrice } from "./classes";
-import { api } from "@/lib/api";
+import { useReceiptOpen } from "@/components/yodo/receipt";
+import { StudentCourses, openBuy } from "@/components/yodo/courses";
 import { SignBox, StudentDocument, useSignCanvas } from "@/components/yodo/student-document";
 import {
   DANCE_TYPES, ETHNICITIES, NATIONALITIES, PREFIXES, RELIGIONS, SOURCES, ageText, fullName, nextStudentCode, useYodo,
-  type Enrollment, type EnrollmentInput, type PaymentInput, type Receipt, type Student, type StudentInput,
+  type Enrollment, type EnrollmentInput, type Student, type StudentInput,
 } from "@/lib/yodo-store";
 import { printStudentDocument } from "@/lib/student-print";
-import { L, fd, getLang, opt, optOr, sourceText, splitList } from "@/lib/i18n";
+import { L, fd, opt, optOr, sourceText, splitList } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/_shell/students")({
   head: () => ({
@@ -36,6 +34,7 @@ export const Route = createFileRoute("/_authenticated/_shell/students")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): { view?: string } => (typeof s["view"] === "string" ? { view: s["view"] } : {}),
   component: StudentsPage,
 });
 
@@ -92,7 +91,14 @@ function StudentsPage() {
   const [editing, setEditing] = useState<Student | null>(null);
   const [viewing, setViewing] = useState<Student | null>(null);
   const [disabling, setDisabling] = useState<Student | null>(null);
-  const [enrolling, setEnrolling] = useState<Student | null>(null);
+  const { view } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  // Opened from another page with ?view=<id> (e.g. the Courses page): show that student's details.
+  useEffect(() => {
+    if (!view) return;
+    const s = data.students.find((x) => x.id === view);
+    if (s) { setViewing(s); void navigate({ search: {}, replace: true }); }
+  }, [view, data.students, navigate]);
 
   const list = useMemo(() => {
     const k = q.trim().toLowerCase();
@@ -148,7 +154,7 @@ function StudentsPage() {
                 {canManage && <div className="mt-3 flex justify-center gap-1.5 border-t border-border/60 pt-3" onClick={(e) => e.stopPropagation()}>
                   {can("students", "edit") && (s.status === "Active" ? (
                     <>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เพิ่มเข้าคลาส", "Add to class")} aria-label={L(`เพิ่ม ${fullName(s)} เข้าคลาส`, `Add ${fullName(s)} to a class`)} onClick={() => setEnrolling(s)}><UserRoundPlus strokeWidth={1.6} /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ซื้อคอร์ส", "Buy courses")} aria-label={L(`ซื้อคอร์สให้ ${fullName(s)}`, `Buy courses for ${fullName(s)}`)} onClick={() => openBuy(s.id)}><UserRoundPlus strokeWidth={1.6} /></Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ปิดใช้งาน", "Disable")} aria-label={L(`ปิดใช้งาน ${fullName(s)}`, `Disable ${fullName(s)}`)} onClick={() => setDisabling(s)}><Ban strokeWidth={1.6} /></Button>
                     </>
                   ) : (
@@ -192,7 +198,7 @@ function StudentsPage() {
                         <div className="flex justify-center gap-1.5">
                           {can("students", "edit") && (s.status === "Active" ? (
                             <>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("เพิ่มเข้าคลาส", "Add to class")} aria-label={L(`เพิ่ม ${fullName(s)} เข้าคลาส`, `Add ${fullName(s)} to a class`)} onClick={() => setEnrolling(s)}><UserRoundPlus strokeWidth={1.6} /></Button>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" title={L("ซื้อคอร์ส", "Buy courses")} aria-label={L(`ซื้อคอร์สให้ ${fullName(s)}`, `Buy courses for ${fullName(s)}`)} onClick={() => openBuy(s.id)}><UserRoundPlus strokeWidth={1.6} /></Button>
                               <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive" title={L("ปิดใช้งาน", "Disable")} aria-label={L(`ปิดใช้งาน ${fullName(s)}`, `Disable ${fullName(s)}`)} onClick={() => setDisabling(s)}><Ban strokeWidth={1.6} /></Button>
                             </>
                           ) : (
@@ -214,7 +220,6 @@ function StudentsPage() {
 
       <StudentForm open={formOpen} onOpenChange={setFormOpen} editing={editing} />
       <StudentView student={viewing} onClose={() => setViewing(null)} onEdit={(s) => { setViewing(null); setEditing(s); setFormOpen(true); }} />
-      <EnrollDialog student={enrolling} onClose={() => setEnrolling(null)} />
       <ConfirmDialog
         open={!!disabling}
         onOpenChange={(o) => !o && setDisabling(null)}
@@ -384,14 +389,16 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
   const [viewPdf, setViewPdf] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [editEn, setEditEn] = useState<Enrollment | null>(null);
+  const [tab, setTab] = useState<"info" | "courses">("info");
+  const receiptOpen = useReceiptOpen();
   const [kept, setKept] = useState<Student | null>(null);
   if (student && kept !== student) setKept(student);
   const base = student ?? kept;
   const s = base ? data.students.find((x) => x.id === base.id) ?? base : null;
-  const classes = s ? data.enrollments.filter((e) => e.studentId === s.id).map((e) => ({ en: e, cls: data.classes.find((c) => c.id === e.classId) })).filter((x) => x.cls) : [];
+  const courseCount = s ? data.enrollments.filter((e) => e.studentId === s.id).length : 0;
   return (
     <>
-    <Dialog open={!!student && !viewPdf} onOpenChange={(o) => !o && !viewPdf && onClose()}>
+    <Dialog open={!!student && !viewPdf && !receiptOpen} onOpenChange={(o) => { if (!o && !viewPdf && !receiptOpen) { onClose(); setTab("info"); } }}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
         {s && (
           <>
@@ -405,6 +412,14 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
                 <div className="mt-1"><StatusBadge status={s.status} /></div>
               </div>
             </div>
+            {/* Tabs (owner 12/10/2026, mockup WTr5LoqwQAEnSrKDuzZiMi board 2) */}
+            <div className="flex gap-1 border-b border-border text-sm font-semibold" role="tablist">
+              {([["info", L("ข้อมูล", "Details")], ["courses", L(`คอร์ส (${courseCount})`, `Courses (${courseCount})`)]] as const).map(([k, t]) => (
+                <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+                  className={`-mb-px border-b-2 px-4 py-2 transition-colors ${tab === k ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{t}</button>
+              ))}
+            </div>
+            {tab === "courses" ? <StudentCourses student={s} onEdit={setEditEn} /> : <>
             <div className="grid grid-cols-2 gap-4 rounded-2xl bg-muted/50 p-4 sm:grid-cols-3">
               <Info label={L("วันเกิด", "Date of birth")} value={s.dob ? fd(s.dob) : ""} />
               <Info label={L("อายุ", "Age")} value={ageText(s.dob)} />
@@ -424,28 +439,12 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
               <Info label={L("ประสบการณ์", "Experience")} value={s.hasExperience ? L(`มี — ${s.experienceDetail || ""}`, `Yes — ${s.experienceDetail || ""}`) : L("ไม่มี", "None")} />
               <Info label={L("รู้จักจาก", "Heard about us from")} value={sourceText(s.source, s.sourceOther)} />
             </div>
-            <div>
-              <p className="mb-2 text-sm font-semibold">{L(`คลาสที่ลงทะเบียน (${classes.length})`, `Enrolled classes (${classes.length})`)}</p>
-              <div className="flex flex-wrap gap-2">
-                {classes.length === 0 && <p className="text-sm text-muted-foreground">{L("ยังไม่ได้ลงคลาส", "Not in any class yet")}</p>}
-                {classes.map(({ en, cls }) => cls && (
-                  <button type="button" key={en.id} disabled={!canEdit} onClick={() => setEditEn(en)} title={L("แก้ไขการลงทะเบียน", "Edit enrollment")} className="inline-flex flex-wrap items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground transition-colors hover:bg-primary/15">
-                    <span className="font-medium">{cls.name}</span>
-                    {en.startDate && (
-                      <span className="text-muted-foreground">
-                        {fd(en.startDate)}{en.expiryDate ? ` – ${fd(en.expiryDate)}` : ""}
-                      </span>
-                    )}
-                    {en.remark && <span className="text-muted-foreground">· {en.remark}</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-muted/40 p-3 text-sm">
               {s.signedAt && s.signature ? (
                 <><img src={s.signature} alt={L("ลายเซ็น", "Signature")} className="h-10 rounded bg-background px-2" /><span>{L(`เซ็นแล้วเมื่อ ${fd(s.signedAt)}`, `Signed on ${fd(s.signedAt)}`)}</span></>
               ) : <span className="text-muted-foreground">{L("ยังไม่ได้เซ็นเอกสาร", "Document not signed yet")}</span>}
             </div>
+            </>}
             <DialogFooter>
               {canEdit && <Button variant="outline" onClick={() => setSigning(true)}><PenLine className="h-4 w-4" /> {s.signature ? L("เซ็นใหม่", "Sign") : L("เซ็นเอกสาร", "Sign document")}</Button>}
               <Button variant="outline" onClick={() => setViewPdf(true)}><FileText className="h-4 w-4" /> {L("ดู PDF", "View PDF")}</Button>
@@ -531,61 +530,34 @@ const enrollSchema = () => z
 
 const enrollEmpty: EnrollmentInput = { classId: "", purchaseDate: "", startDate: "", expiryDate: "", remark: "", receiptImage: "" };
 
+/** Fix a course's dates or remark, or take the student out of the class. Buying and renewing: "Buy courses" (courses.tsx). */
 function EnrollDialog({ student: studentProp, enrollment: enrollmentProp, onClose }: { student: Student | null; enrollment?: Enrollment | null; onClose: () => void }) {
-  const { data, enroll, updateEnrollment, unenroll, can } = useYodo();
-  const canPay = can("receipts", "add");
-  const open = !!studentProp;
+  const { data, updateEnrollment, unenroll } = useYodo();
+  const open = !!studentProp && !!enrollmentProp;
   // Keep the last shown values while the close animation plays, so the form doesn't collapse.
   const [kept, setKept] = useState<{ s: Student | null; e: Enrollment | null }>({ s: null, e: null });
-  if (studentProp && (kept.s !== studentProp || kept.e !== (enrollmentProp ?? null))) setKept({ s: studentProp, e: enrollmentProp ?? null });
+  if (studentProp && enrollmentProp && (kept.s !== studentProp || kept.e !== enrollmentProp)) setKept({ s: studentProp, e: enrollmentProp });
   const student = studentProp ?? kept.s;
-  const enrollment = studentProp ? (enrollmentProp ?? null) : kept.e;
+  const enrollment = enrollmentProp ?? kept.e;
   const [f, setF] = useState<EnrollmentInput>(enrollEmpty);
   const [errors, setErrors] = useState<Partial<Record<keyof EnrollmentInput, string>>>({});
   const [confirmRemove, setConfirmRemove] = useState(false);
-  // Payment and receipt (owner 12/10/2026): the course price is paid in full, the expiry follows from the course length.
-  const [pay, setPay] = useState<PayState>(payEmpty);
-  const [autoExpiry, setAutoExpiry] = useState(true);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loadedId, setLoadedId] = useState<string | null>(null);
-  const openKey = studentProp ? (enrollmentProp?.id ?? `new-${studentProp.id}`) : loadedId;
+  const openKey = open ? enrollmentProp!.id : loadedId;
   if (openKey !== loadedId) {
     setLoadedId(openKey);
     if (enrollment) {
       const { classId, purchaseDate, startDate, expiryDate, remark, receiptImage } = enrollment;
       setF({ classId, purchaseDate, startDate, expiryDate, remark, receiptImage });
-    } else setF({ ...enrollEmpty, purchaseDate: todayIso(), startDate: todayIso() });
-    setPay({ ...payEmpty, on: !enrollment && canPay, date: todayIso(), payer: "" }); // payer starts empty (owner 12/10/2026)
-    setAutoExpiry(!enrollment);
-    setReceipts([]);
+    }
     setErrors({});
   }
-  const options = student
-    ? data.classes.filter((c) =>
-        (c.id === enrollment?.classId) ||
-        (c.id === f.classId) ||
-        (c.status === "Active" && !c.disabled && !data.enrollments.some((e) => e.studentId === student.id && e.classId === c.id)))
-    : [];
   const set = <K extends keyof EnrollmentInput>(k: K, v: EnrollmentInput[K]) => setF((p) => ({ ...p, [k]: v }));
-  const selectedClass = data.classes.find((c) => c.id === f.classId);
-  // Class or start date picked: the expiry is start + course length − 1 day, until someone types their own.
-  const pickClass = (classId: string) => {
-    const c = data.classes.find((x) => x.id === classId);
-    setF((p) => ({ ...p, classId, ...(autoExpiry && c && p.startDate ? { expiryDate: courseEnd(p.startDate, c.months) } : {}) }));
-    if (c?.price != null) setPay((p) => ({ ...p, price: String(c.price) }));
-  };
-  const pickStart = (startDate: string) => setF((p) => ({ ...p, startDate, ...(autoExpiry && selectedClass && startDate ? { expiryDate: courseEnd(startDate, selectedClass.months) } : {}) }));
-  const price = Number(pay.price) || 0;
-  const discount = Number(pay.discount) || 0;
-  const amount = Math.max(0, price - discount);
-  useEffect(() => {
-    if (!enrollment || !can("receipts")) return;
-    api<Receipt[]>(`/receipts?enrollmentId=${enrollment.id}`).then(setReceipts).catch(() => setReceipts([]));
-  }, [enrollment, can]);
+  const cls = data.classes.find((c) => c.id === f.classId);
   const close = () => { onClose(); setErrors({}); };
 
   const submit = () => {
-    if (!student) return;
+    if (!student || !enrollment) return;
     const r = enrollSchema().safeParse(f);
     if (!r.success) {
       const e: Partial<Record<keyof EnrollmentInput, string>> = {};
@@ -594,17 +566,8 @@ function EnrollDialog({ student: studentProp, enrollment: enrollmentProp, onClos
       toast.error(L("กรุณาตรวจสอบข้อมูลให้ครบถ้วน", "Please check that everything is filled in"));
       return;
     }
-    if (!options.some((c) => c.id === f.classId)) return setErrors({ classId: L("กรุณาเลือกคลาสที่เปิดอยู่", "Please choose an open class") });
-    let payment: PaymentInput | undefined;
-    if (pay.on) {
-      if (!pay.date) return toast.error(L("กรุณาเลือกวันที่รับเงิน", "Please choose the payment date"));
-      if (pay.price === "" || price < 0) return toast.error(L("กรุณากรอกราคาคอร์ส", "Please enter the course price"));
-      if (discount > price) return toast.error(L("ส่วนลดมากกว่าราคา", "The discount is more than the price"));
-      payment = { date: pay.date, price, discount, method: pay.method, slip: pay.method === "transfer" ? pay.slip : "", payer: pay.payer.trim(), remark: "" };
-    }
-    const done = (r: Receipt) => { toast.success(L(`ออกใบเสร็จ ${r.no} แล้ว`, `Receipt ${r.no} issued`)); openReceipt(r.id); };
-    if (enrollment) { updateEnrollment(enrollment.id, f, payment, done); toast.success(L("บันทึกการลงทะเบียนแล้ว", "Enrollment saved")); }
-    else { enroll(student.id, f, payment, done); toast.success(L("เพิ่มเข้าคลาสแล้ว", "Added to class")); }
+    updateEnrollment(enrollment.id, f);
+    toast.success(L("บันทึกการลงทะเบียนแล้ว", "Enrollment saved"));
     close();
   };
 
@@ -612,60 +575,33 @@ function EnrollDialog({ student: studentProp, enrollment: enrollmentProp, onClos
     <Dialog open={open} onOpenChange={(o) => { if (!o) close(); }}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{enrollment ? L("แก้ไขการลงทะเบียน", "Edit enrollment") : L("เพิ่มเข้าคลาส", "Add to class")}</DialogTitle>
-          <DialogDescription>{student && fullName(student)}</DialogDescription>
+          <DialogTitle>{L("แก้ไขวันที่คอร์ส", "Fix course dates")}{cls ? ` · ${cls.name}` : ""}</DialogTitle>
+          <DialogDescription>{student && fullName(student)} · {L("ใช้แก้ข้อมูลที่ผิด ไม่เก็บเงิน (ต่อคอร์ส / ขยายเวลา ใช้ปุ่มของมันเอง)", "For corrections, no money (renew / extend have their own buttons)")}</DialogDescription>
         </DialogHeader>
-        {options.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{L("ไม่มีคลาสที่เปิดอยู่ให้เลือก (หรือลงครบทุกคลาสแล้ว)", "No open classes to choose from (or already in every class)")}</p>
-        ) : (
-          <div className="grid gap-4">
-            <Field label={L("คลาส", "Class")} required error={errors.classId}>
-              <NativeSelect value={f.classId} onValueChange={pickClass}>
-                <option value="">{L("เลือกคลาส", "Choose a class")}</option>
-                {options.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </NativeSelect>
+        <div className="grid gap-4">
+          <Field label={L("วันที่ซื้อ", "Purchase date")} required error={errors.purchaseDate}>
+            <DateField value={f.purchaseDate} onChange={(v) => set("purchaseDate", v)} />
+          </Field>
+          <Field label={L("วันเริ่มเรียน", "Start date")} required error={errors.startDate}>
+            <DateField value={f.startDate} onChange={(v) => set("startDate", v)} />
+          </Field>
+          <Field label={L("วันหมดอายุ", "Expiry date")} error={errors.expiryDate}>
+            <DateField value={f.expiryDate} min={f.startDate || undefined} onChange={(v) => set("expiryDate", v)} />
+          </Field>
+          <Field label={L("หมายเหตุ", "Remark")} error={errors.remark}>
+            <Textarea rows={2} value={f.remark} onChange={(e) => set("remark", e.target.value)} />
+          </Field>
+          {f.receiptImage && (
+            <Field label={L("รูปใบเสร็จ (เดิม)", "Receipt photo (old)")}>
+              <ReceiptUpload value={f.receiptImage} onChange={(v) => set("receiptImage", v)} />
             </Field>
-            {selectedClass && (
-              <p className="-mt-2 text-sm text-muted-foreground">{L("ราคาคอร์ส", "Course price")} <span className="font-semibold text-primary">{coursePrice(selectedClass)}</span></p>
-            )}
-            <Field label={L("วันที่ซื้อ", "Purchase date")} required error={errors.purchaseDate}>
-              <DateField value={f.purchaseDate} onChange={(v) => set("purchaseDate", v)} />
-            </Field>
-            <Field label={L("วันเริ่มเรียน", "Start date")} required error={errors.startDate}>
-              <DateField value={f.startDate} onChange={pickStart} />
-            </Field>
-            <Field label={L("วันหมดอายุ", "Expiry date")} error={errors.expiryDate}>
-              <DateField value={f.expiryDate} min={f.startDate || undefined} onChange={(v) => { setAutoExpiry(false); set("expiryDate", v); }} />
-            </Field>
-            <Field label={L("หมายเหตุ", "Remark")} error={errors.remark}>
-              <Textarea rows={2} value={f.remark} onChange={(e) => set("remark", e.target.value)} />
-            </Field>
-            {f.receiptImage && (
-              <Field label={L("รูปใบเสร็จ (เดิม)", "Receipt photo (old)")}>
-                <ReceiptUpload value={f.receiptImage} onChange={(v) => set("receiptImage", v)} />
-              </Field>
-            )}
-            {receipts.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold">{L("ใบเสร็จของคลาสนี้", "Receipts for this class")}</p>
-                {receipts.map((r) => (
-                  <button key={r.id} type="button" onClick={() => { close(); openReceipt(r.id); }}
-                    className={`flex w-full items-center justify-between rounded-2xl border border-border/60 px-3 py-2 text-left text-sm hover:bg-muted/50 ${r.cancelled ? "text-muted-foreground line-through" : ""}`}>
-                    <span className="font-mono">{r.no}</span><span>{fd(r.date)}</span><span className="font-semibold">{money(r.amount)}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {canPay && <PaymentBox pay={pay} setPay={setPay} amount={amount} isNew={!enrollment} />}
-          </div>
-        )}
+          )}
+        </div>
         <DialogFooter className="gap-2 sm:justify-between">
-          {enrollment ? (
-            <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setConfirmRemove(true)}><Trash2 className="h-4 w-4" /> {L("นำออกจากคลาส", "Remove from class")}</Button>
-          ) : <span />}
+          <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setConfirmRemove(true)}><Trash2 className="h-4 w-4" /> {L("นำออกจากคลาส", "Remove from class")}</Button>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={close}>{L("ยกเลิก", "Cancel")}</Button>
-            <Button disabled={options.length === 0} onClick={submit}>{pay.on ? L("บันทึกและออกใบเสร็จ", "Save and issue receipt") : enrollment ? L("บันทึก", "Save") : L("เพิ่ม", "Add")}</Button>
+            <Button onClick={submit}>{L("บันทึก", "Save")}</Button>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -673,61 +609,10 @@ function EnrollDialog({ student: studentProp, enrollment: enrollmentProp, onClos
         open={confirmRemove}
         onOpenChange={setConfirmRemove}
         title={L("นำออกจากคลาส?", "Remove from class?")}
-        text={L("ข้อมูลการลงทะเบียนและการเข้าคาบของคลาสนี้จะถูกลบ", "The enrollment and attendance records for this class will be deleted")}
+        text={L("การลงทะเบียนและการเข้าคาบของคลาสนี้จะถูกลบ (ประวัติการซื้อยังอยู่)", "The enrollment and attendance records for this class will be deleted (the purchase history stays)")}
         destructive
         onConfirm={() => { if (student && enrollment) { unenroll(student.id, enrollment.classId); toast.success(L("นำออกจากคลาสแล้ว", "Removed from class")); } setConfirmRemove(false); close(); }}
       />
     </Dialog>
-  );
-}
-
-type PayState = { on: boolean; date: string; price: string; discount: string; method: "cash" | "transfer" | "card"; slip: string; payer: string };
-const payEmpty: PayState = { on: false, date: "", price: "", discount: "", method: "transfer", slip: "", payer: "" };
-const todayIso = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
-/** Start + n months − 1 day (12/10/2026 + 6 months = 11/04/2027). */
-function courseEnd(start: string, months: number) {
-  const d = parseISO(start);
-  if (!isValid(d)) return "";
-  const e = new Date(d.getFullYear(), d.getMonth() + months, d.getDate() - 1);
-  return format(e, "yyyy-MM-dd");
-}
-
-/** "Payment" part of the add-to-class window (mockup board 2): price, discount, amount, how it was paid, slip, payer. */
-function PaymentBox({ pay, setPay, amount, isNew }: { pay: PayState; setPay: React.Dispatch<React.SetStateAction<PayState>>; amount: number; isNew: boolean }) {
-  const set = <K extends keyof PayState>(k: K, v: PayState[K]) => setPay((p) => ({ ...p, [k]: v }));
-  return (
-    <div className="space-y-3 rounded-2xl border border-border/60 p-4" data-testid="payment-box">
-      <label className="flex items-center gap-2 text-sm font-semibold">
-        <input type="checkbox" className="h-4 w-4 accent-primary" checked={pay.on} onChange={(e) => set("on", e.target.checked)} />
-        <Banknote className="h-4 w-4 text-primary" />
-        {isNew ? L("รับเงินและออกใบเสร็จ", "Take payment and issue a receipt") : L("รับเงินเพิ่มและออกใบเสร็จใหม่", "Take a new payment and issue a receipt")}
-      </label>
-      {pay.on && (
-        <>
-          <div className="grid grid-cols-3 gap-2">
-            <Field label={L("ราคาคอร์ส", "Course price")}><Input type="number" min={0} inputMode="decimal" value={pay.price} onChange={(e) => set("price", e.target.value)} /></Field>
-            <Field label={L("ส่วนลด", "Discount")}><Input type="number" min={0} inputMode="decimal" placeholder="0" value={pay.discount} onChange={(e) => set("discount", e.target.value)} /></Field>
-            <div className="rounded-2xl bg-primary/10 px-3 py-2">
-              <p className="text-xs text-primary">{L("ยอดที่รับ", "Amount")}</p>
-              <p className="text-lg font-bold text-primary" data-testid="pay-amount">{money(amount)}</p>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <p className="text-xs font-semibold text-foreground/80">{L("รับเงินทาง", "Paid by")}</p>
-            <div className="flex flex-wrap gap-2">
-              {(["cash", "transfer", "card"] as const).map((m) => (
-                <button key={m} type="button" onClick={() => set("method", m)} aria-pressed={pay.method === m}
-                  className={`h-9 rounded-full px-4 text-sm transition-colors ${pay.method === m ? "bg-primary text-primary-foreground" : "border border-border bg-background hover:bg-muted"}`}>{methodLabel(m, getLang())}</button>
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={L("วันที่รับเงิน", "Payment date")}><DateField value={pay.date} onChange={(v) => set("date", v)} /></Field>
-            <Field label={L("ชื่อผู้จ่าย (ในใบเสร็จ)", "Payer (on the receipt)")}><Input data-testid="pay-payer" value={pay.payer} placeholder={L("ไม่ใส่ = ชื่อนักเรียน", "Empty = the student's name")} onChange={(e) => set("payer", e.target.value)} /></Field>
-          </div>
-          {pay.method === "transfer" && <Field label={L("สลิปโอน", "Transfer slip")}><ReceiptUpload value={pay.slip} onChange={(v) => set("slip", v)} /></Field>}
-        </>
-      )}
-    </div>
   );
 }
