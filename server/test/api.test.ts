@@ -260,3 +260,16 @@ describe('Thai / English', () => {
     expect(st).toBeTruthy();
   });
 });
+
+describe('import: the real Lovable export format', () => {
+  it('reads dd/mm/yyyy dates, t/f, comma lists and rows without an id', async () => {
+    const csv = [
+      'code,prefix,first_name,last_name,nickname,dob,nationality,nationality_other,religion,address,phone,email,line_id,emergency_name,emergency_phone,relationship,interested,has_experience,experience_detail,source,source_other,status,created_at',
+      'YDO00101,ด.ญ.,ทดลอง,นำเข้า,ทด,31/10/2023,ไทย,"",พุทธ,"12/3 ซอย 4, กทม",0811111111,a@b.co,"",แม่,0822222222,แม่,"Ballet, Jazz",t,Ballet,Facebook,"",Active,25/01/2026 07:00',
+    ].join('\n');
+    const r = await admin.post('/api/import/students').set({ ...H, 'content-type': 'text/plain' }).send(csv);
+    expect(r.body).toMatchObject({ total: 1, added: 1 });
+    const s = (await admin.get('/api/data')).body.students.find((x: { code: string }) => x.code === 'YDO00101');
+    expect(s).toMatchObject({ dob: '2023-10-31', interested: ['Ballet', 'Jazz'], hasExperience: true, address: '12/3 ซอย 4, กทม', createdAt: '2026-01-25T00:00:00.000Z' });
+  });
+});

@@ -23,9 +23,22 @@ function ImportPage() {
   const [preview, setPreview] = useState<Result | null>(null);
   const [done, setDone] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
+  const [over, setOver] = useState(false);
+  // A new file is checked straight away, so "Import" is ready as soon as the numbers show.
+  const pick = (f: File | undefined) => {
+    if (!f) return;
+    setFile(f); setPreview(null); setDone(null);
+    void check(f);
+  };
 
   if (me && !me.superadmin) return <EmptyState title={L("ไม่มีสิทธิ์เข้าถึงหน้านี้", "You cannot open this page")} text={L("เฉพาะผู้ดูแลสูงสุด (SuperAdmin)", "SuperAdmin only")} />;
 
+  const check = async (f: File) => {
+    setBusy(true);
+    try { setPreview(await api<Result>("/import/students?dry=1", { raw: await f.text() })); }
+    catch (e) { toast.error(errorText(e)); }
+    setBusy(false);
+  };
   const send = async (dry: boolean) => {
     if (!file) return;
     setBusy(true);
@@ -46,15 +59,23 @@ function ImportPage() {
           <li>{L('เลือกไฟล์ที่ได้ด้านล่าง แล้วกด "ตรวจไฟล์"', 'Pick that file below, then press "Check file"')}</li>
           <li>{L('ถ้าจำนวนถูกต้อง กด "นำเข้า" (นักเรียนที่มีรหัสอยู่แล้วจะถูกข้าม ทำซ้ำได้ไม่ซ้ำ)', 'If the numbers look right, press "Import" (students whose code already exists are skipped, so running it twice adds nothing twice)')}</li>
         </ol>
-        <label className="flex cursor-pointer flex-col items-center gap-1 rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-8 text-sm text-muted-foreground hover:bg-muted/60">
+        {/* Tap to choose, or drop the file on the box (dropping it elsewhere would open it in the browser). */}
+        <label
+          data-drop
+          onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+          onDragLeave={() => setOver(false)}
+          onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files?.[0]); }}
+          className={`flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed px-4 py-8 text-sm text-muted-foreground hover:bg-muted/60 ${over ? "border-primary bg-primary/10" : "border-border bg-muted/30"}`}>
           <FileUp className="h-6 w-6 text-primary" />
           <span className="font-medium text-foreground">{file ? file.name : L("เลือกไฟล์ CSV หรือ JSON", "Choose a CSV or JSON file")}</span>
-          {file && <span className="text-xs">{(file.size / 1024 / 1024).toFixed(1)} MB</span>}
-          <input type="file" accept=".csv,.json,text/csv,application/json" className="hidden" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); setDone(null); e.target.value = ""; }} />
+          {file ? <span className="text-xs">{(file.size / 1024).toFixed(0)} KB</span> : <span className="text-xs">{L("แตะเพื่อเลือก หรือลากไฟล์มาวางที่นี่", "Tap to choose, or drop the file here")}</span>}
+          <span className="rounded-full border border-border bg-card px-4 py-1.5 text-xs font-semibold text-foreground">{file ? L("เปลี่ยนไฟล์", "Change file") : L("เลือกไฟล์", "Choose file")}</span>
+          <input id="import-file" type="file" accept=".csv,.json,text/csv,application/json,text/plain" className="sr-only" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
         </label>
         {preview && (
           <div className="rounded-2xl bg-accent/40 p-4 text-sm">
             <p>{L("ในไฟล์มี ", "The file has ")}<b>{preview.total}</b>{L(" แถว · จะนำเข้า ", " rows · will import ")}<b>{preview.added}</b>{L(" คน · ข้าม ", " students · skip ")}<b>{preview.skipped.length}</b></p>
+            {preview.skipped.length > 0 && <p className="mt-1 text-muted-foreground">{L("ข้าม: ", "Skipped: ")}{preview.skipped.slice(0, 30).map((s) => `${s.code || "-"} (${REASON()[s.reason] ?? s.reason})`).join(", ")}</p>}
           </div>
         )}
         {done && (

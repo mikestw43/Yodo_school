@@ -41,7 +41,20 @@ export function parseCsv(text: string): Record<string, string>[] {
 const camel = (k: string) => k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 const str = (v: unknown) => (v === null || v === undefined ? '' : String(v)).trim();
 const bool = (v: unknown) => v === true || /^(true|t|1|yes)$/i.test(str(v));
-const day = (v: unknown) => { const d = str(v).slice(0, 10); return isDate(d) ? d : ''; };
+// Lovable's export writes dates as dd/mm/yyyy (or yyyy-mm-dd); kept as YYYY-MM-DD.
+const dmy = (v: unknown) => {
+  const s = str(v);
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
+  return m ? `${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}` : s.slice(0, 10);
+};
+const day = (v: unknown) => { const d = dmy(v); return isDate(d) ? d : ''; };
+// "25/01/2026 07:00" is Bangkok time; ISO text is read as it is.
+function when(v: unknown) {
+  const s = str(v);
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2}))?/.exec(s);
+  if (m) return new Date(`${dmy(s)}T${(m[4] ?? '0').padStart(2, '0')}:${m[5] ?? '00'}:00+07:00`);
+  return new Date(s);
+}
 // Arrays come as JSON (["Ballet"]) or Postgres text ({Ballet,"Hip Hop"}).
 function arr(v: unknown): string[] {
   if (Array.isArray(v)) return v.map(str).filter(Boolean);
@@ -84,7 +97,7 @@ router.post('/import/students', requireAuth, express.text({ type: '*/*', limit: 
     if (await prisma.student.findFirst({ where: { OR: [{ code }, ...(rid ? [{ id: rid }] : [])] } })) { out.skipped.push({ code, reason: 'exists' }); continue; }
     if (dryRun) { out.added++; continue; }
     const deleted = bool(r.delFlg);
-    const created = new Date(str(r.createdAt));
+    const created = when(r.createdAt);
     const s = await prisma.student.create({ data: {
       ...(rid ? { id: rid } : {}), code, firstName, prefix: str(r.prefix), lastName: str(r.lastName), nickname: str(r.nickname), dob: day(r.dob),
       nationality: str(r.nationality), nationalityOther: str(r.nationalityOther), religion: str(r.religion), address: str(r.address),
