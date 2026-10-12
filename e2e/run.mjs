@@ -536,7 +536,7 @@ try {
     const pf = page.frameLocator('[data-testid="email-preview-frame"]');
     await pf.locator('body').waitFor();
     const ptxt = await pf.locator('body').innerText();
-    check('email preview: professional English, no phone / reply lines', ptxt.includes('Thank you for your payment') && ptxt.includes('See you on Saturday.') && ptxt.includes('Kind regards') && !/reply|call us/i.test(ptxt), ptxt.slice(0, 200));
+    check('email preview: professional English, no phone / reply lines', ptxt.includes('Dear Customer,') && ptxt.includes('Thank you for your payment') && ptxt.includes('See you on Saturday.') && ptxt.includes('Kind regards') && !/reply|call us/i.test(ptxt), ptxt.slice(0, 200));
     await page.waitForTimeout(400);
     await page.screenshot({ path: `${SHOTS}/36d-email-preview.png` });
     await page.getByRole('dialog', { name: 'ตัวอย่างอีเมล' }).focus();

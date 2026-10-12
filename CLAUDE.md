@@ -194,7 +194,7 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   `server/assets`, copied into the Docker image) and "ส่งทางอีเมล" (`components/yodo/receipt-send.tsx`: to = student email,
   editable, up to 5; TH/EN = email + PDF language, starts in the app's; optional extra message; preview
   `GET /receipts/:id/email-preview`; `POST /receipts/:id/email`, receipts 'view'; sent list `ReceiptEmail`, audited). Sent
-  only when pressed. Email text `lib/receipt-mail.ts`: greeting (payer, empty = "Dear Parent/Guardian,"), thank you +
+  only when pressed. Email text `lib/receipt-mail.ts`: greeting always "Dear Customer," / "เรียน ท่านลูกค้า" (owner 13/10/2026), thank you +
   PDF attached, classes + total, "We look forward to seeing <nickname> in class.", signer + company; NO phone, NO
   "reply to us" lines (owner). Gmail SMTP with an app password typed by the owner in Company settings ("ส่งใบเสร็จทางอีเมล"
   card, company 'edit', `Setting.mailUser/mailFromName/mailPass` encrypted by lib/crypto.ts, only the last 4 shown, never

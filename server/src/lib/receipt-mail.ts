@@ -19,14 +19,11 @@ export function receiptMail(o: {
   const T = (th: string, en: string) => (lang === 'en' ? en : th);
   const co = (lang === 'en' ? c.nameEn || c.name : c.name || c.nameEn) || 'YODO';
   const student = studentName(s, lang);
-  const payer = r.payer || student;
   const kid = o.nickname || s?.firstName || '';
   const signer = c.signName || r.receivedByName;
   const subject = T(`ใบเสร็จรับเงิน ${r.no} จาก ${co}`, `Your receipt ${r.no} from ${co}`);
-  // no payer typed (the usual case) = the parent, never "Khun ด.ญ. ..." (a child's name)
-  const greet = !r.payer.trim()
-    ? T('เรียน ผู้ปกครอง', 'Dear Parent/Guardian,')
-    : T(`เรียน คุณ${payer.replace(/^คุณ\s*/, '')}`, `Dear Khun ${payer.replace(/^(Khun|คุณ)\s*/i, '')},`);
+  // owner 13/10/2026: always "Dear Customer" (simple, whoever paid)
+  const greet = T('เรียน ท่านลูกค้า', 'Dear Customer,');
   const intro = T(
     `ขอบคุณสำหรับการชำระเงิน ทางโรงเรียนได้แนบใบเสร็จรับเงินของ ${student}${s ? ` (รหัสนักเรียน ${s.code})` : ''} มาพร้อมอีเมลนี้`,
     `Thank you for your payment. Please find attached the official receipt for ${student}${s ? ` (student no. ${s.code})` : ''}.`,
