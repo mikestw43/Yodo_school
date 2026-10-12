@@ -444,7 +444,7 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
               ) : <span className="text-muted-foreground">{L("ยังไม่ได้เซ็นเอกสาร", "Document not signed yet")}</span>}
             </div>
             <DialogFooter>
-              {canEdit && <Button variant="outline" onClick={() => setSigning(true)}><PenLine className="h-4 w-4" /> {s.signature ? L("เซ็นใหม่", "Sign again") : L("เซ็นเอกสาร", "Sign document")}</Button>}
+              {canEdit && <Button variant="outline" onClick={() => setSigning(true)}><PenLine className="h-4 w-4" /> {s.signature ? L("เซ็นใหม่", "Sign") : L("เซ็นเอกสาร", "Sign document")}</Button>}
               <Button variant="outline" onClick={() => setViewPdf(true)}><FileText className="h-4 w-4" /> {L("ดู PDF", "View PDF")}</Button>
               {canEdit && <Button variant="outline" onClick={() => onEdit(s)}><Pencil className="h-4 w-4" /> {L("แก้ไข", "Edit")}</Button>}
             </DialogFooter>
@@ -455,7 +455,7 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
     <EnrollDialog student={editEn ? s : null} enrollment={editEn} onClose={() => setEditEn(null)} />
     <Dialog open={signing} onOpenChange={setSigning}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader><DialogTitle>{s?.signature ? L("เซ็นใหม่", "Sign again") : L("เซ็นเอกสาร", "Sign document")}</DialogTitle><DialogDescription>{s ? `${fullName(s)} · ${s.code}` : ""}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{s?.signature ? L("เซ็นใหม่", "Sign") : L("เซ็นเอกสาร", "Sign document")}</DialogTitle><DialogDescription>{s ? `${fullName(s)} · ${s.code}` : ""}</DialogDescription></DialogHeader>
         {signing && s && <SignDocumentBody student={s} onDone={() => setSigning(false)} />}
       </DialogContent>
     </Dialog>

@@ -95,7 +95,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   owner's choice), empty boxes when not signed (`Tick` in student-document.tsx, `BOX_SVG` in the print window).
   Owner 12/10/2026: the sign box has its own TH/EN switch beside "School terms and conditions" (terms + the two statements
   only, starts in the app's language, not saved; `terms(lang)`/`agreeText(lang)`/`correctText(lang)`), and its clear
-  button reads "Sign" in English (Thai stays "เซ็นใหม่").
+  button reads "Sign" in English (Thai stays "เซ็นใหม่"); the details button and window title too ("Sign"). The
+  terms switch changes only the terms and the two statements (owner: the rest stays in the app's language).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
