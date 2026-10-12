@@ -69,7 +69,7 @@ function PermissionsPage() {
   if (roles.length === 0) {
     return (
       <>
-        <PageHeader title={L("สิทธิ์การใช้งาน", "Permissions")} subtitle={L("สิทธิ์การใช้งานตาม Role", "Access by role")} />
+        <PageHeader back title={L("สิทธิ์การใช้งาน", "Permissions")} subtitle={L("สิทธิ์การใช้งานตาม Role", "Access by role")} />
         <EmptyState title={L("ยังไม่มี Role", "No roles yet")} />
       </>
     );
@@ -77,6 +77,7 @@ function PermissionsPage() {
   return (
     <>
       <PageHeader
+        back
         title={L("สิทธิ์การใช้งาน", "Permissions")}
         subtitle={owner ? L("แต่ละคนมี 1 Role · กดที่ช่องเพื่อเปิด/ปิด", "Each person has one role · tap a switch to turn it on or off") : L("เฉพาะ Owner แก้สิทธิ์ได้ คุณดูได้อย่างเดียว", "Only the Owner changes access; you can only look")}
         action={owner ? <Button className="rounded-full" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" /> {L("เพิ่ม Role", "Add role")}</Button> : undefined}

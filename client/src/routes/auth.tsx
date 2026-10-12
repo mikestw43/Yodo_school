@@ -83,7 +83,7 @@ function AuthPage() {
       <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-24">
         <div className="w-full max-w-[400px]">
           {needsSetup ? <SetupCard onDone={signedIn} /> : pin?.on && !usePassword ? (
-            <Card className="rounded-3xl border border-white/50 bg-card/80 p-8 shadow-soft backdrop-blur-xl">
+            <Card className="rounded-3xl border border-white/50 bg-card/95 px-6 py-8 shadow-soft" /* no blur behind the PIN pad: it slowed taps on phones */>
               <PinLogin name={pin.name ?? ""} onPassword={() => setUsePassword(true)} onSignedIn={signedIn} />
             </Card>
           ) : (

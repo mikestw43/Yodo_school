@@ -167,7 +167,7 @@ function AuditLogPage() {
 
   return (
     <>
-      <PageHeader title={L("ประวัติการแก้ไข", "Audit Log")} subtitle={L("ประวัติการเพิ่ม แก้ไข และลบข้อมูล", "History of additions, edits and deletions")} action={<Button variant="outline" onClick={load}><RefreshCw className="h-4 w-4" /> {L("รีเฟรช", "Refresh")}</Button>} />
+      <PageHeader back title={L("ประวัติการแก้ไข", "Audit Log")} subtitle={L("ประวัติการเพิ่ม แก้ไข และลบข้อมูล", "History of additions, edits and deletions")} action={<Button variant="outline" onClick={load}><RefreshCw className="h-4 w-4" /> {L("รีเฟรช", "Refresh")}</Button>} />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative min-w-60 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

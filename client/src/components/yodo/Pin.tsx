@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Delete, Lock, ScanFace, Timer, Trash2 } from "lucide-react";
+import { Delete, Loader2, Lock, ScanFace, Timer, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,40 +27,50 @@ export function PinPad({ title, sub, length, onDone, error, busy, onFace, footer
   const [pin, setPin] = useState("");
   const [shake, setShake] = useState(false);
   const max = length || 6;
-  useEffect(() => { if (error) { setPin(""); setShake(true); const x = setTimeout(() => setShake(false), 400); return () => clearTimeout(x); }   return undefined; }, [error]);
+  // The typed digits also live in a ref so fast taps never read an old value (owner 12/10/2026: the pad felt slow).
+  const typed = useRef("");
+  const put = (v: string) => { typed.current = v; setPin(v); };
+  useEffect(() => { if (error) { put(""); setShake(true); const x = setTimeout(() => setShake(false), 400); return () => clearTimeout(x); }   return undefined; }, [error]);
   const press = (d: string) => {
-    if (busy || pin.length >= max) return;
-    const next = pin + d;
-    setPin(next);
-    if (length && next.length === length) setTimeout(() => { onDone(next); setPin(""); }, 120);
+    if (busy || typed.current.length >= max) return;
+    const next = typed.current + d;
+    put(next);
+    if (length && next.length === length) setTimeout(() => { onDone(next); put(""); }, 80);
   };
+  const back = () => put(typed.current.slice(0, -1));
+  // Keys react when the finger touches (not when it lifts); a keyboard "click" (detail 0) still works.
+  const tap = (fn: () => void) => ({
+    onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); fn(); },
+    onClick: (e: React.MouseEvent) => { if (e.detail === 0) fn(); },
+  });
   // A computer keyboard works too.
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (/^\d$/.test(e.key)) press(e.key);
-      else if (e.key === "Backspace") setPin((p) => p.slice(0, -1));
+      else if (e.key === "Backspace") back();
       else if (e.key === "Enter" && !length && pin.length >= 4) onDone(pin);
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   });
-  const keyCls = "flex h-16 w-16 items-center justify-center rounded-full border border-border bg-card text-2xl font-semibold transition-colors hover:bg-accent active:bg-accent";
+  const keyCls = "flex h-[76px] w-[76px] touch-manipulation select-none items-center justify-center rounded-full border border-border bg-card text-[28px] font-semibold active:scale-95 active:bg-accent [@media(hover:hover)]:hover:bg-accent";
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="text-center">
-        <p className="font-semibold">{title}</p>
+        <p className="text-lg font-semibold">{title}</p>
         {sub && <p className="text-sm text-muted-foreground">{sub}</p>}
       </div>
-      <div className={cn("flex gap-3.5 py-1", shake && "animate-[yodo-shake_0.4s]")} aria-label={L(`ใส่แล้ว ${pin.length} หลัก`, `${pin.length} digits entered`)}>
-        {Array.from({ length: max }, (_, i) => <i key={i} className={cn("h-3.5 w-3.5 rounded-full border-2 border-primary", i < pin.length && "bg-primary")} />)}
+      <div className={cn("flex h-6 items-center gap-4 py-1", shake && "animate-[yodo-shake_0.4s]")} aria-label={L(`ใส่แล้ว ${pin.length} หลัก`, `${pin.length} digits entered`)}>
+        {busy ? <Loader2 className="h-6 w-6 animate-spin text-primary" aria-label={L("กำลังตรวจ", "Checking")} />
+          : Array.from({ length: max }, (_, i) => <i key={i} className={cn("h-4 w-4 rounded-full border-2 border-primary", i < pin.length && "bg-primary")} />)}
       </div>
       <p className="min-h-5 text-center text-sm text-destructive" role="alert">{error ?? ""}</p>
-      <div className="grid grid-cols-3 gap-3">
-        {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => <button key={d} type="button" className={keyCls} onClick={() => press(d)}>{d}</button>)}
-        {onFace ? <button type="button" className={cn(keyCls, "border-0 bg-transparent text-primary")} onClick={onFace} aria-label="Face ID"><ScanFace className="h-7 w-7" /></button>
+      <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+        {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => <button key={d} type="button" className={keyCls} {...tap(() => press(d))}>{d}</button>)}
+        {onFace ? <button type="button" className={cn(keyCls, "border-0 bg-transparent text-primary")} onClick={onFace} aria-label="Face ID"><ScanFace className="h-8 w-8" /></button>
           : !length && pin.length >= 4 ? <button type="button" className={cn(keyCls, "border-0 bg-transparent text-base text-primary")} onClick={() => onDone(pin)}>{L("ตกลง", "OK")}</button> : <span />}
-        <button type="button" className={keyCls} onClick={() => press("0")}>0</button>
-        <button type="button" className={cn(keyCls, "border-0 bg-transparent text-muted-foreground")} onClick={() => setPin((p) => p.slice(0, -1))} aria-label={L("ลบ", "Delete")}><Delete className="h-6 w-6" /></button>
+        <button type="button" className={keyCls} {...tap(() => press("0"))}>0</button>
+        <button type="button" className={cn(keyCls, "border-0 bg-transparent text-muted-foreground")} {...tap(back)} aria-label={L("ลบ", "Delete")}><Delete className="h-7 w-7" /></button>
       </div>
       {footer}
     </div>
@@ -68,7 +78,7 @@ export function PinPad({ title, sub, length, onDone, error, busy, onFace, footer
 }
 
 // ---------- signed out on a device with a PIN: the pad first ----------
-export function PinLogin({ name, onPassword, onSignedIn }: { name: string; onPassword: () => void; onSignedIn: () => void }) {
+export function PinLogin({ name, onPassword, onSignedIn }: { name: string; onPassword: () => void; onSignedIn: () => void | Promise<void> }) {
   const [err, setErr] = useState<string>();
   const [busy, setBusy] = useState(false);
   const face = passkeyPossible() && passkeyOnThisDevice();
@@ -82,7 +92,7 @@ export function PinLogin({ name, onPassword, onSignedIn }: { name: string; onPas
   useEffect(() => { if (face && !tried.current) { tried.current = true; void tryFace(); } }); // eslint-disable-line react-hooks/exhaustive-deps
   const done = async (pin: string) => {
     setBusy(true); setErr(undefined);
-    try { await api("/auth/pin", { body: { pin } }); onSignedIn(); }
+    try { await api("/auth/pin", { body: { pin } }); await onSignedIn(); }
     catch (e) {
       const code = e instanceof ApiError ? e.code : "";
       if (code === "pin_locked" || code === "pin_off") { write("pin-len", null); onPassword(); toast.error(errorText(e)); }

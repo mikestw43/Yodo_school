@@ -179,6 +179,10 @@ try {
   await page.getByText('ออกจากระบบ').click();
   await page.waitForURL('**/auth');
   await page.getByText('ใส่ PIN เพื่อเข้าใช้งาน').waitFor();
+  {
+    const k = await page.getByRole('button', { name: '5', exact: true }).boundingBox();
+    check('PIN keys are full size', k.width >= 72 && k.height >= 72, `${Math.round(k.width)}px`);
+  }
   await typePin(page, '0000');
   await page.getByText('PIN ไม่ถูกต้อง').waitFor().then(() => check('wrong PIN is refused', true), () => check('wrong PIN is refused', false));
   await page.screenshot({ path: `${SHOTS}/18-pin-login.png` });
@@ -250,12 +254,31 @@ try {
   await pp.getByRole('button', { name: 'กลับ' }).click();
   await pp.keyboard.press('Escape');
   await pp.goto(BASE + '/');
+  {
+    const hb = await pp.getByLabel('เปิดเมนู').boundingBox(), lg = await pp.locator('header').getByAltText('YODO You Only Dance Once').boundingBox();
+    check('phone: the menu button sits on the left, before the logo', hb.x < 60 && hb.x < lg.x, `menu x ${Math.round(hb.x)}, logo x ${Math.round(lg.x)}`);
+  }
   await pp.getByLabel('เปิดเมนู').click();
   await pp.waitForTimeout(500);
+  {
+    const sheet = pp.getByRole('dialog');
+    const box = await sheet.boundingBox();
+    check('phone: the menu opens from the left without Users / Permissions / Audit Log', box.x < 5 && (await sheet.getByText('ผู้ใช้ระบบ').count()) === 0 && (await sheet.getByText('ประวัติการแก้ไข').count()) === 0 && (await sheet.getByText('นักเรียน').count()) > 0);
+  }
   await pp.screenshot({ path: `${SHOTS}/p9-menu.png` });
   await pp.keyboard.press('Escape');
   await pp.getByTitle('เมนูบัญชี').first().click();
   await pp.getByText('ออกจากระบบ').waitFor().then(() => check('phone: account menu at the top right', true), () => check('phone: account menu at the top right', false));
+  {
+    const m = pp.getByRole('menu');
+    check('account menu holds Users, Permissions and Audit Log under "System"', (await m.getByText('จัดการระบบ').count()) === 1 && (await m.getByRole('menuitem', { name: 'ผู้ใช้ระบบ' }).count()) === 1 && (await m.getByRole('menuitem', { name: 'สิทธิ์' }).count()) === 1 && (await m.getByRole('menuitem', { name: 'ประวัติการแก้ไข' }).count()) === 1);
+    await m.getByRole('menuitem', { name: 'ผู้ใช้ระบบ' }).click();
+    await pp.waitForURL('**/users');
+    await pp.getByRole('button', { name: 'ย้อนกลับ' }).click();
+    await pp.waitForURL(BASE + '/').then(() => check('Users page has a Back button that goes back', true), () => check('Users page has a Back button that goes back', false));
+    await pp.getByTitle('เมนูบัญชี').first().click();
+  }
+  await pp.waitForTimeout(400);
   await pp.screenshot({ path: `${SHOTS}/p10-account.png` });
   await pp.keyboard.press('Escape');
 
@@ -409,6 +432,11 @@ try {
   await page.getByText('ชื่อโรงเรียน / บริษัท (ตามจดทะเบียน)').waitFor();
   check('the school logo with the motto is shown', await page.getByAltText('YODO You Only Dance Once').first().isVisible());
   const cbox = (t) => page.locator('label', { hasText: new RegExp('^' + t) }).first().locator('xpath=ancestor::div[1]').locator('input, textarea').first();
+  check('company page has a Back button', await page.getByRole('button', { name: 'ย้อนกลับ' }).isVisible());
+  {
+    const a = await cbox('ชื่อโรงเรียน').boundingBox(), b = await cbox('ชื่อภาษาอังกฤษ').boundingBox();
+    check('company form rows sit close together', b.y - (a.y + a.height) < 50, `${Math.round(b.y - (a.y + a.height))}px gap`);
+  }
   await cbox('ชื่อโรงเรียน').fill('บริษัท โยโด้ แดนซ์ จำกัด');
   await cbox('ชื่อภาษาอังกฤษ').fill('YODO Dance Co., Ltd.');
   await cbox('ที่อยู่').fill('99 ถนนสุขุมวิท กรุงเทพฯ 10110');

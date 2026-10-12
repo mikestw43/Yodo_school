@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/_shell/users")({
 function UsersPage() {
   return (
     <>
-      <PageHeader title={L("ผู้ใช้ระบบ", "Users")} subtitle={L("ผู้ใช้ระบบและ Role", "System users and roles")} />
+      <PageHeader back title={L("ผู้ใช้ระบบ", "Users")} subtitle={L("ผู้ใช้ระบบและ Role", "System users and roles")} />
       <Tabs defaultValue="users">
         <TabsList className="mb-6 rounded-full">
           <TabsTrigger value="users" className="rounded-full px-5">{L("ผู้ใช้ระบบ", "Users")}</TabsTrigger>

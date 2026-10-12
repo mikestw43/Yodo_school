@@ -22,6 +22,10 @@ const NAV = [
   { to: "/teachers", th: "ครู", en: "Teachers", icon: Crown, key: "teachers" },
   { to: "/calendar", th: "ปฏิทิน", en: "Calendar", icon: CalendarHeart, key: "calendar" },
   { to: "/receipts", th: "ใบเสร็จรับเงิน", en: "Receipts", icon: ReceiptText, key: "receipts" },
+] as const satisfies readonly { to: string; th: string; en: string; key: MenuKey; icon: unknown }[];
+
+// Moved from the side menu to the account menu, under "System" (owner 12/10/2026).
+const ADMIN = [
   { to: "/users", th: "ผู้ใช้ระบบ", en: "Users", icon: UserCog, key: "users" },
   { to: "/permissions", th: "สิทธิ์", en: "Permissions", icon: ShieldCheck, key: "users" },
   { to: "/audit-log", th: "ประวัติการแก้ไข", en: "Audit Log", icon: History, key: "auditlog" },
@@ -117,6 +121,19 @@ function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
             </Link>
           </DropdownMenuItem>
         )}
+        {ADMIN.some((a) => can(a.key)) && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L("จัดการระบบ", "System")}</DropdownMenuLabel>
+            {ADMIN.filter((a) => can(a.key)).map((a) => (
+              <DropdownMenuItem key={a.to} asChild>
+                <Link to={a.to} className="flex cursor-pointer items-center gap-2">
+                  <a.icon className="h-4 w-4" /> {L(a.th, a.en)}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
         {who?.superadmin && (
           <DropdownMenuItem asChild>
             <Link to="/import" className="flex cursor-pointer items-center gap-2">
@@ -183,18 +200,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:hidden">
-          <Link to="/" className="flex items-center gap-2" onClick={() => setMenuOpen(false)}>
-            <img src={logoImg} alt="YODO You Only Dance Once" className="h-9 w-auto" />
-          </Link>
           <div className="flex items-center gap-1">
-          <LangToggle />
-          <NotificationBell />
-          {me && <AccountMenu me={me} compact />}
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <button aria-label={L("เปิดเมนู", "Open menu")} className="rounded-full p-2 text-foreground"><Menu className="h-5 w-5" /></button>
             </SheetTrigger>
-            <SheetContent side="right" className="flex w-72 flex-col p-0">
+            <SheetContent side="left" className="flex w-72 flex-col p-0">
               <SheetHeader className="border-b border-border px-5 py-4 text-left">
                 <SheetTitle className="font-display text-xl font-bold">YODO</SheetTitle>
               </SheetHeader>
@@ -215,6 +226,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               </nav>
             </SheetContent>
           </Sheet>
+          <Link to="/" className="flex items-center gap-2" onClick={() => setMenuOpen(false)}>
+            <img src={logoImg} alt="YODO You Only Dance Once" className="h-9 w-auto" />
+          </Link>
+          </div>
+          <div className="flex items-center gap-1">
+          <LangToggle />
+          <NotificationBell />
+          {me && <AccountMenu me={me} compact />}
           </div>
         </header>
         <div className="sticky top-0 z-20 hidden justify-end px-8 pt-4 md:flex"><div className="flex items-center gap-2"><LangToggle className="border border-border bg-background shadow-soft" /><NotificationBell className="border border-border bg-background shadow-soft" />{me && <AccountMenu me={me} />}</div></div>

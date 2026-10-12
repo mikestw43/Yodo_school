@@ -130,6 +130,15 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   `/settings/company`), printed left of the receiver's signature. Logo/signature/stamp uploads keep transparency
   (`PicUpload` in company.tsx; signature + stamp go through `lib/tidyImage.ts` copied from FinHR: paper made
   transparent, margins cut, PNG). Before, the JPEG editor made a transparent signature black.
+- 12/10/2026 (mockup AK3oUFwu5F5z9WekyYfaBG, answers "1 ok 2 ok 3 ย้ายด้วย ทำได้เลย"): Users, Permissions and Audit Log
+  left the side menu and the phone menu: they are in the account menu under "จัดการระบบ"/"System" (`ADMIN` in AppShell.tsx,
+  shown by right). Pages opened from the account menu have a Back button (`PageHeader back` / `BackButton` in ui.tsx:
+  back where you came from, else the dashboard): company, users, permissions, audit log (profile settings had its own).
+  Company page: rows close together (the form card no longer stretches to the picture column), a logo upload has its
+  empty margin cut (`tidyImage(file, true)`), so it prints big; an older logo must be uploaded again.
+  Owner 12/10/2026: phone hamburger on the LEFT before the logo (menu slides in from the left, like the computer);
+  PIN pad full size (keys 76 px, bigger dots) and quicker: keys react on touch (`onPointerDown`), no see-through blur
+  behind the sign-in PIN card, a spinner instead of the dots while the PIN is checked and the app opens.
 - 12/10/2026 speed (owner: clicks felt slow/stuck over the internet): every page change waited for `GET /me` (route
   `beforeLoad`) and the first visit of each page waited for its own script file. Now `getMeCached()` (lib/api.ts) answers
   from the last result and refreshes in the background (401 -> /auth; cleared on sign-in/out), the client is one bundle

@@ -38,12 +38,12 @@ function CompanyPage() {
   };
   return (
     <>
-      <PageHeader title={L("ตั้งค่าบริษัท", "Company settings")} subtitle={L("ข้อมูลนี้ใช้ในใบเสร็จรับเงิน", "These details are printed on receipts")} />
-      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-        <Card className="grid gap-4 rounded-3xl p-6 sm:grid-cols-2">
+      <PageHeader back title={L("ตั้งค่าบริษัท", "Company settings")} subtitle={L("ข้อมูลนี้ใช้ในใบเสร็จรับเงิน", "These details are printed on receipts")} />
+      <div className="grid items-start gap-5 lg:grid-cols-[1fr_360px]">
+        <Card className="grid content-start gap-x-4 gap-y-3 rounded-3xl p-6 sm:grid-cols-2">
           <Field label={L("ชื่อโรงเรียน / บริษัท (ตามจดทะเบียน)", "School / company name (as registered)")} className="sm:col-span-2"><Input disabled={!edit} value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
           <Field label={L("ชื่อภาษาอังกฤษ", "Name in English")} className="sm:col-span-2"><Input disabled={!edit} value={f.nameEn} onChange={(e) => set("nameEn", e.target.value)} /></Field>
-          <Field label={L("ที่อยู่", "Address")} className="sm:col-span-2"><Textarea disabled={!edit} rows={3} value={f.address} onChange={(e) => set("address", e.target.value)} /></Field>
+          <Field label={L("ที่อยู่", "Address")} className="sm:col-span-2"><Textarea disabled={!edit} rows={2} value={f.address} onChange={(e) => set("address", e.target.value)} /></Field>
           <Field label={L("เบอร์โทร", "Phone")}><Input disabled={!edit} value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
           <Field label={L("อีเมล", "Email")}><Input disabled={!edit} type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
           <Field label={L("เลขประจำตัวผู้เสียภาษี (ถ้ามี)", "Tax ID (if any)")} error={taxOk ? undefined : L("ต้องเป็นตัวเลข 13 หลัก", "Must be 13 digits")}>
@@ -55,8 +55,8 @@ function CompanyPage() {
         <div className="grid content-start gap-5">
           <Card className="rounded-3xl p-6">
             <p className="mb-1 text-sm font-semibold">{L("โลโก้ในใบเสร็จ", "Logo on receipts")}</p>
-            <p className="mb-3 text-xs text-muted-foreground">{L("ไม่ใส่ = ใช้โลโก้ YODO", "Empty = the YODO logo")}</p>
-            <PicUpload testId="co-logo" edit={edit} value={f.logo} onChange={(v) => set("logo", v)} />
+            <p className="mb-3 text-xs text-muted-foreground">{L("ไม่ใส่ = ใช้โลโก้ YODO · ตัดขอบว่างรอบรูปให้เอง", "Empty = the YODO logo · empty margins are cut off")}</p>
+            <PicUpload testId="co-logo" crop edit={edit} value={f.logo} onChange={(v) => set("logo", v)} />
           </Card>
           <Card className="rounded-3xl p-6">
             <p className="mb-1 text-sm font-semibold">{L("ลายเซ็นผู้รับเงิน (ไม่บังคับ)", "Signature of the person receiving money (optional)")}</p>
@@ -77,15 +77,15 @@ function CompanyPage() {
 const readUrl = (b: Blob) => new Promise<string>((ok, fail) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = fail; r.readAsDataURL(b); });
 
 /** Picture box that keeps transparency (owner 12/10/2026: a signature came out black after the JPEG editor).
- *  Signature and stamp: paper made transparent and margins cut (`tidyImage`, PNG). Logo: kept as it is. */
-function PicUpload({ value, onChange, edit, tidy, testId }: { value: string; onChange: (v: string) => void; edit: boolean; tidy?: boolean; testId: string }) {
+ *  Signature and stamp: paper made transparent and margins cut (`tidyImage`, PNG). Logo: only the empty margin cut. */
+function PicUpload({ value, onChange, edit, tidy, crop, testId }: { value: string; onChange: (v: string) => void; edit: boolean; tidy?: boolean; crop?: boolean; testId: string }) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const pick = async (file?: File) => {
     if (!file) return;
     if (file.size > 8_000_000) { toast.error(L("ไฟล์ใหญ่เกิน 8 MB", "The file is larger than 8 MB")); return; }
     setBusy(true);
-    try { onChange(await readUrl(tidy ? await tidyImage(file) : file)); }
+    try { onChange(await readUrl(tidy || crop ? await tidyImage(file, !tidy) : file)); }
     catch { toast.error(L("เปิดรูปนี้ไม่ได้", "This picture could not be opened")); }
     setBusy(false);
   };

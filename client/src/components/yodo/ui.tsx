@@ -4,7 +4,8 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Children, isValidElement, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, ImagePlus, Minus, Pencil, Plus, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, Minus, Pencil, Plus, X } from "lucide-react";
+import { useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
@@ -89,8 +90,22 @@ export function Pagination({ page, totalPages, onChange, from, to, total, unit }
 }
 
 
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+/** Back button for pages opened from the account menu (owner 12/10/2026): back where you came from, else the dashboard. */
+export function BackButton() {
+  const router = useRouter();
+  const canBack = useCanGoBack();
+  const navigate = useNavigate();
   return (
+    <Button variant="outline" onClick={() => (canBack ? router.history.back() : navigate({ to: "/" }))} className="mb-3 gap-2 rounded-full">
+      <ArrowLeft className="h-4 w-4" /> {L("ย้อนกลับ", "Back")}
+    </Button>
+  );
+}
+
+export function PageHeader({ title, subtitle, action, back }: { title: string; subtitle?: string; action?: ReactNode; back?: boolean }) {
+  return (
+    <>
+    {back && <BackButton />}
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
@@ -98,6 +113,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
       </div>
       {action}
     </div>
+    </>
   );
 }
 
