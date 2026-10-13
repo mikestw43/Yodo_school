@@ -3,7 +3,7 @@ import { differenceInCalendarMonths, format, isValid, parseISO } from "date-fns"
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Ban, ChevronLeft, FileText, PenLine, Pencil, Plus, Printer, RotateCcw, Search, Trash2, UserRoundPlus, X } from "lucide-react";
+import { Ban, ChevronLeft, FileText, PenLine, Pencil, Plus, Printer, RotateCcw, Search, Ticket, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -112,7 +112,7 @@ function StudentsPage() {
   const pg = usePagination(list, 25, `${q}|${status}`);
   const canManage = can("students", "edit") || can("students", "delete");
   const actions = (s: Student) => [
-    can("students", "edit") && s.status === "Active" && { label: L("ซื้อคลาส", "Buy classes"), icon: <UserRoundPlus />, onSelect: () => openBuy(s.id) },
+    can("students", "edit") && s.status === "Active" && { label: L("ซื้อคลาส", "Buy classes"), icon: <Ticket />, onSelect: () => openBuy(s.id) },
     can("students", "edit") && s.status === "Active" && { label: L("ปิดใช้งาน", "Disable"), icon: <Ban />, onSelect: () => setDisabling(s) },
     can("students", "edit") && s.status !== "Active" && { label: L("เปิดใช้งาน", "Enable"), icon: <RotateCcw />, onSelect: () => { setStudentStatus(s.id, "Active"); toast.success(L("เปิดใช้งานนักเรียนแล้ว", "Student enabled")); } },
     can("students", "delete") && { label: L("ลบ", "Delete"), icon: <Trash2 />, danger: true, onSelect: () => setDeleting(s) },

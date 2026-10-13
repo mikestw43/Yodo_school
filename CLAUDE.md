@@ -208,6 +208,7 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   "more" button (`RowActions` in components/yodo/ui.tsx: Ellipsis icon, aria-label "จัดการ <name>", menu items, delete
   last in red after a line; shows only what the person may do). Top right of the card on phones (after the status), the
   Actions column on computers: students, teachers, classes, users, roles. Single-icon buttons elsewhere stay.
+  Owner 13/10/2026 (mockup GXNwxvH8UoN7sg5ZVmH5bn, option 2): "ซื้อคลาส" uses the Ticket icon (the person-plus looked like "add a person").
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
