@@ -39,7 +39,8 @@ function useMe() {
     const load = async () => {
       try {
         const p = await getMe();
-        setMe({ name: p.name, role: p.positionName || ROLE_LABEL[p.role] || p.role || "-", image: p.image });
+        // top right shows the nickname, else the first name (owner 13/10/2026); the open menu keeps the full name
+        setMe({ name: p.name, short: p.nickname.trim() || p.firstName.trim() || p.name, role: p.positionName || ROLE_LABEL[p.role] || p.role || "-", image: p.image });
       } catch { /* signed out */ }
     };
     void load();
@@ -80,7 +81,7 @@ function Guarded({ children }: { children: ReactNode }) {
   return <EmptyState title={L("ไม่มีสิทธิ์เข้าถึงหน้านี้", "You don't have access to this page")} text={L("ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์การใช้งานเมนูนี้", "Ask an administrator for access to this menu.")} />;
 }
 
-type Me = { name: string; role: string; image: string };
+type Me = { name: string; short: string; role: string; image: string };
 
 /** Account menu at the top right (owner 12/10/2026): profile settings, import, sign out, version. */
 function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
@@ -97,7 +98,7 @@ function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
         ) : (
           <button className="flex h-10 items-center gap-2 rounded-full border border-border bg-background py-1 pl-1 pr-3 shadow-soft transition-colors hover:bg-muted" title={L("เมนูบัญชี", "Account menu")} aria-label={L("เมนูบัญชี", "Account menu")}>
             <Avatar src={me.image} name={me.name} className="h-8 w-8" />
-            <span className="max-w-40 truncate text-sm font-medium">{me.name}</span>
+            <span className="max-w-40 truncate text-sm font-medium" data-testid="account-name">{me.short}</span>
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </button>
         )}

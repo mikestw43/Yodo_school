@@ -67,6 +67,7 @@ try {
   await page.waitForURL(BASE + '/');
   check('setup creates the owner and opens the dashboard', true);
   check('new account starts in English', (await (await page.request.get(`${BASE}/api/me`)).json()).lang === 'en');
+  check('top right shows the first name when there is no nickname', (await page.getByTestId('account-name').innerText()) === 'Mike');
   await page.request.patch(`${BASE}/api/me/lang`, { headers: { 'x-yodo': '1' }, data: { lang: 'th' } });
   await page.reload();
 
