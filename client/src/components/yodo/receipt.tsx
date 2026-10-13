@@ -9,7 +9,7 @@ import { api, errorText } from "@/lib/api";
 import { L, useLang, type Lang } from "@/lib/i18n";
 import { useYodo, type Receipt } from "@/lib/yodo-store";
 import { methodLabel, money, printReceipt, receiptHtml, type Company, type ReceiptStudent } from "@/lib/receipt-print";
-import { DateField, Field, ReceiptUpload } from "@/components/yodo/ui";
+import { DateField, Field, ReceiptUpload, RowActions } from "@/components/yodo/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { fd, getLang } from "@/lib/i18n";
 
@@ -132,9 +132,12 @@ export function ReceiptActions({ full, onChanged, onDeleted }: { full: Full; onC
   const items = (r.lines ?? []).map((l) => l.item).join(", ");
   return (
     <>
-      {canChange && <Button variant="outline" className="rounded-full" onClick={() => setEditOpen(true)} data-testid="receipt-edit"><Pencil className="h-4 w-4" /> {L("แก้ไข", "Edit")}</Button>}
-      {canChange && <Button variant="outline" className="rounded-full text-destructive hover:text-destructive" onClick={() => setDelOpen(true)} data-testid="receipt-delete"><Trash2 className="h-4 w-4" /> {L("ลบ", "Delete")}</Button>}
-      {canCancel && <Button variant="outline" className="rounded-full text-destructive hover:text-destructive" onClick={() => setCancelOpen(true)}><Ban className="h-4 w-4" /> {L("ยกเลิกใบเสร็จ", "Cancel receipt")}</Button>}
+      {/* Edit / Delete (this month's newest) or Cancel (older) sit behind the "more" button (owner 13/10/2026, mockup LvtGtwLMozBxzAzQ3G1wRX) */}
+      <RowActions name={r.no} items={[
+        canChange && { label: L("แก้ไข", "Edit"), icon: <Pencil />, testId: "receipt-edit", onSelect: () => setEditOpen(true) },
+        canChange && { label: L("ลบ", "Delete"), icon: <Trash2 />, danger: true, testId: "receipt-delete", onSelect: () => setDelOpen(true) },
+        canCancel && { label: L("ยกเลิกใบเสร็จ", "Cancel receipt"), icon: <Ban />, danger: true, testId: "receipt-cancel", onSelect: () => setCancelOpen(true) },
+      ]} />
       <Dialog open={delOpen} onOpenChange={setDelOpen}>
         <DialogContent className="max-w-md rounded-3xl">
           <DialogHeader>

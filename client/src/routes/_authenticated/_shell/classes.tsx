@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { Ban, ChevronLeft, Eye, Pencil, Plus, RotateCcw, Search } from "lucide-react";
+import { Ban, ChevronLeft, Eye, LayoutGrid, List, Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -61,9 +61,18 @@ function ClassesPage() {
       });
   }, [data, q, status]);
 
-  const pg = usePagination(list, 6, `${q}|${status}`);
+  // Cards (default) or a table, kept per device (owner 13/10/2026, mockup LvtGtwLMozBxzAzQ3G1wRX board 3)
+  const [view, setViewRaw] = useState<"cards" | "table">(() => { try { return localStorage.getItem("yodo-classes-view") === "table" ? "table" : "cards"; } catch { return "cards"; } });
+  const setView = (v: "cards" | "table") => { setViewRaw(v); try { localStorage.setItem("yodo-classes-view", v); } catch { /* private mode */ } };
+  const pg = usePagination(list, view === "table" ? 25 : 12, `${q}|${status}|${view}`);
 
   const openAdd = () => { setEditing(null); setFormOpen(true); };
+  const actions = (c: DanceClass) => <RowActions name={c.name} items={[
+    { label: L("ดูข้อมูล", "View"), icon: <Eye />, onSelect: () => setViewId(c.id) },
+    can("classes", "edit") && { label: L("แก้ไข", "Edit"), icon: <Pencil />, onSelect: () => { setEditing(c); setFormOpen(true); } },
+    can("classes", "edit") && c.disabled && { label: L("เปิดใช้งาน", "Enable"), icon: <RotateCcw />, onSelect: () => { setClassDisabled(c.id, false); toast.success(L("เปิดใช้งานคลาสแล้ว", "Class enabled")); } },
+    can("classes", "edit") && !c.disabled && { label: L("ปิดใช้งาน", "Disable"), icon: <Ban />, onSelect: () => setDisabling(c) },
+  ]} />;
 
 
   return (
@@ -80,48 +89,92 @@ function ClassesPage() {
           <option value="Inactive">{opt("Inactive")}</option>
           <option value="Disabled">{opt("Disabled")}</option>
         </NativeSelect>
+        <div className="inline-flex h-9 shrink-0 overflow-hidden rounded-full border border-border bg-background text-sm font-semibold" role="group" aria-label={L("มุมมอง", "View")}>
+          {([["cards", LayoutGrid, L("การ์ด", "Cards")], ["table", List, L("ตาราง", "Table")]] as const).map(([v, Icon, label]) => (
+            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} data-testid={`classes-view-${v}`}
+              className={`inline-flex items-center gap-1.5 px-3.5 transition-colors ${view === v ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}><Icon className="h-4 w-4" />{label}</button>
+          ))}
+        </div>
       </Card>
 
       {list.length === 0 ? (
         <EmptyState title={L("ไม่พบคลาส", "No classes found")} text={L("ลองเปลี่ยนคำค้นหา หรือเพิ่มคลาสใหม่", "Try another search, or add a new class")} action={can("classes", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> {L("เพิ่มคลาส", "Add Class")}</Button>} />
       ) : (
         <>
-          <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3">
+          {view === "cards" ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {pg.pageItems.map((c) => {
               const t = data.teachers.find((x) => x.id === c.teacherId);
               const k = classCounts(c.id);
               return (
-                <Card key={c.id} className={`gap-0 overflow-hidden rounded-3xl p-0 ${c.disabled ? "opacity-60" : ""}`}>
-                   <div className="aspect-[12/5] w-full"><ClassCover src={c.image} name={c.name} color={classColor(data.classes, c.id)} /></div>
-                  <div className="flex flex-1 flex-col gap-4 p-6">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-display text-xl font-semibold leading-snug">{c.name}</h3>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <StatusBadge status={statusOf(c)} />
-                        <RowActions name={c.name} items={[
-                          { label: L("ดูข้อมูล", "View"), icon: <Eye />, onSelect: () => setViewId(c.id) },
-                          can("classes", "edit") && { label: L("แก้ไข", "Edit"), icon: <Pencil />, onSelect: () => { setEditing(c); setFormOpen(true); } },
-                          can("classes", "edit") && c.disabled && { label: L("เปิดใช้งาน", "Enable"), icon: <RotateCcw />, onSelect: () => { setClassDisabled(c.id, false); toast.success(L("เปิดใช้งานคลาสแล้ว", "Class enabled")); } },
-                          can("classes", "edit") && !c.disabled && { label: L("ปิดใช้งาน", "Disable"), icon: <Ban />, onSelect: () => setDisabling(c) },
-                        ]} />
-                      </div>
+                <Card key={c.id} onClick={() => setViewId(c.id)} className={`min-w-0 cursor-pointer gap-0 overflow-hidden rounded-3xl p-0 transition-shadow hover:shadow-soft ${c.disabled ? "opacity-60" : ""}`}>
+                  <div className="h-20 w-full"><ClassCover src={c.image} name={c.name} color={classColor(data.classes, c.id)} /></div>
+                  <div className="flex flex-1 flex-col gap-2.5 p-4">
+                    <div className="flex items-center gap-2">
+                      <h3 className="min-w-0 flex-1 truncate font-display text-lg font-semibold leading-snug">{c.name}</h3>
+                      <StatusBadge status={statusOf(c)} />
+                      {actions(c)}
                     </div>
-                    <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{c.description || "-"}</p>
-                    <p className="text-sm font-semibold text-primary">{coursePrice(c)}</p>
-                    <div className="flex items-center justify-between gap-3 rounded-2xl bg-accent/30 px-4 py-2.5 text-sm">
-                      <span className="flex min-w-0 items-center gap-2.5"><Avatar src={t?.image} name={t?.nickname ?? "?"} className="h-8 w-8 text-sm" /><span className="truncate">{t ? t.nickname : L("ไม่มีครู", "No teacher")}</span></span>
-                    </div>
+                    <p className="truncate text-sm text-muted-foreground"><span className="font-semibold text-primary">{coursePrice(c)}</span> · {t ? t.nickname : L("ไม่มีครู", "No teacher")}</p>
                     {/* Bought / not ended / ending soon (owner 12/10/2026, mockup WTr5LoqwQAEnSrKDuzZiMi board 4) */}
-                    <button type="button" onClick={() => setViewId(c.id)} className="grid grid-cols-3 gap-2 text-center" data-testid="class-counts" aria-label={L(`ดูนักเรียนใน ${c.name}`, `See the students of ${c.name}`)}>
-                      <span className="rounded-2xl bg-muted/70 py-2"><span className="block text-xl font-bold">{k.bought}</span><span className="block text-[11px] text-muted-foreground">{L("เคยซื้อ", "Bought")}</span></span>
-                      <span className="rounded-2xl bg-emerald-50 py-2 text-emerald-800"><span className="block text-xl font-bold">{k.active}</span><span className="block text-[11px]">{L("ยังไม่หมดอายุ", "Not ended")}</span></span>
-                      <span className="rounded-2xl bg-orange-50 py-2 text-orange-800"><span className="block text-xl font-bold">{k.soon}</span><span className="block text-[11px]">{L("ใกล้หมด", "Ending soon")}</span></span>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setViewId(c.id); }} className="grid grid-cols-3 gap-1.5 text-center" data-testid="class-counts" aria-label={L(`ดูนักเรียนใน ${c.name}`, `See the students of ${c.name}`)}>
+                      <span className="rounded-xl bg-muted/70 py-1.5"><span className="block text-base font-bold">{k.bought}</span><span className="block text-[11px] text-muted-foreground">{L("เคยซื้อ", "Bought")}</span></span>
+                      <span className="rounded-xl bg-emerald-50 py-1.5 text-emerald-800"><span className="block text-base font-bold">{k.active}</span><span className="block text-[11px]">{L("ยังไม่หมดอายุ", "Not ended")}</span></span>
+                      <span className="rounded-xl bg-orange-50 py-1.5 text-orange-800"><span className="block text-base font-bold">{k.soon}</span><span className="block text-[11px]">{L("ใกล้หมด", "Ending soon")}</span></span>
                     </button>
                   </div>
                 </Card>
               );
             })}
           </div>
+          ) : (
+          <Card className="overflow-hidden rounded-3xl p-0" data-testid="classes-table">
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-sm">
+                <thead><tr className="bg-muted/50 text-xs text-muted-foreground [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold">
+                  <th className="text-left">{L("คลาส", "Class")}</th><th className="text-left">{L("ครู", "Teacher")}</th><th className="text-left">{L("ราคา / ระยะเวลา", "Price / length")}</th>
+                  <th>{L("เคยซื้อ", "Bought")}</th><th>{L("ยังไม่หมดอายุ", "Not ended")}</th><th>{L("ใกล้หมด", "Ending soon")}</th><th>{L("สถานะ", "Status")}</th><th>{L("จัดการ", "Actions")}</th>
+                </tr></thead>
+                <tbody>
+                  {pg.pageItems.map((c) => {
+                    const t = data.teachers.find((x) => x.id === c.teacherId);
+                    const k = classCounts(c.id);
+                    return (
+                      <tr key={c.id} onClick={() => setViewId(c.id)} className={`cursor-pointer border-t border-border/60 tabular-nums hover:bg-muted/40 [&>td]:px-4 [&>td]:py-3 ${c.disabled ? "opacity-60" : ""}`}>
+                        <td><span className="mr-2.5 inline-block h-2.5 w-2.5 rounded-full align-middle" style={{ background: classColor(data.classes, c.id) }} /><span className="font-semibold">{c.name}</span></td>
+                        <td>{t ? t.nickname : "-"}</td>
+                        <td>{coursePrice(c)}</td>
+                        <td className="text-center">{k.bought}</td>
+                        <td className="text-center">{k.active}</td>
+                        <td className="text-center">{k.soon ? <span className="rounded-full bg-orange-50 px-2.5 py-0.5 font-semibold text-orange-800">{k.soon}</span> : 0}</td>
+                        <td className="text-center"><StatusBadge status={statusOf(c)} /></td>
+                        <td><div className="flex justify-center">{actions(c)}</div></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {/* Phones: short rows, name + the three numbers */}
+            <div className="divide-y divide-border/60 md:hidden">
+              {pg.pageItems.map((c) => {
+                const k = classCounts(c.id);
+                return (
+                  <div key={c.id} onClick={() => setViewId(c.id)} className={`flex cursor-pointer items-center gap-3 px-4 py-3 ${c.disabled ? "opacity-60" : ""}`}>
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: classColor(data.classes, c.id) }} />
+                    <div className="min-w-0 flex-1"><p className="truncate font-semibold">{c.name}</p><p className="truncate text-xs text-muted-foreground">{coursePrice(c)}</p></div>
+                    <div className="flex shrink-0 gap-1 text-center text-[10px] tabular-nums text-muted-foreground">
+                      <span className="w-11 rounded-lg bg-muted/70 py-1"><b className="block text-sm text-foreground">{k.bought}</b>{L("ซื้อ", "Bought")}</span>
+                      <span className="w-11 rounded-lg bg-emerald-50 py-1 text-emerald-800"><b className="block text-sm">{k.active}</b>{L("ยังเรียน", "Active")}</span>
+                      <span className="w-11 rounded-lg bg-orange-50 py-1 text-orange-800"><b className="block text-sm">{k.soon}</b>{L("ใกล้หมด", "Soon")}</span>
+                    </div>
+                    {actions(c)}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+          )}
           <Pagination page={pg.page} totalPages={pg.totalPages} onChange={pg.setPage} from={pg.from} to={pg.to} total={pg.total} unit={L("คลาส", "classes")} />
         </>
       )}

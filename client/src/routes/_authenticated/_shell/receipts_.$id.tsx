@@ -8,9 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { BackButton, EmptyState } from "@/components/yodo/ui";
 import { ReceiptActions, openReceipt, type Full } from "@/components/yodo/receipt";
 import { EmailReceipt, ShareReceipt } from "@/components/yodo/receipt-send";
-import { fdt } from "@/lib/i18n";
 import { api, errorText } from "@/lib/api";
-import { L, fd, getLang, prefixed } from "@/lib/i18n";
+import { L, fd, fdt, getLang, prefixed } from "@/lib/i18n";
 import { methodLabel, money } from "@/lib/receipt-print";
 
 export const Route = createFileRoute("/_authenticated/_shell/receipts_/$id")({
@@ -53,41 +52,54 @@ function ReceiptDetailPage() {
           ))}
           {r.cancelled && <p className="mt-1 text-sm text-red-700">{L("ยกเลิกโดย", "Cancelled by")} {r.cancelledBy}{r.cancelReason ? ` · ${r.cancelReason}` : ""}</p>}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <ReceiptActions full={full} onChanged={load} onDeleted={() => navigate({ to: "/receipts", replace: true })} />
+        <div className="flex flex-wrap items-center gap-2">
           <ShareReceipt full={full} />
           {!r.cancelled && <EmailReceipt full={full} onSent={() => void load()} />}
-          <Button className="rounded-full" onClick={() => openReceipt(r.id)} data-testid="receipt-pdf"><FileText className="h-4 w-4" /> {L("ดู PDF / พิมพ์", "View PDF / Print")}</Button>
+          <Button className="order-last w-full rounded-full sm:order-none sm:w-auto" onClick={() => openReceipt(r.id)} data-testid="receipt-pdf"><FileText className="h-4 w-4" /> {L("ดู PDF / พิมพ์", "View PDF / Print")}</Button>
+          <ReceiptActions full={full} onChanged={load} onDeleted={() => navigate({ to: "/receipts", replace: true })} />
         </div>
       </div>
+      {/* Easier to read (owner 13/10/2026, mockup LvtGtwLMozBxzAzQ3G1wRX): the amount big with how it was paid, one row per
+          class (name, period, discount, full price), totals top to bottom. Phones: amount first, then classes, then payment. */}
       <div className="grid items-start gap-5 lg:grid-cols-[1fr_340px]">
-        <Card className={`gap-4 rounded-3xl p-5 ${r.cancelled ? "opacity-75" : ""}`}>
-          <div className="grid gap-3 text-sm sm:grid-cols-2">
+        <Card className={`order-2 gap-0 rounded-3xl p-5 lg:order-1 lg:p-6 ${r.cancelled ? "opacity-75" : ""}`}>
+          <div className="grid gap-4 border-b border-border/70 pb-4 text-sm sm:grid-cols-2">
             <div><p className="text-xs text-muted-foreground">{L("นักเรียน", "Student")}</p>
-              {s ? <Link to="/students" search={{ view: r.studentId }} className="font-semibold text-primary hover:underline">{student} · <span className="font-mono">{s.code}</span></Link> : "-"}</div>
-            <div><p className="text-xs text-muted-foreground">{L("ได้รับเงินจาก", "Received from")}</p><p className="font-semibold">{r.payer || student}</p></div>
+              {s ? <Link to="/students" search={{ view: r.studentId }} className="text-base font-semibold text-primary hover:underline">{student}</Link> : "-"}
+              {s && <p className="font-mono text-xs text-muted-foreground">{s.code}</p>}</div>
+            <div><p className="text-xs text-muted-foreground">{L("ได้รับเงินจาก", "Received from")}</p><p className="text-base font-semibold">{r.payer || student}</p></div>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-border/70 text-sm" data-testid="receipt-lines">
-            <div className="hidden grid-cols-[1.6fr_1.6fr_1fr_1fr] gap-2 bg-muted/50 px-4 py-2 text-xs font-semibold text-muted-foreground sm:grid">
-              <span>{L("คลาส", "Class")}</span><span>{L("ช่วงเวลา", "Period")}</span><span>{L("ส่วนลด", "Discount")}</span><span className="text-right">{L("จำนวนเงิน", "Amount")}</span>
-            </div>
+          <div data-testid="receipt-lines">
             {lines.map((l) => (
-              <div key={l.id} className="grid gap-x-2 gap-y-0.5 border-t border-border/50 px-4 py-2.5 first:border-0 sm:grid-cols-[1.6fr_1.6fr_1fr_1fr]">
-                <span className="font-semibold">{l.item}{l.months ? L(` · ${l.months} เดือน`, ` · ${l.months} ${l.months === 1 ? "month" : "months"}`) : ""}</span>
-                <span className="text-muted-foreground">{l.startDate ? `${fd(l.startDate)} – ${fd(l.expiryDate)}` : "-"}</span>
-                <span className={`text-muted-foreground ${l.discount ? "" : "hidden sm:block"}`}><span className="sm:hidden">{L("ส่วนลด", "Discount")} </span>{off(l)}</span>
-                <span className="font-semibold sm:text-right">{money(l.amount ?? 0)}</span>
+              <div key={l.id} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 border-b border-border/70 py-3.5 tabular-nums last:border-b-0">
+                <p className="text-base font-bold">{l.item}{l.discount ? <span className="ml-2 inline-block rounded-full bg-accent/60 px-2 py-0.5 align-middle text-xs font-semibold text-primary">{L("ลด", "Off")} {off(l)}</span> : null}</p>
+                <p className="text-right text-base font-bold">{money(l.amount ?? 0)}</p>
+                <p className="text-sm text-muted-foreground">{l.months ? L(`${l.months} เดือน`, `${l.months} ${l.months === 1 ? "month" : "months"}`) : ""}{l.months && l.startDate ? " · " : ""}{l.startDate ? `${fd(l.startDate)} – ${fd(l.expiryDate)}` : ""}</p>
+                <p className="text-right text-xs text-muted-foreground">{l.discount ? `${L("ราคาเต็ม", "Full price")} ${money(l.price ?? 0)}` : ""}</p>
               </div>
             ))}
           </div>
-          <div className="flex flex-wrap items-baseline justify-end gap-x-5 gap-y-1">
-            <span className="text-sm text-muted-foreground">{L("รวม", "Subtotal")} {money(r.price)}{r.discount ? ` · ${L("ส่วนลด", "discount")} ${money(r.discount)}` : ""}</span>
-            <span className={`text-2xl font-bold text-primary ${r.cancelled ? "line-through" : ""}`} data-testid="receipt-detail-total">{money(r.amount)} {L("บาท", "THB")}</span>
+          <div className="ml-auto flex w-full max-w-xs flex-col gap-1.5 pt-3 text-sm tabular-nums">
+            {r.discount ? <>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">{L("รวมราคาเต็ม", "Full price")}</span><span>{money(r.price)}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">{L("ส่วนลด", "Discount")}</span><span>−{money(r.discount)}</span></div>
+            </> : null}
+            <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-border/70 pt-2">
+              <span className="font-bold">{L("ยอดชำระ (บาท)", "Total paid (THB)")}</span>
+              <span className={`text-2xl font-bold text-primary ${r.cancelled ? "line-through" : ""}`} data-testid="receipt-detail-total">{money(r.amount)}</span>
+            </div>
           </div>
-          {r.remark && <p className="text-sm">{L("หมายเหตุ", "Remark")}: {r.remark}</p>}
         </Card>
-        <Card className="gap-3 rounded-3xl p-5 text-sm">
-          <div><p className="text-xs text-muted-foreground">{L("ชำระโดย", "Paid by")}</p><p className="font-semibold">{methodLabel(r.method, getLang())} · {fd(r.date)}</p></div>
+        <Card className="order-1 gap-4 rounded-3xl p-5 text-sm lg:order-2">
+          <div className="rounded-2xl bg-accent/40 px-4 py-3">
+            <p className="text-xs text-muted-foreground">{L("ยอดที่รับ", "Amount received")}</p>
+            <p className={`text-3xl font-bold text-primary tabular-nums ${r.cancelled ? "line-through" : ""}`}>{money(r.amount)} ฿</p>
+          </div>
+          <div className="flex flex-col gap-3 px-1">
+            <div className="flex justify-between gap-3"><span className="text-muted-foreground">{L("วิธีชำระ", "Paid by")}</span><span className="font-semibold">{methodLabel(r.method, getLang())}</span></div>
+            <div className="flex justify-between gap-3"><span className="text-muted-foreground">{L("วันที่ชำระ", "Payment date")}</span><span className="font-semibold tabular-nums">{fd(r.date)}</span></div>
+            <div className="flex justify-between gap-3"><span className="shrink-0 text-muted-foreground">{L("หมายเหตุ", "Remark")}</span><span className="text-right font-semibold">{r.remark || "-"}</span></div>
+          </div>
           {r.slip ? (
             <>
               <p className="text-xs text-muted-foreground">{L("สลิปโอน (กดดูใหญ่)", "Transfer slip (tap to enlarge)")}</p>

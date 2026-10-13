@@ -13,6 +13,8 @@ import { L, fd } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/_shell/courses")({
   head: () => ({ meta: [{ title: "YODO" }, { name: "description", content: L("คลาสของนักเรียนและวันหมดอายุ", "Students' classes and when they end") }] }),
+  // ?show=soon from the dashboard card and the expiry bell notices; otherwise "All" first (owner 13/10/2026)
+  validateSearch: (s: Record<string, unknown>): { show?: Filter } => (["soon", "active", "ended", "all"].includes(s["show"] as string) ? { show: s["show"] as Filter } : {}),
   component: CoursesPage,
 });
 
@@ -21,7 +23,7 @@ type Filter = "soon" | "active" | "ended" | "all";
 // Every student with their courses, ending soonest first (owner 12/10/2026, mockup WTr5LoqwQAEnSrKDuzZiMi board 5).
 function CoursesPage() {
   const { data, can } = useYodo();
-  const [filter, setFilter] = useState<Filter>("soon");
+  const [filter, setFilter] = useState<Filter>(Route.useSearch().show ?? "all");
   const [q, setQ] = useState("");
   const rows = useMemo(() => data.enrollments.map((e) => ({
     e, s: data.students.find((x) => x.id === e.studentId), c: data.classes.find((x) => x.id === e.classId),
@@ -42,10 +44,10 @@ function CoursesPage() {
   const canBuy = can("students", "edit");
   const canExtend = can("courses", "edit");
   const chips: [Filter, string][] = [
+    ["all", L(`ทั้งหมด ${count.all}`, `All ${count.all}`)],
     ["soon", L(`ใกล้หมด (${data.expiryDays} วัน) ${count.soon}`, `Ending soon (${data.expiryDays} days) ${count.soon}`)],
     ["active", L(`ยังไม่หมดอายุ ${count.active}`, `Not ended ${count.active}`)],
     ["ended", L(`หมดแล้ว 30 วันล่าสุด ${count.ended}`, `Ended in the last 30 days ${count.ended}`)],
-    ["all", L(`ทั้งหมด ${count.all}`, `All ${count.all}`)],
   ];
   const actions = (r: (typeof rows)[number]) => (
     <div className="flex flex-wrap gap-1.5">

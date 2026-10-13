@@ -509,6 +509,13 @@ try {
   await post('/classes', { name: 'Ballet Course', teacherId: '', description: '', image: '', status: 'Active', price: 10000, months: 6 });
   await page.goto(BASE + '/classes');
   await page.getByText('10,000 บาท / 6 เดือน').first().waitFor().then(() => check('class card shows the course price and length', true), () => check('class card shows the course price and length', false));
+  await page.screenshot({ path: `${SHOTS}/35b-classes-cards.png` });
+  await page.getByTestId('classes-view-table').click();
+  await page.getByTestId('classes-table').locator('tr', { hasText: 'Ballet Course' }).waitFor().then(() => check('classes: table view', true), () => check('classes: table view', false));
+  await page.screenshot({ path: `${SHOTS}/35c-classes-table.png` });
+  await page.reload();
+  await page.getByTestId('classes-table').waitFor({ timeout: 5000 }).then(() => check('classes: the view is remembered', true), () => check('classes: the view is remembered', false));
+  await page.getByTestId('classes-view-cards').click();
   await post('/classes', { name: 'Jazz Course', teacherId: '', description: '', image: '', status: 'Active', price: 4500, months: 3 });
   // ---------- buy courses: two in one receipt, % and baht off, a remark (owner 12/10/2026) ----------
   await page.goto(BASE + '/students');
@@ -612,7 +619,7 @@ try {
   await page.goto(BASE + '/');
   await page.getByTestId('soon-card').filter({ hasText: '1 คลาส' }).waitFor({ timeout: 5000 }).then(() => check('dashboard: courses ending soon', true), () => check('dashboard: courses ending soon', false));
   await page.getByTestId('soon-card').click();
-  await page.waitForURL('**/courses');
+  await page.waitForURL('**/courses?show=soon');
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${SHOTS}/41-courses.png`, fullPage: true });
   {
@@ -675,6 +682,8 @@ try {
   await pp.screenshot({ path: `${SHOTS}/p15-class.png` });
   await pp.getByTestId('class-back').click();
   await pp.goto(BASE + '/courses');
+  await pp.getByTestId('filter-all').waitFor();
+  check('expiry dates: "All" is first and open by default', (await pp.locator('[data-testid^="filter-"]').first().getAttribute('data-testid')) === 'filter-all' && (await pp.getByTestId('filter-all').getAttribute('aria-pressed')) === 'true');
   await pp.getByTestId('filter-all').click();
   await pp.waitForTimeout(400);
   {
@@ -688,11 +697,12 @@ try {
   // this month's newest receipt: edit (owner 12/10/2026)
   await page.getByTestId('receipt-table').locator('tbody tr').first().click();
   await page.waitForURL('**/receipts/*');
-  await det.getByTestId('receipt-edit').waitFor({ timeout: 5000 }).then(() => check('the newest receipt can be edited and deleted (no cancel button)', true), () => check('the newest receipt can be edited and deleted (no cancel button)', false));
-  check('no cancel button on the newest receipt', (await det.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).count()) === 0);
-  check('the PDF window has no edit/delete buttons any more', true);
   await page.screenshot({ path: `${SHOTS}/47-receipt-detail.png`, fullPage: true });
-  await det.getByTestId('receipt-edit').click();
+  await det.getByTestId('row-actions').click();
+  await page.getByTestId('receipt-edit').waitFor({ timeout: 5000 }).then(() => check('the newest receipt can be edited and deleted (no cancel), behind the more button', true), () => check('the newest receipt can be edited and deleted (no cancel), behind the more button', false));
+  check('no cancel on the newest receipt', (await page.getByTestId('receipt-cancel').count()) === 0 && (await page.getByTestId('receipt-delete').count()) === 1);
+  await page.screenshot({ path: `${SHOTS}/47b-receipt-menu.png` });
+  await page.getByTestId('receipt-edit').click();
   const edd = page.getByTestId('receipt-edit-dialog');
   await edd.getByTestId('edit-discount').first().fill('20');
   await edd.getByTestId('edit-remark').fill('แก้ส่วนลดเป็น 20%');
@@ -721,8 +731,9 @@ try {
   await page.reload();
   await page.getByTestId('receipt-total').filter({ hasText: '16,500.00' }).waitFor({ timeout: 5000 });
   await page.getByTestId('receipt-table').locator('tbody tr').filter({ hasText: '-0001' }).click();
-  await det.getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
-  check('an older receipt has no edit/delete, only cancel', (await det.getByTestId('receipt-edit').count()) === 0);
+  await det.getByTestId('row-actions').click();
+  check('an older receipt has no edit/delete, only cancel', (await page.getByTestId('receipt-edit').count()) === 0 && (await page.getByTestId('receipt-delete').count()) === 0);
+  await page.getByTestId('receipt-cancel').click();
   await page.getByRole('dialog', { name: 'ยกเลิกใบเสร็จนี้?' }).getByRole('button', { name: 'ยกเลิกใบเสร็จ' }).click();
   await page.waitForTimeout(800);
   check('details show "cancelled"', (await det.innerText()).includes('ยกเลิกแล้ว'));
@@ -735,7 +746,8 @@ try {
   await page.getByTestId('receipt-total').filter({ hasText: '4,500.00' }).waitFor({ timeout: 5000 }).then(() => check('a cancelled receipt is not counted', true), () => check('a cancelled receipt is not counted', false));
   check('the cancelled receipt stays in the list, struck through', (await page.getByTestId('receipt-table').locator('tbody tr.line-through').count()) === 1);
   await page.getByTestId('receipt-table').locator('tbody tr').filter({ hasText: '-0002' }).click();
-  await det.getByTestId('receipt-delete').click();
+  await det.getByTestId('row-actions').click();
+  await page.getByTestId('receipt-delete').click();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${SHOTS}/46-receipt-delete.png` });
   await page.getByRole('button', { name: 'ลบใบเสร็จ', exact: true }).click();

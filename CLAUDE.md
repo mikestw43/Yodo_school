@@ -209,6 +209,14 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   last in red after a line; shows only what the person may do). Top right of the card on phones (after the status), the
   Actions column on computers: students, teachers, classes, users, roles. Single-icon buttons elsewhere stay.
   Owner 13/10/2026 (mockup GXNwxvH8UoN7sg5ZVmH5bn, option 2): "ซื้อคลาส" uses the Ticket icon (the person-plus looked like "add a person").
+- 13/10/2026 (mockup LvtGtwLMozBxzAzQ3G1wRX; owner "1 ok 2 ใช่ 3 การ์ด ทำได้เลย"): receipt details page easier to read: amount
+  big in its own box with method / date / remark (first on phones), one row per class (name, "ลด x" chip, months + period,
+  full price under the amount), totals top to bottom; buttons Share, Email, View PDF (full width on phones) and the "more"
+  button with Edit / Delete (newest) or Cancel (older) (`ReceiptActions` = RowActions, testIds receipt-edit/-delete/-cancel).
+  Expiry dates page: "All" first and open by default; `?show=soon` (dashboard card, expiry bell notices) opens "Ending soon".
+  Classes page: smaller cards (low cover, price · teacher on one line, 3 small counts, 3-4 a row, 12 a page; tap a card =
+  the class panel) and a Cards / Table switch (`yodo-classes-view` in localStorage, default cards; table 25 a page, phones
+  get short rows with the three numbers).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

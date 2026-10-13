@@ -73,7 +73,7 @@ function Dashboard() {
       )}
       {/* Courses ending soon (owner 12/10/2026): tap = the Courses page */}
       {can("courses") && (
-        <Link to="/courses" className="mb-4 block" data-testid="soon-card">
+        <Link to="/courses" search={{ show: "soon" }} className="mb-4 block" data-testid="soon-card">
           <Card className="flex-row items-center gap-4 rounded-3xl border-orange-200 bg-orange-50 p-5 text-orange-900 transition-shadow hover:shadow-soft">
             <Hourglass className="h-6 w-6 shrink-0" />
             <div className="min-w-0 flex-1">
