@@ -370,7 +370,6 @@ function Info({ label, value }: { label: string; value?: string | number | null 
 function StudentView({ student, onClose, onEdit }: { student: Student | null; onClose: () => void; onEdit: (s: Student) => void }) {
   const { data, can, signStudent } = useYodo();
   const canEdit = can("students", "edit");
-  const [signing, setSigning] = useState(false);
   const [viewPdf, setViewPdf] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [editEn, setEditEn] = useState<Enrollment | null>(null);
@@ -430,8 +429,8 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
               ) : <span className="text-muted-foreground">{L("ยังไม่ได้เซ็นเอกสาร", "Document not signed yet")}</span>}
             </div>
             </>}
-            <DialogFooter>
-              {canEdit && <Button variant="outline" onClick={() => setSigning(true)}><PenLine className="h-4 w-4" /> {s.signature ? L("เซ็นใหม่", "Sign") : L("เซ็นเอกสาร", "Sign document")}</Button>}
+            {/* No Sign button here: sign from Edit (owner 17/10/2026); the two buttons sit apart */}
+            <DialogFooter className="gap-3 pt-2 sm:gap-3">
               <Button variant="outline" onClick={() => setViewPdf(true)}><FileText className="h-4 w-4" /> {L("ดู PDF", "View PDF")}</Button>
               {canEdit && <Button variant="outline" onClick={() => onEdit(s)}><Pencil className="h-4 w-4" /> {L("แก้ไข", "Edit")}</Button>}
             </DialogFooter>
@@ -440,12 +439,6 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
       </DialogContent>
     </Dialog>
     <EnrollDialog student={editEn ? s : null} enrollment={editEn} onClose={() => setEditEn(null)} />
-    <Dialog open={signing} onOpenChange={setSigning}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader><DialogTitle>{s?.signature ? L("เซ็นใหม่", "Sign") : L("เซ็นเอกสาร", "Sign document")}</DialogTitle><DialogDescription>{s ? `${fullName(s)} · ${s.code}` : ""}</DialogDescription></DialogHeader>
-        {signing && s && <SignDocumentBody student={s} onDone={() => setSigning(false)} />}
-      </DialogContent>
-    </Dialog>
     {/* Tap the photo to see it big (owner 12/10/2026) */}
     <Dialog open={photoOpen} onOpenChange={setPhotoOpen}>
       <DialogContent className="w-auto max-w-[92vw] p-3 sm:max-w-2xl">
@@ -474,27 +467,6 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
       </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </Dialog>
-    </>
-  );
-}
-
-function SignDocumentBody({ student, onDone }: { student: Student; onDone: () => void }) {
-  const { signStudent } = useYodo();
-  const sig = useSignCanvas();
-  const save = () => {
-    const img = sig.exportSignature();
-    if (!img) return;
-    signStudent(student.id, img, format(new Date(), "yyyy-MM-dd"));
-    onDone();
-    toast.success(L("บันทึกลายเซ็นแล้ว", "Signature saved"));
-  };
-  return (
-    <>
-      <SignBox sig={sig} current={student.signature} />
-      <DialogFooter className="pt-2">
-        <Button variant="outline" onClick={onDone}>{L("ยกเลิก", "Cancel")}</Button>
-        <Button disabled={!sig.hasSignature} onClick={save}>{L("บันทึกลายเซ็น", "Save signature")}</Button>
-      </DialogFooter>
     </>
   );
 }

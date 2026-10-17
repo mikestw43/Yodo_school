@@ -246,6 +246,9 @@ try {
   await pp.getByText('มะลิ').first().click();
   await pp.getByRole('dialog').getByRole('button', { name: 'แก้ไข' }).waitFor().then(() => check('phone: tapping a student card opens the details', true), () => check('phone: tapping a student card opens the details', false));
   await pp.screenshot({ path: `${SHOTS}/p9-student-details.png` });
+  await pp.getByRole('dialog').getByRole('button', { name: 'ดู PDF' }).scrollIntoViewIfNeeded();
+  await pp.waitForTimeout(300);
+  await pp.screenshot({ path: `${SHOTS}/p9b-student-buttons.png` });
   await pp.getByRole('dialog').getByRole('button', { name: 'ดู PDF' }).click();
   await pp.getByTestId('pdf-view').locator('.ydoc-p2').waitFor();
   await pp.waitForTimeout(500);
@@ -403,19 +406,17 @@ try {
   await pop2.locator('section.sheet').nth(0).screenshot({ path: `${SHOTS}/26-pdf-page1.png` }).catch(() => null);
   await pop2.close();
   await page.getByRole('button', { name: 'กลับ' }).click();
-  await v2.getByRole('button', { name: 'เซ็นใหม่' }).click();
-  const sd = page.getByRole('dialog', { name: 'เซ็นใหม่' });
-  await sd.getByTestId('sign-terms').waitFor().then(() => check('"Sign again" shows the terms and one sign box, not the whole application', true), () => check('"Sign again" shows the terms and one sign box, not the whole application', false));
+  check('details: no Sign button any more (sign from Edit)', (await v2.getByRole('button', { name: /เซ็น/ }).count()) === 0);
+  await page.screenshot({ path: `${SHOTS}/30-details-buttons.png` });
+  await v2.getByRole('button', { name: 'แก้ไข' }).click();
+  const sd = page.getByRole('dialog').filter({ has: page.getByTestId('sign-terms') });
+  await sd.getByTestId('sign-terms').waitFor().then(() => check('Edit holds the terms and the sign box', true), () => check('Edit holds the terms and the sign box', false));
+  await sd.getByTestId('sign-terms').scrollIntoViewIfNeeded();
   const tb = await sd.getByTestId('sign-terms').boundingBox();
   await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
   await page.mouse.wheel(0, 300);
   await page.waitForTimeout(300);
-  check('sign window: the terms box scrolls', (await sd.getByTestId('sign-terms').evaluate((e) => e.scrollTop)) > 20);
-  await sd.getByText('ข้าพเจ้าได้อ่านและยอมรับข้อตกลงและเงื่อนไขของโรงเรียนด้านบนแล้ว').click();
-  await sd.getByText('ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง').click();
-  check('sign window: one place to sign after both ticks', (await sd.locator('canvas').count()) === 1 && (await sd.locator('.ydoc-sheet').count()) === 0);
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: `${SHOTS}/30-sign-dialog.png` });
+  check('sign box: the terms box scrolls', (await sd.getByTestId('sign-terms').evaluate((e) => e.scrollTop)) > 20);
   await page.keyboard.press('Escape');
 
   // ---------- roles, company settings, payment and receipts (owner 12/10/2026) ----------

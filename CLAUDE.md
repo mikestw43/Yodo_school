@@ -219,6 +219,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   get short rows with the three numbers).
 - 13/10/2026 (owner): the name pill at the top right shows the person's nickname, else the first name (`short` in `useMe`,
   AppShell.tsx); the open account menu keeps the full name.
+- 17/10/2026 (owner): student details have no Sign button any more (sign from Edit, the form's SignBox); Edit and View PDF
+  sit apart (footer gap). The old sign-only window (`SignDocumentBody`) is gone.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
