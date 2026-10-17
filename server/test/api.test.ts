@@ -474,3 +474,25 @@ describe('student titles back to Thai (owner 12/10/2026)', () => {
     expect(thaiPrefix('Dr.', '1980-01-01', t)).toBeNull();
   });
 });
+
+describe('clear classes and receipts (owner 17/10/2026)', () => {
+  it('only the Owner, only with the typed word; backup first; students stay', async () => {
+    const p = await admin.post('/api/positions').set(H).send({ name: 'ทดสอบล้าง', description: '' });
+    await admin.post('/api/users').set(H).send({ firstName: 'Nok', lastName: '', nickname: '', username: 'nok', password: 'secret3', email: '', phone: '', positionId: p.body.id, image: '' }).expect(201);
+    const nok = await login('nok', 'secret3');
+    expect((await nok.post('/api/admin/clear-courses').set(H).send({ confirm: 'ลบทั้งหมด' })).status).toBe(403);
+    const before = (await admin.get('/api/admin/clear-courses')).body;
+    expect(before.classes).toBeGreaterThan(0);
+    const students = (await admin.get('/api/data')).body.students.length;
+    expect((await admin.post('/api/admin/clear-courses').set(H).send({ confirm: 'ลบ' })).status).toBe(400);
+    const r = await admin.post('/api/admin/clear-courses').set(H).send({ confirm: 'ลบทั้งหมด' });
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect((await admin.get('/api/admin/clear-courses')).body).toEqual({ classes: 0, sessions: 0, enrollments: 0, purchases: 0, receipts: 0 });
+    const d = (await admin.get('/api/data')).body;
+    expect(d.students.length).toBe(students);
+    expect(d.classes).toHaveLength(0);
+    const fs = await import('node:fs');
+    const { BACKUP_DIR } = await import('../src/lib/config.js');
+    expect(fs.readdirSync(BACKUP_DIR).some((f: string) => f.includes('-before-clear'))).toBe(true);
+  });
+});

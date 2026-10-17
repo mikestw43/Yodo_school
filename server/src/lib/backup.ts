@@ -10,7 +10,7 @@ export async function backupNow(reason = 'manual') {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
   const file = path.join(BACKUP_DIR, `yodo-${stamp}-${reason}.db`);
   await prisma.$executeRawUnsafe(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
-  const all = fs.readdirSync(BACKUP_DIR).filter((f) => f.startsWith('yodo-') && f.endsWith('.db')).sort();
+  const all = fs.readdirSync(BACKUP_DIR).filter((f) => f.startsWith('yodo-') && f.endsWith('.db') && !f.includes('-before-')).sort(); // before-* backups are kept
   for (const f of all.slice(0, Math.max(0, all.length - KEEP))) fs.unlinkSync(path.join(BACKUP_DIR, f));
   return file;
 }

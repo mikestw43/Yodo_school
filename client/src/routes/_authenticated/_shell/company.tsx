@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Mail, PenLine, RotateCcw, Trash2 } from "lucide-react";
+import { DatabaseBackup, ImagePlus, Mail, PenLine, RotateCcw, Trash2, TriangleAlert } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ const EMPTY: Company = { name: "", nameEn: "", address: "", phone: "", email: ""
 
 // Company details printed on receipts (owner 12/10/2026, mockup board 4).
 function CompanyPage() {
-  const { can } = useYodo();
+  const { can, data } = useYodo();
   const edit = can("company", "edit");
   const [f, setF] = useState<Company>(EMPTY);
   const [busy, setBusy] = useState(false);
@@ -56,6 +56,7 @@ function CompanyPage() {
           {edit && <div className="flex justify-end sm:col-span-2"><Button className="rounded-full" disabled={busy} onClick={save} data-testid="co-save">{L("บันทึก", "Save")}</Button></div>}
         </Card>
         <MailCard edit={edit} />
+        {data.owner && <ClearCard />}
         </div>
         <div className="grid content-start gap-5">
           <Card className="rounded-3xl p-6">
@@ -235,6 +236,57 @@ function MailCard({ edit }: { edit: boolean }) {
           <Button className="rounded-full" disabled={busy} onClick={save} data-testid="mail-save">{L("บันทึก", "Save")}</Button>
         </div>
       )}
+    </Card>
+  );
+}
+
+type ClearCounts = { classes: number; sessions: number; enrollments: number; purchases: number; receipts: number };
+
+/** Clear classes and receipts (owner 17/10/2026, mockup 2o1pdZZR6AXvK63C3a4rsf): Owner only, typed confirmation, the
+ *  server backs the database up first. Students, teachers, users and company settings stay. The card stays afterwards. */
+function ClearCard() {
+  const { reload } = useYodo();
+  const [open, setOpen] = useState(false);
+  const [n, setN] = useState<ClearCounts | null>(null);
+  const [word, setWord] = useState("");
+  const [busy, setBusy] = useState(false);
+  const want = L("ลบทั้งหมด", "DELETE ALL");
+  const start = async () => {
+    setWord("");
+    try { setN(await api<ClearCounts>("/admin/clear-courses")); setOpen(true); } catch (e) { toast.error(errorText(e)); }
+  };
+  const run = async () => {
+    setBusy(true);
+    try {
+      await api("/admin/clear-courses", { body: { confirm: word.trim() } });
+      toast.success(L("ล้างข้อมูลคลาสและใบเสร็จแล้ว", "Classes and receipts cleared"));
+      setOpen(false);
+      await reload();
+    } catch (e) { toast.error(errorText(e)); }
+    setBusy(false);
+  };
+  return (
+    <Card className="gap-2.5 rounded-3xl border-red-200 bg-red-50/60 p-6 dark:border-red-900/60 dark:bg-red-950/20" data-testid="clear-card">
+      <p className="flex items-center gap-2 font-semibold text-red-700 dark:text-red-300"><TriangleAlert className="h-4 w-4" />{L("ล้างข้อมูลคลาสและใบเสร็จ", "Clear classes and receipts")}</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">{L("ลบ: คลาสทั้งหมด (และคาบเรียนในปฏิทิน), การซื้อคลาส วันหมดอายุ ประวัติการซื้อ, ใบเสร็จทั้งหมด (เลขเริ่ม 0001 ใหม่)", "Removes: every class (and its calendar sessions), every class purchase, expiry date and purchase history, every receipt (numbers start again at 0001)")}</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">{L("ไม่แตะ: นักเรียน ครู ผู้ใช้ ตั้งค่าบริษัท", "Kept: students, teachers, users, company settings")}</p>
+      <div><Button type="button" variant="destructive" className="rounded-full" onClick={start} data-testid="clear-open"><Trash2 className="mr-1 h-4 w-4" />{L("ล้างข้อมูล…", "Clear…")}</Button></div>
+      <Dialog open={open} onOpenChange={(o) => { if (!busy) setOpen(o); }}>
+        <DialogContent className="max-w-md rounded-3xl" data-testid="clear-dialog">
+          <DialogHeader>
+            <DialogTitle>{L("ล้างข้อมูลคลาสและใบเสร็จ?", "Clear classes and receipts?")}</DialogTitle>
+            <DialogDescription>{n ? L(`จะลบ คลาส ${n.classes} · การซื้อคลาส ${n.enrollments} · ใบเสร็จ ${n.receipts} ใบ · คาบเรียน ${n.sessions} คาบ`, `Removes ${n.classes} classes · ${n.enrollments} class purchases · ${n.receipts} receipts · ${n.sessions} sessions`) : ""}</DialogDescription>
+          </DialogHeader>
+          <p className="flex items-start gap-2 text-sm text-muted-foreground"><DatabaseBackup className="mt-0.5 h-4 w-4 shrink-0" />{L("ระบบสำรองฐานข้อมูลไว้ก่อนลบ และบันทึกในประวัติการแก้ไข", "The database is backed up first, and the audit log keeps a record")}</p>
+          <Field label={L(`พิมพ์ "${want}" เพื่อยืนยัน`, `Type "${want}" to confirm`)}>
+            <Input value={word} onChange={(e) => setWord(e.target.value)} placeholder={want} data-testid="clear-word" />
+          </Field>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-full" onClick={() => setOpen(false)}>{L("ยกเลิก", "Cancel")}</Button>
+            <Button variant="destructive" className="rounded-full" disabled={busy || word.trim() !== want} onClick={run} data-testid="clear-run">{L("ล้างข้อมูล", "Clear")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

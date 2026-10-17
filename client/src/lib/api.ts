@@ -10,6 +10,7 @@ export class ApiError extends Error {
 // Server error codes shown to staff in plain Thai.
 const MESSAGES: Record<string, [string, string]> = {
   wrong_credentials: ["ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "Wrong username or password"],
+  confirm_text: ["พิมพ์คำยืนยันให้ตรง", "Type the confirmation word exactly"],
   account_disabled: ["บัญชีนี้ถูกปิดใช้งาน", "This account is disabled"],
   too_many_attempts: ["ลองหลายครั้งเกินไป กรุณารอ 15 นาที", "Too many tries. Please wait 15 minutes"],
   wrong_password: ["รหัสผ่านปัจจุบันไม่ถูกต้อง", "The current password is wrong"],

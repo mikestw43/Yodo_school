@@ -221,6 +221,16 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   AppShell.tsx); the open account menu keeps the full name.
 - 17/10/2026 (owner): student details have no Sign button any more (sign from Edit, the form's SignBox); Edit and View PDF
   sit apart (footer gap). The old sign-only window (`SignDocumentBody`) is gone.
+- 17/10/2026 (mockup 2o1pdZZR6AXvK63C3a4rsf; owner "1 ok 2 ok 3 อยู่ต่อ ทำได้เลย"):
+  - Phones: no hamburger; a bottom menu bar like a phone app (`BottomNav` in AppShell.tsx): the pages the person may open,
+    up to 5 as they are, more = the first 4 (ภาพรวม, นักเรียน, คลาส, วันหมดอายุ) + "เพิ่มเติม"/"More" (Ellipsis) opening the
+    rest from the bottom (ครู, ปฏิทิน, ใบเสร็จ). Open page = pink pill; a page from More marks More. Computers keep the side menu.
+  - "Clear classes and receipts" card in Company settings, Owner only (`ClearCard`, `routes/cleardata.ts`,
+    `GET/POST /admin/clear-courses`, typed "ลบทั้งหมด"/"DELETE ALL"): deletes every class + calendar session, enrollment,
+    purchase history, receipt + sent-email list (numbers restart at 0001); students/teachers/users/company stay. Backup
+    `yodo-*-before-clear.db` first (before-* backups are never pruned); one audit row with the counts. The card stays.
+    (Owner asked to clear the test classes/receipts; an automatic clear at start was refused by my tooling, so the Owner
+    presses this himself.)
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

@@ -1,13 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useNavigate, useLocation } from "@tanstack/react-router";
+import { Link, useNavigate, useLocation, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarHeart, ChevronDown, Hourglass, Crown, FileUp, History, LogOut, Menu, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog } from "lucide-react";
+import { CalendarHeart, ChevronDown, Hourglass, Crown, FileUp, History, LogOut, Ellipsis, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog } from "lucide-react";
 import { api, clearMeCache, getMe } from "@/lib/api";
 import { ROLE_LABEL } from "@/lib/auth-utils";
 import { Avatar, EmptyState } from "@/components/yodo/ui";
 import { useYodo, type MenuKey } from "@/lib/yodo-store";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/yodo/NotificationBell";
 import { LangToggle } from "@/components/yodo/LangToggle";
 import { L } from "@/lib/i18n";
@@ -154,6 +154,53 @@ function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
   );
 }
 
+type NavItem = (typeof NAV)[number];
+
+/** Phones: menu bar at the bottom like a phone app (owner 17/10/2026, mockup 2o1pdZZR6AXvK63C3a4rsf). Up to 5 pages show
+ *  as they are; more than 5 = the first 4 + "More" (three dots), which opens the rest from the bottom. */
+function BottomNav({ nav }: { nav: NavItem[] }) {
+  const [open, setOpen] = useState(false);
+  const path = useRouterState({ select: (st) => st.location.pathname });
+  const main = nav.length > 5 ? nav.slice(0, 4) : nav;
+  const rest = nav.length > 5 ? nav.slice(4) : [];
+  const on = (to: string) => (to === "/" ? path === "/" : path === to || path.startsWith(`${to}/`) || path.startsWith(`${to}_`));
+  const moreOn = rest.some((n) => on(n.to));
+  const tab = (active: boolean) => `flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-1.5 text-[11px] font-semibold transition-colors ${active ? "text-primary" : "text-muted-foreground"}`;
+  const pill = (active: boolean) => `flex h-7 w-14 items-center justify-center rounded-full transition-colors ${active ? "bg-accent" : ""}`;
+  return (
+    <>
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid border-t border-border bg-background/95 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden"
+        style={{ gridTemplateColumns: `repeat(${main.length + (rest.length ? 1 : 0)}, minmax(0, 1fr))` }} aria-label={L("เมนูหลัก", "Main menu")} data-testid="bottom-nav">
+        {main.map((n) => (
+          <Link key={n.to} to={n.to} className={tab(on(n.to))} aria-current={on(n.to) ? "page" : undefined}>
+            <span className={pill(on(n.to))}><n.icon className="h-5 w-5" /></span>
+            <span className="max-w-full truncate">{L(n.th, n.en)}</span>
+          </Link>
+        ))}
+        {rest.length > 0 && (
+          <button type="button" className={tab(moreOn)} onClick={() => setOpen(true)} data-testid="nav-more">
+            <span className={pill(moreOn)}><Ellipsis className="h-5 w-5" /></span>
+            <span className="max-w-full truncate">{L("เพิ่มเติม", "More")}</span>
+          </button>
+        )}
+      </nav>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="bottom" className="rounded-t-3xl px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3 md:hidden">
+          <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-border" />
+          <SheetHeader className="px-1 text-left"><SheetTitle className="text-base">{L("เมนูเพิ่มเติม", "More")}</SheetTitle></SheetHeader>
+          <nav className="flex flex-col">
+            {rest.map((n) => (
+              <Link key={n.to} to={n.to} onClick={() => setOpen(false)} className={`flex items-center gap-3 border-t border-border/70 px-2 py-3.5 text-sm font-semibold ${on(n.to) ? "text-primary" : "text-foreground"}`}>
+                <n.icon className="h-5 w-5 shrink-0" />{L(n.th, n.en)}
+              </Link>
+            ))}
+          </nav>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
 const NAV_KEY = "yodo-nav-collapsed";
 function readCollapsed() {
   try { return localStorage.getItem(NAV_KEY) === "1"; } catch { return false; }
@@ -163,7 +210,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const me = useMe();
   const { can } = useYodo();
   const nav = NAV.filter((n) => can(n.key));
-  const [menuOpen, setMenuOpen] = useState(false);
   // Folded side menu (icons only), remembered on this device (owner 12/10/2026).
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const toggle = () => setCollapsed((c) => {
@@ -204,32 +250,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:hidden">
           <div className="flex items-center gap-1">
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger asChild>
-              <button aria-label={L("เปิดเมนู", "Open menu")} className="rounded-full p-2 text-foreground"><Menu className="h-5 w-5" /></button>
-            </SheetTrigger>
-            <SheetContent side="left" className="flex w-72 flex-col p-0">
-              <SheetHeader className="border-b border-border px-5 py-4 text-left">
-                <SheetTitle className="font-display text-xl font-bold">YODO</SheetTitle>
-              </SheetHeader>
-              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-                {nav.map((n) => (
-                  <Link
-                    key={n.to}
-                    to={n.to}
-                    activeOptions={{ exact: n.to === "/" }}
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
-                    activeProps={{ className: "!bg-primary !text-primary-foreground shadow-soft" }}
-                  >
-                    <n.icon className="h-4 w-4 shrink-0" />
-                    {L(n.th, n.en)}
-                  </Link>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
-          <Link to="/" className="flex items-center gap-2" onClick={() => setMenuOpen(false)}>
+          <Link to="/" className="flex items-center gap-2">
             <img src={logoImg} alt="YODO You Only Dance Once" className="h-9 w-auto" />
           </Link>
           </div>
@@ -240,7 +261,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <div className="sticky top-0 z-20 hidden justify-end px-8 pt-4 md:flex"><div className="flex items-center gap-2"><LangToggle className="border border-border bg-background shadow-soft" /><NotificationBell className="border border-border bg-background shadow-soft" />{me && <AccountMenu me={me} />}</div></div>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8 md:pt-2"><Guarded>{children}</Guarded></main>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-8 md:px-8 md:pb-8 md:pt-2"><Guarded>{children}</Guarded></main>
+        <BottomNav nav={nav} />
         <CourseHosts />
         <ReceiptHost />
       </div>

@@ -260,17 +260,27 @@ try {
   await pp.keyboard.press('Escape');
   await pp.goto(BASE + '/');
   {
-    const hb = await pp.getByLabel('เปิดเมนู').boundingBox(), lg = await pp.locator('header').getByAltText('YODO You Only Dance Once').boundingBox();
-    check('phone: the menu button sits on the left, before the logo', hb.x < 60 && hb.x < lg.x, `menu x ${Math.round(hb.x)}, logo x ${Math.round(lg.x)}`);
-  }
-  await pp.getByLabel('เปิดเมนู').click();
-  await pp.waitForTimeout(500);
-  {
+    // bottom menu like a phone app (owner 17/10/2026): 4 pages + "More"
+    const bn = pp.getByTestId('bottom-nav');
+    await bn.getByTestId('nav-more').waitFor();
+    const tabs = await bn.locator('a, button').allInnerTexts();
+    const box = await bn.boundingBox();
+    check('phone: menu bar at the bottom, 4 pages + More, no hamburger', box.y + box.height >= 840 && tabs.map((t) => t.trim()).join('|') === 'ภาพรวม|นักเรียน|คลาส|วันหมดอายุ|เพิ่มเติม' && (await pp.getByLabel('เปิดเมนู').count()) === 0, tabs.join('|'));
+    await pp.screenshot({ path: `${SHOTS}/p9-menu.png` });
+    await bn.getByText('นักเรียน').click();
+    await pp.waitForURL('**/students');
+    check('phone: the open page is marked in the bottom bar', (await bn.locator('[aria-current="page"]').innerText()).includes('นักเรียน'));
+    await pp.getByTestId('nav-more').click();
     const sheet = pp.getByRole('dialog');
-    const box = await sheet.boundingBox();
-    check('phone: the menu opens from the left without Users / Permissions / Audit Log', box.x < 5 && (await sheet.getByText('ผู้ใช้ระบบ').count()) === 0 && (await sheet.getByText('ประวัติการแก้ไข').count()) === 0 && (await sheet.getByText('นักเรียน').count()) > 0);
+    await sheet.getByText('ใบเสร็จรับเงิน').waitFor();
+    check('phone: More holds the rest, without Users / Permissions / Audit Log', (await sheet.getByText('ครู').count()) === 1 && (await sheet.getByText('ปฏิทิน').count()) === 1 && (await sheet.getByText('ผู้ใช้ระบบ').count()) === 0);
+    await pp.waitForTimeout(400);
+    await pp.screenshot({ path: `${SHOTS}/p9b-more.png` });
+    await sheet.getByText('ใบเสร็จรับเงิน').click();
+    await pp.waitForURL('**/receipts**');
+    check('phone: a page from More marks "More"', (await bn.locator('[data-testid="nav-more"]').getAttribute('class')).includes('text-primary'));
+    await pp.goto(BASE + '/');
   }
-  await pp.screenshot({ path: `${SHOTS}/p9-menu.png` });
   await pp.keyboard.press('Escape');
   await pp.getByTitle('เมนูบัญชี').first().click();
   await pp.getByText('ออกจากระบบ').waitFor().then(() => check('phone: account menu at the top right', true), () => check('phone: account menu at the top right', false));
@@ -836,6 +846,25 @@ try {
   await a2.screenshot({ path: `${SHOTS}/e12-login.png` });
   await anon2.close();
 
+  // clear classes and receipts (owner 17/10/2026): Owner only, typed word, backup first, students stay (page is English now)
+  await page.request.patch(`${BASE}/api/me/lang`, { headers: { 'x-yodo': '1' }, data: { lang: 'th' } });
+  await page.goto(BASE + '/company');
+  await page.reload();
+  await page.getByTestId('clear-open').click();
+  const cd = page.getByTestId('clear-dialog');
+  await cd.waitFor();
+  check('clear: the window says what goes and needs the typed word', (await cd.innerText()).includes('คลาส') && await cd.getByTestId('clear-run').isDisabled());
+  await cd.getByTestId('clear-word').fill('ลบทั้งหมด');
+  await page.screenshot({ path: `${SHOTS}/50-clear-confirm.png` });
+  const nStudents = (await (await page.request.get(`${BASE}/api/data`)).json()).students.length;
+  await cd.getByTestId('clear-run').click();
+  await cd.waitFor({ state: 'detached', timeout: 10000 });
+  {
+    const d = await (await page.request.get(`${BASE}/api/data`)).json();
+    const c = await (await page.request.get(`${BASE}/api/admin/clear-courses`)).json();
+    check('clear: classes, purchases and receipts gone, students kept, card stays', c.classes === 0 && c.receipts === 0 && c.enrollments === 0 && d.students.length === nStudents && await page.getByTestId('clear-card').isVisible(), JSON.stringify(c));
+    check('clear: a backup was written first', fs.readdirSync(path.join(DATA, 'backups')).some((f) => f.includes('before-clear')));
+  }
   check('no page errors', errors.length === 0, errors.slice(0, 5).join(' | '));
 } catch (e) {
   check('run finished', false, String(e?.message ?? e));
