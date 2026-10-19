@@ -272,7 +272,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   `$TS funnel --bg 8090`. Owner confirmed both apps open from outside.
 - 19/10/2026 outage: YODO and FinHR both "This site can't be reached" from outside, QuickConnect still worked, no new code since
   63ebbb2. Fixed by the owner running the DSM task `tailscale-funnel` (Run) via QuickConnect: the Tailscale serve/funnel
-  setting was lost again (same as FinHR 10/10/2026). Suggested: give the task an hourly schedule too.
+  setting was lost again (same as FinHR 10/10/2026).
+- 19/10/2026 (owner did it): DSM task `tailscale-watchdog` (root, daily every 5 min 00:00-23:55): if `tailscale funnel status`
+  lacks 127.0.0.1:8090 or 127.0.0.1:8092 it runs `serve reset` + both funnels and appends "<date> fixed" to
+  /volume2/docker/funnel-fix.log; otherwise does nothing. Option offered for later: Cloudflare Tunnel + own domain
+  (new address = passkeys and Google origin set up again).
 
 ## Testing
 1. `cd server && npx tsc --noEmit && npx vitest run`
