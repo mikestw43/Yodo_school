@@ -270,6 +270,9 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 - Funnel ON 12/10/2026: both DSM tasks `tailscale-funnel` and `tailscale-funnel-b...` (at boot, `sleep 90` first) use
   `TS=/var/packages/Tailscale/target/bin/tailscale` and now have `$TS funnel --bg --https=8443 8092` after FinHR's
   `$TS funnel --bg 8090`. Owner confirmed both apps open from outside.
+- 19/10/2026 outage: YODO and FinHR both "This site can't be reached" from outside, QuickConnect still worked, no new code since
+  63ebbb2. Fixed by the owner running the DSM task `tailscale-funnel` (Run) via QuickConnect: the Tailscale serve/funnel
+  setting was lost again (same as FinHR 10/10/2026). Suggested: give the task an hourly schedule too.
 
 ## Testing
 1. `cd server && npx tsc --noEmit && npx vitest run`
