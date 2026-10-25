@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useLocation, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarHeart, ChevronDown, Hourglass, Crown, FileUp, History, LogOut, Ellipsis, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog } from "lucide-react";
+import { CalendarHeart, ChevronDown, Hourglass, Crown, FileUp, History, LogOut, Ellipsis, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog, MessageCircle } from "lucide-react";
 import { api, clearMeCache, getMe } from "@/lib/api";
 import { ROLE_LABEL } from "@/lib/auth-utils";
 import { Avatar, EmptyState } from "@/components/yodo/ui";
@@ -13,6 +13,7 @@ import { LangToggle } from "@/components/yodo/LangToggle";
 import { L } from "@/lib/i18n";
 import { ReceiptHost } from "@/components/yodo/receipt";
 import { CourseHosts } from "@/components/yodo/courses";
+import { rememberPage, useSupportUnread } from "@/components/yodo/support";
 import logoImg from "@/assets/yodo-logo.png";
 import markImg from "@/assets/yodo-mark.png";
 
@@ -24,7 +25,9 @@ const NAV = [
   { to: "/teachers", th: "ครู", en: "Teachers", icon: Crown, key: "teachers" },
   { to: "/calendar", th: "ปฏิทิน", en: "Calendar", icon: CalendarHeart, key: "calendar" },
   { to: "/receipts", th: "ใบเสร็จรับเงิน", en: "Receipts", icon: ReceiptText, key: "receipts" },
-] as const satisfies readonly { to: string; th: string; en: string; key: MenuKey; icon: unknown }[];
+  // Everyone has it, last in the menu (owner 25/10/2026); the SuperAdmin's reads "Inbox" (`navLabel`).
+  { to: "/support", th: "แชทกับผู้ดูแล", en: "Chat with support", icon: MessageCircle, key: "support" },
+] as const satisfies readonly { to: string; th: string; en: string; key: MenuKey | "support"; icon: unknown }[];
 
 // Moved from the side menu to the account menu, under "System" (owner 12/10/2026).
 const ADMIN = [
@@ -77,7 +80,7 @@ function Guarded({ children }: { children: ReactNode }) {
   const { can, loading, me } = useYodo();
   const path = useLocation({ select: (l) => l.pathname });
   const item = [...NAV, ...ADMIN].reverse().find((n) => (n.to === "/" ? path === "/" : path.startsWith(n.to)));
-  if (loading || !me || !item || can(item.key)) return <>{children}</>;
+  if (loading || !me || !item || item.key === "support" || can(item.key)) return <>{children}</>;
   return <EmptyState title={L("ไม่มีสิทธิ์เข้าถึงหน้านี้", "You don't have access to this page")} text={L("ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์การใช้งานเมนูนี้", "Ask an administrator for access to this menu.")} />;
 }
 
@@ -159,8 +162,14 @@ type NavItem = (typeof NAV)[number];
 /** Phones: menu bar at the bottom like a phone app (owner 17/10/2026, mockup 2o1pdZZR6AXvK63C3a4rsf). Up to 5 pages show
  *  as they are; more than 5 = the first 4 + "More" (three dots), which opens the rest from the bottom. */
 // Phone order (owner 25/10/2026): Calendar takes Classes' place in the bar, Classes moves into More. Computers keep NAV.
-const PHONE_ORDER = ["/", "/students", "/calendar", "/courses", "/classes", "/teachers", "/receipts"];
-function BottomNav({ nav: all }: { nav: NavItem[] }) {
+const PHONE_ORDER = ["/", "/students", "/calendar", "/courses", "/classes", "/teachers", "/receipts", "/support"];
+/** The SuperAdmin answers the chats, so their menu item is the inbox. */
+const navLabel = (n: NavItem, superadmin: boolean) => (n.to === "/support" && superadmin ? L("กล่องข้อความ", "Inbox") : L(n.th, n.en));
+function Badge({ n, className }: { n: number; className?: string }) {
+  if (!n) return null;
+  return <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground ${className ?? ""}`} data-testid="support-badge">{n > 99 ? "99+" : n}</span>;
+}
+function BottomNav({ nav: all, superadmin, unread }: { nav: NavItem[]; superadmin: boolean; unread: number }) {
   const [open, setOpen] = useState(false);
   const path = useRouterState({ select: (st) => st.location.pathname });
   const nav = [...all].sort((a, b) => PHONE_ORDER.indexOf(a.to) - PHONE_ORDER.indexOf(b.to));
@@ -176,13 +185,13 @@ function BottomNav({ nav: all }: { nav: NavItem[] }) {
         style={{ gridTemplateColumns: `repeat(${main.length + (rest.length ? 1 : 0)}, minmax(0, 1fr))` }} aria-label={L("เมนูหลัก", "Main menu")} data-testid="bottom-nav">
         {main.map((n) => (
           <Link key={n.to} to={n.to} className={tab(on(n.to))} aria-current={on(n.to) ? "page" : undefined}>
-            <span className={pill(on(n.to))}><n.icon className="h-5 w-5" /></span>
-            <span className="max-w-full truncate">{L(n.th, n.en)}</span>
+            <span className={`relative ${pill(on(n.to))}`}><n.icon className="h-5 w-5" />{n.to === "/support" && <Badge n={unread} className="absolute -right-0.5 -top-1" />}</span>
+            <span className="max-w-full truncate">{navLabel(n, superadmin)}</span>
           </Link>
         ))}
         {rest.length > 0 && (
           <button type="button" className={tab(moreOn)} onClick={() => setOpen(true)} data-testid="nav-more">
-            <span className={pill(moreOn)}><Ellipsis className="h-5 w-5" /></span>
+            <span className={`relative ${pill(moreOn)}`}><Ellipsis className="h-5 w-5" />{rest.some((n) => n.to === "/support") && <Badge n={unread} className="absolute -right-0.5 -top-1" />}</span>
             <span className="max-w-full truncate">{L("เพิ่มเติม", "More")}</span>
           </button>
         )}
@@ -194,7 +203,7 @@ function BottomNav({ nav: all }: { nav: NavItem[] }) {
           <nav className="flex flex-col">
             {rest.map((n) => (
               <Link key={n.to} to={n.to} onClick={() => setOpen(false)} className={`flex items-center gap-3 border-t border-border/70 px-2 py-3.5 text-sm font-semibold ${on(n.to) ? "text-primary" : "text-foreground"}`}>
-                <n.icon className="h-5 w-5 shrink-0" />{L(n.th, n.en)}
+                <n.icon className="h-5 w-5 shrink-0" />{navLabel(n, superadmin)}{n.to === "/support" && <Badge n={unread} className="ml-auto" />}
               </Link>
             ))}
           </nav>
@@ -211,8 +220,12 @@ function readCollapsed() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const me = useMe();
-  const { can } = useYodo();
-  const nav = NAV.filter((n) => can(n.key));
+  const { can, me: who } = useYodo();
+  const nav = NAV.filter((n) => n.key === "support" || can(n.key));
+  const superadmin = !!who?.superadmin;
+  const unread = useSupportUnread();
+  const path = useRouterState({ select: (st) => st.location.pathname });
+  useEffect(() => { rememberPage(path); }, [path]); // the chat sends the page the person came from
   // Folded side menu (icons only), remembered on this device (owner 12/10/2026).
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const toggle = () => setCollapsed((c) => {
@@ -243,8 +256,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               activeProps={{ className: "!bg-primary !text-primary-foreground shadow-soft" }}
               title={L(n.th, n.en)}
             >
-              <n.icon className="h-4 w-4 shrink-0" />
-              <span className={wide ? "hidden lg:inline" : "hidden"}>{L(n.th, n.en)}</span>
+              <span className="relative"><n.icon className="h-4 w-4 shrink-0" />{n.to === "/support" && !wide && <Badge n={unread} className="absolute -right-3 -top-2.5" />}</span>
+              <span className={wide ? "hidden lg:inline" : "hidden"}>{navLabel(n, superadmin)}</span>
+              {n.to === "/support" && wide && <Badge n={unread} className="ml-auto hidden lg:inline-flex" />}
             </Link>
           ))}
         </nav>
@@ -265,7 +279,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <div className="sticky top-0 z-20 hidden justify-end px-8 pt-4 md:flex"><div className="flex items-center gap-2"><LangToggle className="border border-border bg-background shadow-soft" /><NotificationBell className="border border-border bg-background shadow-soft" />{me && <AccountMenu me={me} />}</div></div>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-8 md:px-8 md:pb-8 md:pt-2"><Guarded>{children}</Guarded></main>
-        <BottomNav nav={nav} />
+        <BottomNav nav={nav} superadmin={superadmin} unread={unread} />
         <CourseHosts />
         <ReceiptHost />
       </div>

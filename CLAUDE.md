@@ -270,8 +270,15 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   on the page. The calendar keeps the picked day / month / Week view / class in the address (`?day=&at=&view=week&cls=`), so a
   language switch or Back keeps them; opening the menu starts on today. Phone bottom bar: ภาพรวม, นักเรียน, ปฏิทิน,
   วันหมดอายุ, More (คลาส, ครู, ใบเสร็จ) (`PHONE_ORDER` in AppShell.tsx); the computer side menu is unchanged.
-  Support chat: mockup D1GCdHAfNmKbMkrNXQBjed waiting for the owner (answered by the owner = SuperAdmin; menu item last in
-  More / side menu, no floating button).
+- 25/10/2026 support chat (mockup D1GCdHAfNmKbMkrNXQBjed; owner "1 ok 2 เฉพาะผม 3 ok 4 ผู้ดูแล", push to him on every
+  message): menu item "แชทกับผู้ดูแล"/"Chat with support" LAST in the side menu and in More (no floating button), unread
+  badge (`useSupportUnread`, every 30 s). One conversation per person (`SupportMessage`, routes/support.ts); only the
+  SuperAdmin (`role === 'superadmin'`) answers: their item reads "กล่องข้อความ"/"Inbox" (`/support` = inbox,
+  `/support/$userId` = one conversation). Users see answers as "ผู้ดูแล"/"Support". Each user message carries the page they
+  came from (sessionStorage `yodo-last-page`), phone/computer and the app version, shown ONLY to the SuperAdmin. Pictures
+  (shrunk to 1600 px, new uploads only), "อ่านแล้ว"/"Read" on the sender's last message. New message = bell row (kind
+  `support`, ref `support:<userId>`, cannot be turned off) + push to the other side; reading clears those bell rows.
+  Pages poll every 5 s while open. Client `components/yodo/support.tsx`.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

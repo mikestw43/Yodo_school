@@ -961,6 +961,51 @@ try {
     }
   }
 
+  // ---------- chat with support (owner 25/10/2026) ----------
+  {
+    const dd = await (await page.request.get(`${BASE}/api/data`)).json();
+    const pos = dd.positions.find((p) => p.kind === 'admin');
+    const nu = await post('/users', { firstName: 'Ploy', lastName: 'Staff', nickname: 'Ploy', username: 'ploy', password: 'secret9', email: '', phone: '', positionId: pos.id, image: '' });
+    const uctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const up = await uctx.newPage();
+    await uctx.request.post(`${BASE}/api/auth/login`, { headers: H, data: { identifier: 'ploy', password: 'secret9' } });
+    await up.goto(BASE + '/calendar');
+    await up.getByTestId('nav-more').click();
+    const sheet = up.getByRole('dialog');
+    const items = await sheet.locator('a').allInnerTexts();
+    check('chat: last item in More', items.at(-1)?.trim() === 'Chat with support', items.join('|'));
+    await sheet.getByText('Chat with support').click();
+    await up.getByTestId('my-chat').waitFor();
+    await up.getByTestId('chat-input').fill('The calendar jumps to today');
+    await up.getByTestId('chat-file').setInputFiles({ name: 'shot.png', mimeType: 'image/png', buffer: Buffer.from(PNG.split(',')[1], 'base64') });
+    await up.locator('[data-testid="my-chat"] img').first().waitFor();
+    await up.getByTestId('chat-send').click();
+    await up.getByTestId('chat-msg').first().waitFor();
+    check('chat: the user sees no page / device / version line', (await up.getByTestId('chat-context').count()) === 0);
+    await up.screenshot({ path: `${SHOTS}/p23-chat-user.png` });
+    // the SuperAdmin: badge, bell, inbox, details line, reply
+    await page.goto(BASE + '/');
+    await page.getByTestId('support-badge').first().waitFor({ timeout: 35000 }).then(() => check('chat: the SuperAdmin gets a badge on the menu', true), () => check('chat: the SuperAdmin gets a badge on the menu', false));
+    const bell = await (await page.request.get(`${BASE}/api/notices`)).json();
+    check('chat: the SuperAdmin gets a bell notice (and a phone push)', JSON.stringify(bell).includes(`/support/${nu.id}`));
+    check('chat: the SuperAdmin\'s menu item reads Inbox', (await page.getByRole('link', { name: /กล่องข้อความ/ }).count()) > 0);
+    await page.goto(BASE + '/support');
+    await page.getByTestId('inbox-room').first().click();
+    await page.getByTestId('admin-room').waitFor();
+    const ctxLine = await page.getByTestId('chat-context').first().innerText();
+    check('chat: the SuperAdmin sees the page, device and version', ctxLine.includes('/calendar') && ctxLine.includes('มือถือ'), ctxLine);
+    await page.getByTestId('chat-input').fill('กำลังแก้ให้ครับ');
+    await page.getByTestId('chat-send').click();
+    await page.getByText('กำลังแก้ให้ครับ').waitFor();
+    await page.screenshot({ path: `${SHOTS}/50-chat-admin.png` });
+    await up.reload();
+    await up.getByText('กำลังแก้ให้ครับ').waitFor();
+    const userView = await up.getByTestId('chat-messages').innerText();
+    check('chat: the answer shows as "Support", read mark on the user\'s message', userView.includes('Support') && !userView.includes('Mike') && (await up.getByTestId('chat-read').count()) === 1, userView);
+    await up.screenshot({ path: `${SHOTS}/p24-chat-answered.png` });
+    await uctx.close();
+  }
+
   // ---------- English ----------
   await page.goto(BASE + '/');
   await page.getByRole('button', { name: 'Switch to English' }).last().click();

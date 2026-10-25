@@ -512,3 +512,39 @@ describe('class length in weeks, days and time (owner 25/10/2026)', () => {
     expect(d.expiryDays).toBe(14);
   });
 });
+
+describe('chat with support (owner 25/10/2026)', () => {
+  it('a user writes, only the SuperAdmin answers, the details stay with the SuperAdmin', async () => {
+    const d = (await admin.get('/api/data')).body;
+    const pos = d.positions.find((p: { isSystem: boolean }) => !p.isSystem) ?? d.positions[0];
+    const u = await admin.post('/api/users').set(H).send({ firstName: 'Ploy', lastName: 'Chat', nickname: 'พลอย', username: 'ploy', password: 'secret9', email: '', phone: '', positionId: pos.id, image: '' });
+    expect(u.status, JSON.stringify(u.body)).toBe(201);
+    const ploy = await login('ploy', 'secret9');
+    expect((await ploy.post('/api/support/me').set(H).send({ text: '' })).status).toBe(400);
+    const m = await ploy.post('/api/support/me').set(H).send({ text: 'ปฏิทินเด้ง', image: PNG, page: '/calendar', device: 'phone', version: 'abc1234' });
+    expect(m.status).toBe(201);
+    expect(m.body.page).toBeUndefined(); // the user never sees the details line
+    expect((await admin.get('/api/support/unread')).body).toEqual({ unread: 1, support: true });
+    // the SuperAdmin got a bell row that opens the conversation
+    const bell = (await admin.get('/api/notices')).body;
+    expect(JSON.stringify(bell)).toContain(`/support/${u.body.id}`);
+    // others cannot see the inbox or answer
+    expect((await ploy.get('/api/support/rooms')).status).toBe(403);
+    expect((await ploy.post(`/api/support/rooms/${u.body.id}`).set(H).send({ text: 'x' })).status).toBe(403);
+    const rooms = (await admin.get('/api/support/rooms')).body.rooms;
+    expect(rooms[0]).toMatchObject({ userId: u.body.id, name: 'พลอย', unread: 1 });
+    const room = (await admin.get(`/api/support/rooms/${u.body.id}`)).body;
+    expect(room.messages[0]).toMatchObject({ text: 'ปฏิทินเด้ง', page: '/calendar', device: 'phone', version: 'abc1234' });
+    expect(room.messages[0].image).toMatch(/^\/api\/files\//);
+    expect((await admin.get('/api/support/unread')).body.unread).toBe(0);
+    expect((await admin.post(`/api/support/rooms/${u.body.id}`).set(H).send({ text: 'กำลังแก้ให้ครับ' })).status).toBe(201);
+    expect((await ploy.get('/api/support/unread')).body.unread).toBe(1);
+    const mine = (await ploy.get('/api/support/me')).body.messages;
+    expect(mine.map((x: { fromAdmin: boolean }) => x.fromAdmin)).toEqual([false, true]);
+    expect(mine[0].read).toBe(true); // the SuperAdmin read it
+    expect(JSON.stringify(mine)).not.toContain('abc1234');
+    expect((await ploy.get('/api/support/unread')).body.unread).toBe(0);
+    // a picture must be a new upload, never an existing file
+    expect((await ploy.post('/api/support/me').set(H).send({ image: room.messages[0].image })).status).toBe(400);
+  });
+});

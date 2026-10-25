@@ -340,3 +340,21 @@ model ReceiptEmail {
 
   @@index([receiptId])
 }
+
+// "Chat with support" (owner 25/10/2026, mockup D1GCdHAfNmKbMkrNXQBjed): one conversation per person (`userId`), answered by
+// the SuperAdmin. page/device/version are filled in by the app and shown only to the SuperAdmin.
+model SupportMessage {
+  id        String    @id @default(uuid())
+  userId    String // whose conversation
+  fromAdmin Boolean   @default(false)
+  byId      String // who wrote it
+  text      String    @default("")
+  image     String    @default("")
+  page      String    @default("")
+  device    String    @default("")
+  version   String    @default("")
+  readAt    DateTime? // read by the other side
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
