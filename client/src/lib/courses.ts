@@ -7,11 +7,28 @@ import type { Enrollment } from "@/lib/yodo-store";
 export const todayIso = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 const iso = (d: Date) => format(d, "yyyy-MM-dd");
 
-/** Start + n months − 1 day (12/10/2026 + 6 months = 11/04/2027). */
-export function courseEnd(start: string, months: number) {
+/** Start + n months + w weeks − 1 day (12/10/2026 + 6 months = 11/04/2027; owner 25/10/2026 added weeks). */
+export function courseEnd(start: string, months: number, weeks = 0) {
   const d = parseISO(start);
   if (!isValid(d)) return "";
-  return iso(new Date(d.getFullYear(), d.getMonth() + months, d.getDate() - 1));
+  return iso(new Date(d.getFullYear(), d.getMonth() + months, d.getDate() + weeks * 7 - 1));
+}
+
+/** "3 เดือน 2 สัปดาห์" / "3 months 2 weeks". */
+export function lengthText(months: number, weeks = 0) {
+  return [
+    months ? L(`${months} เดือน`, `${months} ${months === 1 ? "month" : "months"}`) : "",
+    weeks ? L(`${weeks} สัปดาห์`, `${weeks} ${weeks === 1 ? "week" : "weeks"}`) : "",
+  ].filter(Boolean).join(" ");
+}
+
+export const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+export const dayLabel = (d: string) => ({ mon: L("จ", "Mon"), tue: L("อ", "Tue"), wed: L("พ", "Wed"), thu: L("พฤ", "Thu"), fri: L("ศ", "Fri"), sat: L("ส", "Sat"), sun: L("อา", "Sun") } as Record<string, string>)[d] ?? d;
+/** "จ, พ, ส · 17:00–18:00", "" when nothing is set. */
+export function whenText(c: { days?: string[]; startTime?: string; endTime?: string }) {
+  const days = (c.days ?? []).map(dayLabel).join(", ");
+  const time = c.startTime ? `${c.startTime}${c.endTime ? `–${c.endTime}` : ""}` : "";
+  return [days, time].filter(Boolean).join(" · ");
 }
 
 /** A renewal starts the day after the course still running ends (no days lost), else today (owner's choice). */

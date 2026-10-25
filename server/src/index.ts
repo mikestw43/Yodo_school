@@ -14,6 +14,11 @@ if (!(await prisma.noticeKey.findUnique({ where: { key: 'once:lang-en' } }))) {
   await prisma.user.updateMany({ data: { lang: 'en' } });
   await prisma.noticeKey.create({ data: { key: 'once:lang-en' } });
 }
+// Once (owner 25/10/2026): "ending soon" warns 14 days ahead instead of 7 (still changeable in profile settings).
+if (!(await prisma.noticeKey.findUnique({ where: { key: 'once:expiry-14' } }))) {
+  await prisma.setting.updateMany({ where: { id: 1, expiryDays: 7 }, data: { expiryDays: 14 } });
+  await prisma.noticeKey.create({ data: { key: 'once:expiry-14' } });
+}
 await ensureRoles();
 await ensureCourseHistory();
 await ensureThaiPrefixes();

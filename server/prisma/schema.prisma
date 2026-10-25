@@ -86,6 +86,10 @@ model DanceClass {
   disabled    Boolean  @default(false)
   price       Float? // baht for the whole course (owner 12/10/2026; was per month)
   months      Int      @default(1) // course length in months; the expiry date follows from it
+  weeks       Int      @default(0) // plus weeks (owner 25/10/2026: "3 months 2 weeks")
+  days        String   @default("") // class days, "mon,wed,sat" (owner 25/10/2026)
+  startTime   String   @default("") // "17:00", one time for every class day
+  endTime     String   @default("")
   createdAt   DateTime @default(now())
 }
 
@@ -273,6 +277,7 @@ model Receipt {
   classId        String    @default("")
   item           String // class name at the time
   months         Int       @default(1)
+  weeks          Int       @default(0)
   startDate      String    @default("")
   expiryDate     String    @default("")
   price          Float
@@ -303,6 +308,7 @@ model CoursePurchase {
   date          String // YYYY-MM-DD: paid / extended on
   item          String    @default("") // class name at the time
   months        Int       @default(0)
+  weeks         Int       @default(0)
   startDate     String    @default("")
   expiryDate    String    @default("")
   fromStart     String    @default("") // the enrollment's period before this row (to undo a cancelled receipt)

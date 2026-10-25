@@ -231,6 +231,14 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
     `yodo-*-before-clear.db` first (before-* backups are never pruned); one audit row with the counts. The card stays.
     (Owner asked to clear the test classes/receipts; an automatic clear at start was refused by my tooling, so the Owner
     presses this himself.)
+- 25/10/2026 (mockup YHSLoC7LASXrQ6ChhFMRee; owner "1 ok 2 A 3 ok 4 ยังไม่ต้อง ทำได้เลย"): class form: length = months + weeks
+  (`DanceClass.weeks`, months may be 0, at least 1 of the two; expiry = start + months + weeks − 1 day, `courseEnd`), class
+  days as chips จ..อา (`days` "mon,wed" ordered) and ONE start/end time for all days (`startTime`/`endTime`, 24-hour hour +
+  5-minute lists `Time24`, a bare time box showed AM/PM). Cards + table show "จ, พ · 17:00–18:00" (`whenText`) and
+  "3 เดือน 2 สัปดาห์" (`lengthText`; purchases/receipts carry `weeks` too, PDFs print it). No calendar sessions made from it
+  (owner: not yet). "Ending soon" = 14 days (once key `once:expiry-14` moved 7 -> 14; fallback 14; still editable).
+  Share on the receipt page: computers save the PDF ("Saved Receipt-....pdf"); phones fetch the PDF when the page opens so
+  the share sheet opens straight from the tap, and save it if sharing fails (owner: Share did nothing on a computer).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

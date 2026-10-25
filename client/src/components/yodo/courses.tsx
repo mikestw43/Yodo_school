@@ -9,7 +9,7 @@ import { DateField, Field, NativeSelect, ReceiptUpload } from "@/components/yodo
 import { useNavigate } from "@tanstack/react-router";
 import { L, fd, getLang } from "@/lib/i18n";
 import { methodLabel, money } from "@/lib/receipt-print";
-import { addPeriod, courseEnd, courseState, daysLeft, daysText, nextStart, todayIso, type PeriodUnit } from "@/lib/courses";
+import { addPeriod, courseEnd, courseState, lengthText, daysLeft, daysText, nextStart, todayIso, type PeriodUnit } from "@/lib/courses";
 import { fullName, useYodo, type BuyLine, type Enrollment, type PaymentInput, type Student } from "@/lib/yodo-store";
 
 // Buying courses, free extensions and a student's course history (owner 12/10/2026, mockup WTr5LoqwQAEnSrKDuzZiMi).
@@ -61,7 +61,7 @@ function BuyHost() {
   const blank = (classId = ""): Line => {
     const c = data.classes.find((x) => x.id === classId);
     const start = nextStart(enrollmentOf(classId));
-    return { key: keySeq++, classId, startDate: start, expiryDate: c ? courseEnd(start, c.months) : "", auto: true, price: c?.price != null ? String(c.price) : "", discountType: "baht", discountValue: "" };
+    return { key: keySeq++, classId, startDate: start, expiryDate: c ? courseEnd(start, c.months, c.weeks) : "", auto: true, price: c?.price != null ? String(c.price) : "", discountType: "baht", discountValue: "" };
   };
   useEffect(() => {
     const on = (e: Event) => {
@@ -88,7 +88,7 @@ function BuyHost() {
       n.price = c?.price != null ? String(c.price) : n.price;
       n.auto = true;
     }
-    if (n.auto && c && n.startDate && (patch.classId !== undefined || patch.startDate !== undefined)) n.expiryDate = courseEnd(n.startDate, c.months);
+    if (n.auto && c && n.startDate && (patch.classId !== undefined || patch.startDate !== undefined)) n.expiryDate = courseEnd(n.startDate, c.months, c.weeks);
     return n;
   }));
   const sums = lines.reduce((t, l) => { const m = lineMoney(l); return { price: t.price + m.price, discount: t.discount + m.discount, amount: t.amount + m.amount }; }, { price: 0, discount: 0, amount: 0 });
@@ -138,7 +138,7 @@ function BuyHost() {
                       {usable(l).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                     </NativeSelect>
                   </Field>
-                  {c && <p className="mt-1 text-xs text-muted-foreground">{L(`${c.months} เดือน`, `${c.months} ${c.months === 1 ? "month" : "months"}`)}{en?.expiryDate ? ` · ${L("ตอนนี้หมดอายุ", "now ends")} ${fd(en.expiryDate)}` : ""}</p>}
+                  {c && <p className="mt-1 text-xs text-muted-foreground">{lengthText(c.months, c.weeks)}{en?.expiryDate ? ` · ${L("ตอนนี้หมดอายุ", "now ends")} ${fd(en.expiryDate)}` : ""}</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Field label={L("เริ่ม", "Start")}><DateField value={l.startDate} onChange={(v) => setLine(l.key, { startDate: v })} /></Field>
@@ -303,7 +303,7 @@ export function StudentCourses({ student, onEdit }: { student: Student; onEdit: 
           {history.map((p) => {
             const label = p.kind === "extend"
               ? L(`ขยายเวลา ${p.item}`, `Extended ${p.item}`)
-              : L(`ซื้อ ${p.item}${p.months ? ` ${p.months} เดือน` : ""}`, `Bought ${p.item}${p.months ? ` ${p.months} ${p.months === 1 ? "month" : "months"}` : ""}`);
+              : `${L("ซื้อ", "Bought")} ${p.item}${p.months || p.weeks ? ` ${lengthText(p.months, p.weeks)}` : ""}`;
             const period = p.kind === "extend" ? `${L("หมดอายุ", "Expiry")} ${fd(p.fromExpiry)} → ${fd(p.expiryDate)}` : `${fd(p.startDate)} – ${fd(p.expiryDate)}`;
             return (
               <div key={p.id} className={`grid gap-x-3 gap-y-0.5 border-b border-border/50 px-3 py-2.5 text-sm last:border-0 sm:grid-cols-[90px_1.3fr_1.6fr_90px_120px] ${p.kind === "extend" ? "bg-amber-50/60" : ""} ${p.cancelled ? "text-muted-foreground line-through" : ""}`} data-testid="history-row">

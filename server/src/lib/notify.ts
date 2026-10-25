@@ -90,7 +90,7 @@ export const fdate = (d: string) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d
 export async function expiryNotices() {
   try {
     const today = todayBkk();
-    const days = (await prisma.setting.findUnique({ where: { id: 1 } }))?.expiryDays ?? 7;
+    const days = (await prisma.setting.findUnique({ where: { id: 1 } }))?.expiryDays ?? 14;
     const list = await prisma.enrollment.findMany({ where: { expiryDate: { gte: today, lte: addDays(today, days) } } });
     for (const e of list) {
       const key = `expiry:${e.id}:${e.expiryDate}`;

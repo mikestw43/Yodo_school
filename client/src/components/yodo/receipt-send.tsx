@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mail, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,23 +15,40 @@ import type { Full } from "@/components/yodo/receipt";
 
 const isEmail = (v: string) => /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(v);
 
+// Share (owner 25/10/2026: did nothing on computers). The PDF is fetched when the page opens, so the phone's share sheet
+// opens straight from the tap (browsers refuse a share that comes after a slow download). Computers, and phones whose
+// share fails, save the file instead.
+const isPhone = () => typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+function saveFile(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  toast.success(L(`บันทึกไฟล์ ${name} แล้ว`, `Saved ${name}`));
+}
+
 export function ShareReceipt({ full }: { full: Full }) {
   const [busy, setBusy] = useState(false);
+  const pdf = useRef<{ key: string; blob: Blob } | null>(null);
+  const key = `${full.receipt.id}|${full.receipt.amount}|${full.receipt.cancelled}|${getLang()}`;
+  const name = `Receipt-${full.receipt.no}.pdf`;
+  const load = async () => {
+    if (pdf.current?.key !== key) pdf.current = { key, blob: await apiFile(`/receipts/${full.receipt.id}/pdf?lang=${getLang()}`) };
+    return pdf.current.blob;
+  };
+  useEffect(() => { if (isPhone()) void load().catch(() => {}); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const share = async () => {
+    const ready = pdf.current?.key === key ? pdf.current.blob : null;
     setBusy(true);
     try {
-      const blob = await apiFile(`/receipts/${full.receipt.id}/pdf?lang=${getLang()}`);
-      const file = new File([blob], `Receipt-${full.receipt.no}.pdf`, { type: "application/pdf" });
+      const blob = ready ?? await load();
+      const file = new File([blob], name, { type: "application/pdf" });
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-      if (nav.canShare?.({ files: [file] })) await nav.share({ files: [file], title: file.name });
-      else {
-        // computers without a share sheet: save the file instead
-        const url = URL.createObjectURL(blob);
-        const a = Object.assign(document.createElement("a"), { href: url, download: file.name });
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-      }
-    } catch (e) { if ((e as Error)?.name !== "AbortError") toast.error(errorText(e)); }
+      if (isPhone() && nav.canShare?.({ files: [file] })) {
+        try { await nav.share({ files: [file], title: name }); }
+        catch (e) { if ((e as Error)?.name !== "AbortError") saveFile(blob, name); }
+      } else saveFile(blob, name);
+    } catch (e) { toast.error(errorText(e)); }
     setBusy(false);
   };
   return <Button variant="outline" className="rounded-full" disabled={busy} onClick={share} data-testid="receipt-share"><Share2 className="h-4 w-4" /> {L("แชร์", "Share")}</Button>;

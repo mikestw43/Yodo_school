@@ -76,8 +76,13 @@ export interface DanceClass {
   disabled: boolean;
   /** Baht for the whole course (owner 12/10/2026). */
   price: number | null;
-  /** Course length in months; the expiry date follows from it. */
+  /** Course length in months + weeks; the expiry date follows from it (owner 25/10/2026). */
   months: number;
+  weeks: number;
+  /** Class days "mon".."sun" and one start/end time for all of them (owner 25/10/2026). */
+  days: string[];
+  startTime: string;
+  endTime: string;
 }
 export type ClassInput = Omit<DanceClass, "id" | "disabled">;
 
@@ -99,13 +104,13 @@ export interface PaymentInput { date: string; method: "cash" | "transfer" | "car
 export interface BuyLine { classId: string; startDate: string; expiryDate: string; price: number; discountType: "baht" | "pct"; discountValue: number }
 /** A course bought (kind buy, a receipt line) or extended for free (kind extend): the student's course history. */
 export interface Purchase {
-  id: string; studentId: string; classId: string; enrollmentId: string; kind: "buy" | "extend"; date: string; item: string; months: number;
+  id: string; studentId: string; classId: string; enrollmentId: string; kind: "buy" | "extend"; date: string; item: string; months: number; weeks?: number;
   startDate: string; expiryDate: string; fromExpiry: string; reason: string; byName: string; receiptId: string; receiptNo: string; cancelled: boolean; createdAt: string;
   /** Money: only for those who may see it. */
   price?: number; discountType?: "baht" | "pct"; discountValue?: number; discount?: number; amount?: number;
 }
 export interface Receipt {
-  id: string; no: string; date: string; studentId: string; enrollmentId: string; classId: string; item: string; months: number;
+  id: string; no: string; date: string; studentId: string; enrollmentId: string; classId: string; item: string; months: number; weeks?: number;
   startDate: string; expiryDate: string; price: number; discount: number; amount: number; method: "cash" | "transfer" | "card";
   slip: string; payer: string; remark: string; receivedByName: string; cancelled: boolean; cancelledAt: string; cancelReason: string;
   cancelledBy: string; createdAt: string;

@@ -23,7 +23,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 /** Money is only sent to those who may see it. */
 export const purchaseOut = (p: CoursePurchase, money: boolean, receiptNo = '') => ({
   id: p.id, studentId: p.studentId, classId: p.classId, enrollmentId: p.enrollmentId, kind: p.kind, date: p.date, item: p.item,
-  months: p.months, startDate: p.startDate, expiryDate: p.expiryDate, fromExpiry: p.fromExpiry, reason: p.reason, byName: p.byName,
+  months: p.months, weeks: p.weeks, startDate: p.startDate, expiryDate: p.expiryDate, fromExpiry: p.fromExpiry, reason: p.reason, byName: p.byName,
   receiptId: p.receiptId, receiptNo, cancelled: !!p.cancelledAt, createdAt: p.createdAt.toISOString(),
   ...(money ? { price: p.price, discountType: p.discountType, discountValue: p.discountValue, discount: p.discount, amount: p.amount } : {}),
 });
@@ -88,7 +88,7 @@ router.post('/courses/buy', requirePerm('students', 'edit'), async (req, res) =>
         ? await db.enrollment.update({ where: { id: l.e.id }, data: { purchaseDate: date, startDate, expiryDate } })
         : await db.enrollment.create({ data: { studentId: s.id, classId: l.c.id, purchaseDate: date, startDate, expiryDate } });
       const p = await db.coursePurchase.create({ data: {
-        studentId: s.id, classId: l.c.id, enrollmentId: after.id, kind: 'buy', date, item: l.c.name, months: l.c.months,
+        studentId: s.id, classId: l.c.id, enrollmentId: after.id, kind: 'buy', date, item: l.c.name, months: l.c.months, weeks: l.c.weeks,
         startDate: l.startDate, expiryDate: l.expiryDate, fromStart: l.e?.startDate ?? '', fromExpiry: l.e?.expiryDate ?? '',
         price: l.price, discountType: l.discountType, discountValue: l.discountValue, discount: l.discount, amount: l.amount, byName,
       } });
@@ -100,7 +100,7 @@ router.post('/courses/buy', requirePerm('students', 'edit'), async (req, res) =>
       const first = rows[0]!;
       receipt = await db.receipt.create({ data: {
         no, ym, seq, date: b.pay.date, studentId: s.id, enrollmentId: first.after.id, classId: first.after.classId,
-        item: lines.map((l) => l.c.name).join(', '), months: lines[0]!.c.months,
+        item: lines.map((l) => l.c.name).join(', '), months: lines[0]!.c.months, weeks: lines[0]!.c.weeks,
         startDate: lines.reduce((m, l) => (l.startDate < m ? l.startDate : m), lines[0]!.startDate),
         expiryDate: lines.reduce((m, l) => (l.expiryDate > m ? l.expiryDate : m), ''),
         price: round2(lines.reduce((t, l) => t + l.price, 0)), discount: round2(lines.reduce((t, l) => t + l.discount, 0)),

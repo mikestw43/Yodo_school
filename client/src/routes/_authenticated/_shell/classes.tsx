@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { Ban, ChevronLeft, Eye, LayoutGrid, List, Pencil, Plus, RotateCcw, Search } from "lucide-react";
+import { Ban, CalendarDays, ChevronLeft, Eye, LayoutGrid, List, Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Avatar, ClassCover, ConfirmDialog, EmptyState, Field, ImageUpload, Nati
 
 import { ageText, classColor, fullName, useYodo, type ClassInput, type DanceClass } from "@/lib/yodo-store";
 import { L, dayShort, fDayMonth, fd, opt } from "@/lib/i18n";
-import { courseState } from "@/lib/courses";
+import { DAYS, courseEnd, courseState, dayLabel, lengthText, todayIso, whenText } from "@/lib/courses";
 import { DaysBadge } from "@/components/yodo/courses";
 import type { YodoData } from "@/lib/yodo-store";
 
@@ -116,6 +116,7 @@ function ClassesPage() {
                       {actions(c)}
                     </div>
                     <p className="truncate text-sm text-muted-foreground"><span className="font-semibold text-primary">{coursePrice(c)}</span> · {t ? t.nickname : L("ไม่มีครู", "No teacher")}</p>
+                    {whenText(c) && <p className="flex items-center gap-1.5 truncate text-sm" data-testid="class-when"><CalendarDays className="h-3.5 w-3.5 shrink-0 text-primary/70" />{whenText(c)}</p>}
                     {/* Bought / not ended / ending soon (owner 12/10/2026, mockup WTr5LoqwQAEnSrKDuzZiMi board 4) */}
                     <button type="button" onClick={(e) => { e.stopPropagation(); setViewId(c.id); }} className="grid grid-cols-3 gap-1.5 text-center" data-testid="class-counts" aria-label={L(`ดูนักเรียนใน ${c.name}`, `See the students of ${c.name}`)}>
                       <span className="rounded-xl bg-muted/70 py-1.5"><span className="block text-base font-bold">{k.bought}</span><span className="block text-[11px] text-muted-foreground">{L("เคยซื้อ", "Bought")}</span></span>
@@ -132,7 +133,7 @@ function ClassesPage() {
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead><tr className="bg-muted/50 text-xs text-muted-foreground [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold">
-                  <th className="text-left">{L("คลาส", "Class")}</th><th className="text-left">{L("ครู", "Teacher")}</th><th className="text-left">{L("ราคา / ระยะเวลา", "Price / length")}</th>
+                  <th className="text-left">{L("คลาส", "Class")}</th><th className="text-left">{L("ครู", "Teacher")}</th><th className="text-left">{L("วัน / เวลา", "Days / time")}</th><th className="text-left">{L("ราคา / ระยะเวลา", "Price / length")}</th>
                   <th>{L("เคยซื้อ", "Bought")}</th><th>{L("ยังไม่หมดอายุ", "Not ended")}</th><th>{L("ใกล้หมด", "Ending soon")}</th><th>{L("สถานะ", "Status")}</th><th>{L("จัดการ", "Actions")}</th>
                 </tr></thead>
                 <tbody>
@@ -143,6 +144,7 @@ function ClassesPage() {
                       <tr key={c.id} onClick={() => setViewId(c.id)} className={`cursor-pointer border-t border-border/60 tabular-nums hover:bg-muted/40 [&>td]:px-4 [&>td]:py-3 ${c.disabled ? "opacity-60" : ""}`}>
                         <td><span className="mr-2.5 inline-block h-2.5 w-2.5 rounded-full align-middle" style={{ background: classColor(data.classes, c.id) }} /><span className="font-semibold">{c.name}</span></td>
                         <td>{t ? t.nickname : "-"}</td>
+                        <td>{whenText(c) || "-"}</td>
                         <td>{coursePrice(c)}</td>
                         <td className="text-center">{k.bought}</td>
                         <td className="text-center">{k.active}</td>
@@ -187,30 +189,53 @@ function ClassesPage() {
   );
 }
 
-const emptyClass: ClassInput = { name: "", teacherId: "", description: "", image: "", status: "Active", price: null, months: 1 };
+/** 24-hour time as hour + minute lists (a bare time box shows AM/PM on some phones). "" = not set. */
+function Time24({ value, onChange, testId, label }: { value: string; onChange: (v: string) => void; testId: string; label: string }) {
+  const [h, m] = value ? value.split(":") : ["", ""];
+  const cls = "h-10 rounded-full border border-input bg-background px-3 text-sm tabular-nums";
+  return (
+    <span className="inline-flex items-center gap-1" role="group" aria-label={label}>
+      <select className={cls} value={h} data-testid={`${testId}-h`} aria-label={`${label} ${L("ชั่วโมง", "hour")}`}
+        onChange={(e) => onChange(e.target.value ? `${e.target.value}:${m || "00"}` : "")}>
+        <option value="">--</option>
+        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")).map((x) => <option key={x} value={x}>{x}</option>)}
+      </select>
+      <span className="text-muted-foreground">:</span>
+      <select className={cls} value={m} disabled={!h} data-testid={`${testId}-m`} aria-label={`${label} ${L("นาที", "minute")}`}
+        onChange={(e) => onChange(`${h}:${e.target.value}`)}>
+        {!h && <option value="">--</option>}
+        {Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0")).map((x) => <option key={x} value={x}>{x}</option>)}
+      </select>
+    </span>
+  );
+}
+
+const emptyClass: ClassInput = { name: "", teacherId: "", description: "", image: "", status: "Active", price: null, months: 1, weeks: 0, days: [], startTime: "", endTime: "" };
 
 /** "10,000 บาท / 6 เดือน" (owner 12/10/2026: the price is for the whole course). */
-export const coursePrice = (c: { price: number | null; months: number }) =>
-  c.price != null ? L(`${c.price.toLocaleString("th-TH")} บาท / ${c.months} เดือน`, `${c.price.toLocaleString("th-TH")} baht / ${c.months} ${c.months === 1 ? "month" : "months"}`) : "-";
+export const coursePrice = (c: { price: number | null; months: number; weeks?: number }) =>
+  c.price != null ? `${L(`${c.price.toLocaleString("th-TH")} บาท`, `${c.price.toLocaleString("th-TH")} baht`)} / ${lengthText(c.months, c.weeks ?? 0)}` : lengthText(c.months, c.weeks ?? 0) || "-";
 
 function ClassForm({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (o: boolean) => void; editing: DanceClass | null }) {
   const { data, addClass, updateClass } = useYodo();
   const [f, setF] = useState<ClassInput>(emptyClass);
-  const [errors, setErrors] = useState<Partial<Record<"name" | "description", string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<"name" | "description" | "length" | "time", string>>>({});
   const [lastOpen, setLastOpen] = useState(false);
   if (open !== lastOpen) {
     setLastOpen(open);
     if (open) {
       setErrors({});
-      setF(editing ? { name: editing.name, teacherId: editing.teacherId, description: editing.description, image: editing.image, status: editing.status, price: editing.price, months: editing.months || 1 } : emptyClass);
+      setF(editing ? { name: editing.name, teacherId: editing.teacherId, description: editing.description, image: editing.image, status: editing.status, price: editing.price, months: editing.months ?? 1, weeks: editing.weeks ?? 0, days: editing.days ?? [], startTime: editing.startTime ?? "", endTime: editing.endTime ?? "" } : emptyClass);
     }
   }
   const teachers = data.teachers.filter((t) => t.status === "Active" || t.id === f.teacherId);
   const submit = () => {
-    const e: Partial<Record<"name" | "description", string>> = {};
+    const e: Partial<Record<"name" | "description" | "length" | "time", string>> = {};
     if (!f.name.trim()) e.name = L("กรุณากรอกชื่อคลาส", "Please enter the class name");
     else if (f.name.length > 100) e.name = L("ชื่อยาวเกินไป", "Name is too long");
     if (f.description.length > 1000) e.description = L("คำอธิบายยาวเกินไป", "Description is too long");
+    if (f.months + f.weeks < 1) e.length = L("ใส่อย่างน้อย 1 เดือน หรือ 1 สัปดาห์", "Enter at least 1 month or 1 week");
+    if (f.startTime && f.endTime && f.endTime <= f.startTime) e.time = L("เวลาเลิกต้องหลังเวลาเริ่ม", "The end time must be after the start time");
     setErrors(e);
     if (Object.keys(e).length) return;
     const clean = { ...f, name: f.name.trim(), description: f.description.trim() };
@@ -238,8 +263,31 @@ function ClassForm({ open, onOpenChange, editing }: { open: boolean; onOpenChang
           <Field label={L("ราคาคลาส (บาท)", "Class price (baht)")}>
             <Input type="number" min={0} step="1" placeholder={L("เช่น 10000", "e.g. 10000")} value={f.price ?? ""} onChange={(e) => setF({ ...f, price: e.target.value === "" ? null : Math.max(0, Number(e.target.value)) })} />
           </Field>
-          <Field label={L("อายุคลาส (เดือน)", "Class length (months)")}>
-            <Input type="number" min={1} max={120} step="1" value={f.months} onChange={(e) => setF({ ...f, months: Math.min(120, Math.max(1, Math.round(Number(e.target.value) || 1))) })} />
+          {/* Length = months + weeks, class days and one time for all of them (owner 25/10/2026, mockup YHSLoC7LASXrQ6ChhFMRee) */}
+          <Field label={L("ระยะเวลาคลาส", "Class length")} error={errors.length}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input type="number" inputMode="numeric" min={0} max={120} step="1" className="w-20 text-center" value={f.months} onChange={(e) => setF({ ...f, months: Math.min(120, Math.max(0, Math.round(Number(e.target.value) || 0))) })} data-testid="class-months" aria-label={L("เดือน", "Months")} />
+              <span className="text-sm text-muted-foreground">{L("เดือน", "months")}</span>
+              <Input type="number" inputMode="numeric" min={0} max={52} step="1" className="w-20 text-center" value={f.weeks} onChange={(e) => setF({ ...f, weeks: Math.min(52, Math.max(0, Math.round(Number(e.target.value) || 0))) })} data-testid="class-weeks" aria-label={L("สัปดาห์", "Weeks")} />
+              <span className="text-sm text-muted-foreground">{L("สัปดาห์", "weeks")}</span>
+            </div>
+            {f.months + f.weeks > 0 && <p className="mt-1.5 rounded-xl bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">{L(`เช่น ซื้อวันนี้ ${fd(todayIso())} → หมดอายุ ${fd(courseEnd(todayIso(), f.months, f.weeks))}`, `e.g. bought today ${fd(todayIso())} → ends ${fd(courseEnd(todayIso(), f.months, f.weeks))}`)}</p>}
+          </Field>
+          <Field label={L("วันเรียน", "Class days")}>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label={L("วันเรียน", "Class days")}>
+              {DAYS.map((d) => {
+                const on = f.days.includes(d);
+                return <button key={d} type="button" aria-pressed={on} data-testid={`class-day-${d}`} onClick={() => setF({ ...f, days: on ? f.days.filter((x) => x !== d) : DAYS.filter((x) => x === d || f.days.includes(x)) })}
+                  className={`h-9 min-w-11 rounded-full border px-3 text-sm font-semibold transition-colors ${on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"}`}>{dayLabel(d)}</button>;
+              })}
+            </div>
+          </Field>
+          <Field label={L("เวลาเรียน", "Class time")} error={errors.time}>
+            <div className="flex items-center gap-2">
+              <Time24 value={f.startTime} onChange={(v) => setF({ ...f, startTime: v })} testId="class-start" label={L("เวลาเริ่ม", "Start time")} />
+              <span className="text-sm text-muted-foreground">{L("ถึง", "to")}</span>
+              <Time24 value={f.endTime} onChange={(v) => setF({ ...f, endTime: v })} testId="class-end" label={L("เวลาเลิก", "End time")} />
+            </div>
           </Field>
           <Field label={L("สถานะคลาส", "Class Status")}>
             <NativeSelect value={f.status} onValueChange={(value) => setF({ ...f, status: value as ClassInput["status"] })}>

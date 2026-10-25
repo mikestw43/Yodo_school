@@ -11,7 +11,7 @@ const ASSETS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..
 const INK = '#2b2024', GREY = '#5f4b52', SOFT = '#7a666c', PINK = '#8e2d4c', BAND = '#f6e6eb', LINE = '#e6c9d2';
 
 export type Lang = 'th' | 'en';
-export type PdfLine = { item: string; months: number; startDate: string; expiryDate: string; price: number; discount: number; discountType: string; discountValue: number; amount?: number };
+export type PdfLine = { item: string; months: number; weeks?: number; startDate: string; expiryDate: string; price: number; discount: number; discountType: string; discountValue: number; amount?: number };
 export type PdfReceipt = {
   no: string; date: string; payer: string; method: string; remark: string; price: number; discount: number; amount: number;
   receivedByName: string; cancelled: boolean; cancelReason: string; lines: PdfLine[];
@@ -142,7 +142,7 @@ export function receiptPdf(r: PdfReceipt, c: PdfCompany, s: PdfStudent, lang: La
   const top = y;
   y += 28;
   r.lines.forEach((l, i) => {
-    const months = l.months ? T(`${l.months} เดือน`, `${l.months} ${l.months === 1 ? 'month' : 'months'}`) : '-';
+    const months = lengthText(l.months, l.weeks ?? 0, lang) || '-';
     const off = l.discount ? ` · ${T('ส่วนลด', 'discount')} ${l.discountType === 'pct' ? `${l.discountValue}%` : money(l.discount)}` : '';
     t('r', 10.5, String(i + 1), cols.n, y);
     t('r', 10.5, l.item, cols.item, y, { width: 280, ellipsis: true });
@@ -180,4 +180,11 @@ export function receiptPdf(r: PdfReceipt, c: PdfCompany, s: PdfStudent, lang: La
   t('r', 10, `(${c.signName || r.receivedByName})`, sx, sy + 60, { width: 176, align: 'center' }, GREY);
   doc.end();
   return done;
+}
+
+/** "3 เดือน 2 สัปดาห์" / "3 months 2 weeks" (owner 25/10/2026: classes run months + weeks). */
+export function lengthText(months: number, weeks: number, lang: Lang) {
+  const th = [months ? `${months} เดือน` : '', weeks ? `${weeks} สัปดาห์` : ''];
+  const en = [months ? `${months} ${months === 1 ? 'month' : 'months'}` : '', weeks ? `${weeks} ${weeks === 1 ? 'week' : 'weeks'}` : ''];
+  return (lang === 'en' ? en : th).filter(Boolean).join(' ');
 }

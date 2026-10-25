@@ -53,7 +53,7 @@ router.post('/notices/delete', requireAuth, async (req, res) => {
 // ---------- what I want to hear about ----------
 router.get('/me/notices', requireAuth, async (req, res) => {
   const [u, st] = await Promise.all([prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } }), prisma.setting.findUnique({ where: { id: 1 } })]);
-  res.json({ off: offKinds(u.noticeOff), expiryDays: st?.expiryDays ?? 7 });
+  res.json({ off: offKinds(u.noticeOff), expiryDays: st?.expiryDays ?? 14 });
 });
 router.put('/me/notices', requireAuth, async (req, res) => {
   const { off } = z.object({ off: z.array(z.enum(NOTICE_KINDS)).max(10) }).parse(req.body);
@@ -64,7 +64,7 @@ router.put('/me/notices', requireAuth, async (req, res) => {
 router.put('/settings/notices', requireAuth, async (req, res) => {
   if (!(await isAllPowerful(req.user!))) throw forbidden();
   const { expiryDays } = z.object({ expiryDays: z.number().int().min(1).max(60) }).parse(req.body);
-  const before = (await prisma.setting.findUnique({ where: { id: 1 } }))?.expiryDays ?? 7;
+  const before = (await prisma.setting.findUnique({ where: { id: 1 } }))?.expiryDays ?? 14;
   await prisma.setting.upsert({ where: { id: 1 }, create: { id: 1, expiryDays }, update: { expiryDays } });
   await audit(req, 'update', 'settings', '1', 'Notifications', { expiry_days: before }, { expiry_days: expiryDays }, true);
   void expiryNotices();

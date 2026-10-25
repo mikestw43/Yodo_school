@@ -79,11 +79,11 @@ export function receiptHtml(o: { receipt: Receipt; company: Company; student: Re
     [c.phone ? T(`โทร ${c.phone}`, `Tel. ${c.phone}`) : "", c.email].filter(Boolean).join(" · "),
     c.taxId ? T(`เลขประจำตัวผู้เสียภาษี ${c.taxId}${c.branch ? ` (${c.branch})` : ""}`, `Tax ID ${c.taxId}${c.branch ? ` (${c.branch})` : ""}`) : "",
   ].filter(Boolean);
-  const monthsOf = (n: number) => (n ? T(`${n} เดือน`, `${n} ${n === 1 ? "month" : "months"}`) : "-");
+  const monthsOf = (n: number, w = 0) => [n ? T(`${n} เดือน`, `${n} ${n === 1 ? "month" : "months"}`) : "", w ? T(`${w} สัปดาห์`, `${w} ${w === 1 ? "week" : "weeks"}`) : ""].filter(Boolean).join(" ") || "-";
   // One row per course (several courses on one receipt, owner 12/10/2026); receipts made before then have one line.
   const lines = r.lines?.length ? r.lines : [{ item: r.item, months: r.months, startDate: r.startDate, expiryDate: r.expiryDate, price: r.price, discount: 0, discountType: "baht" as const, discountValue: 0 }];
   const offText = (l: (typeof lines)[number]) => (l.discount ? ` · ${T("ส่วนลด", "discount")} ${l.discountType === "pct" ? `${l.discountValue}%` : money(l.discount ?? 0)}` : "");
-  const rows = lines.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.item)}${l.startDate ? `<div class="sub">${d(l.startDate)} – ${d(l.expiryDate)}${esc(offText(l))}</div>` : ""}</td><td class="r">${esc(monthsOf(l.months ?? 0))}</td><td class="r">${money(l.price ?? 0)}</td></tr>`).join("");
+  const rows = lines.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.item)}${l.startDate ? `<div class="sub">${d(l.startDate)} – ${d(l.expiryDate)}${esc(offText(l))}</div>` : ""}</td><td class="r">${esc(monthsOf(l.months ?? 0, ("weeks" in l ? l.weeks : 0) ?? 0))}</td><td class="r">${money(l.price ?? 0)}</td></tr>`).join("");
   return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><title>${esc(r.no)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&family=Noto+Serif+Thai:wght@700&display=swap">
 <style>

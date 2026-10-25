@@ -20,7 +20,7 @@ const text = (max = 200) => z.string().trim().max(max);
 
 export const receiptOut = (r: Receipt, lines?: CoursePurchase[]) => ({
   id: r.id, no: r.no, date: r.date, studentId: r.studentId, enrollmentId: r.enrollmentId, classId: r.classId, item: r.item,
-  months: r.months, startDate: r.startDate, expiryDate: r.expiryDate, price: r.price, discount: r.discount, amount: r.amount,
+  months: r.months, weeks: r.weeks, startDate: r.startDate, expiryDate: r.expiryDate, price: r.price, discount: r.discount, amount: r.amount,
   method: r.method, slip: r.slip, payer: r.payer, remark: r.remark, receivedByName: r.receivedByName,
   cancelled: !!r.cancelledAt, cancelledAt: r.cancelledAt?.toISOString() ?? '', cancelReason: r.cancelReason, cancelledBy: r.cancelledBy,
   createdAt: r.createdAt.toISOString(),
@@ -173,8 +173,8 @@ async function pdfParts(rid: string) {
     no: r.no, date: r.date, payer: r.payer, method: r.method, remark: r.remark, price: r.price, discount: r.discount, amount: r.amount,
     receivedByName: r.receivedByName, cancelled: !!r.cancelledAt, cancelReason: r.cancelReason,
     lines: lines.length
-      ? lines.map((l) => ({ item: l.item, months: l.months, startDate: l.startDate, expiryDate: l.expiryDate, price: l.price, discount: l.discount, discountType: l.discountType, discountValue: l.discountValue, amount: l.amount }))
-      : [{ item: r.item, months: r.months, startDate: r.startDate, expiryDate: r.expiryDate, price: r.price, discount: 0, discountType: 'baht', discountValue: 0, amount: r.price }],
+      ? lines.map((l) => ({ item: l.item, months: l.months, weeks: l.weeks, startDate: l.startDate, expiryDate: l.expiryDate, price: l.price, discount: l.discount, discountType: l.discountType, discountValue: l.discountValue, amount: l.amount }))
+      : [{ item: r.item, months: r.months, weeks: r.weeks, startDate: r.startDate, expiryDate: r.expiryDate, price: r.price, discount: 0, discountType: 'baht', discountValue: 0, amount: r.price }],
   };
   const c = companyOut(setting);
   const s: PdfStudent = student ? { code: student.code, prefix: student.prefix, firstName: student.firstName, lastName: student.lastName } : null;

@@ -496,3 +496,16 @@ describe('clear classes and receipts (owner 17/10/2026)', () => {
     expect(fs.readdirSync(BACKUP_DIR).some((f: string) => f.includes('-before-clear'))).toBe(true);
   });
 });
+
+describe('class length in weeks, days and time (owner 25/10/2026)', () => {
+  it('keeps months + weeks, ordered days and the time; refuses an empty length', async () => {
+    const base = { name: 'Weeks', teacherId: '', description: '', image: '', status: 'Active', price: 3000 };
+    expect((await admin.post('/api/classes').set(H).send({ ...base, months: 0, weeks: 0 })).status).toBe(400);
+    expect((await admin.post('/api/classes').set(H).send({ ...base, months: 0, weeks: 8, startTime: '25:00' })).status).toBe(400);
+    const r = await admin.post('/api/classes').set(H).send({ ...base, months: 1, weeks: 2, days: ['sat', 'mon'], startTime: '17:00', endTime: '18:30' });
+    expect(r.status, JSON.stringify(r.body)).toBe(201);
+    expect(r.body).toMatchObject({ months: 1, weeks: 2, days: ['mon', 'sat'], startTime: '17:00', endTime: '18:30' });
+    const d = (await admin.get('/api/data')).body;
+    expect(d.expiryDays).toBe(14);
+  });
+});

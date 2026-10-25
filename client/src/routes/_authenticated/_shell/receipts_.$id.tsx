@@ -11,6 +11,7 @@ import { EmailReceipt, ShareReceipt } from "@/components/yodo/receipt-send";
 import { api, errorText } from "@/lib/api";
 import { L, fd, fdt, getLang, prefixed } from "@/lib/i18n";
 import { methodLabel, money } from "@/lib/receipt-print";
+import { lengthText } from "@/lib/courses";
 
 export const Route = createFileRoute("/_authenticated/_shell/receipts_/$id")({
   component: ReceiptDetailPage,
@@ -32,7 +33,7 @@ function ReceiptDetailPage() {
   if (missing) return <><BackButton /><EmptyState title={L("ไม่พบใบเสร็จ", "Receipt not found")} /></>;
   if (!full) return <p className="py-20 text-center text-sm text-muted-foreground">{L("กำลังโหลด...", "Loading...")}</p>;
   const r = full.receipt, s = full.student;
-  const lines = r.lines?.length ? r.lines : [{ id: r.id, item: r.item, months: r.months, startDate: r.startDate, expiryDate: r.expiryDate, price: r.price, discount: r.discount, discountType: "baht" as const, discountValue: r.discount, amount: r.amount }];
+  const lines = r.lines?.length ? r.lines : [{ id: r.id, item: r.item, months: r.months, weeks: r.weeks ?? 0, startDate: r.startDate, expiryDate: r.expiryDate, price: r.price, discount: r.discount, discountType: "baht" as const, discountValue: r.discount, amount: r.amount }];
   const student = s ? `${prefixed(s.prefix, s.firstName)} ${s.lastName}`.trim() : "-";
   const off = (l: (typeof lines)[number]) => (l.discount ? (l.discountType === "pct" ? `${l.discountValue}%` : `${money(l.discount ?? 0)} ${L("บาท", "THB")}`) : "-");
   return (
@@ -74,7 +75,7 @@ function ReceiptDetailPage() {
               <div key={l.id} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 border-b border-border/70 py-3.5 tabular-nums last:border-b-0">
                 <p className="text-base font-bold">{l.item}{l.discount ? <span className="ml-2 inline-block rounded-full bg-accent/60 px-2 py-0.5 align-middle text-xs font-semibold text-primary">{L("ลด", "Off")} {off(l)}</span> : null}</p>
                 <p className="text-right text-base font-bold">{money(l.amount ?? 0)}</p>
-                <p className="text-sm text-muted-foreground">{l.months ? L(`${l.months} เดือน`, `${l.months} ${l.months === 1 ? "month" : "months"}`) : ""}{l.months && l.startDate ? " · " : ""}{l.startDate ? `${fd(l.startDate)} – ${fd(l.expiryDate)}` : ""}</p>
+                <p className="text-sm text-muted-foreground">{lengthText(l.months ?? 0, l.weeks ?? 0)}{(l.months || l.weeks) && l.startDate ? " · " : ""}{l.startDate ? `${fd(l.startDate)} – ${fd(l.expiryDate)}` : ""}</p>
                 <p className="text-right text-xs text-muted-foreground">{l.discount ? `${L("ราคาเต็ม", "Full price")} ${money(l.price ?? 0)}` : ""}</p>
               </div>
             ))}

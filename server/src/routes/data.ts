@@ -31,7 +31,7 @@ const teacherOut = (t: Teacher) => ({
   id: t.id, image: t.image, prefix: t.prefix, firstName: t.firstName, lastName: t.lastName, nickname: t.nickname, phone: t.phone,
   email: t.email, lineId: t.lineId, specializations: list(t.specializations), status: t.status,
 });
-const classOut = (c: DanceClass) => ({ id: c.id, name: c.name, teacherId: c.teacherId ?? '', description: c.description, image: c.image, status: c.status, disabled: c.disabled, price: c.price, months: c.months });
+const classOut = (c: DanceClass) => ({ id: c.id, name: c.name, teacherId: c.teacherId ?? '', description: c.description, image: c.image, status: c.status, disabled: c.disabled, price: c.price, months: c.months, weeks: c.weeks, days: c.days ? c.days.split(',') : [], startTime: c.startTime, endTime: c.endTime });
 const enrollmentOut = (e: Enrollment) => ({
   id: e.id, studentId: e.studentId, classId: e.classId, joinedAt: iso(e.joinedAt), purchaseDate: e.purchaseDate, startDate: e.startDate,
   expiryDate: e.expiryDate, remark: e.remark, receiptImage: e.receiptImage,
@@ -83,7 +83,7 @@ router.get('/data', requireAuth, async (req, res) => {
     enrollments: enrollments.filter((e) => liveIds.has(e.studentId)).map(enrollmentOut),
     // Course history (owner 12/10/2026); amounts only for those who may see money.
     purchases: purchases.filter((p) => liveIds.has(p.studentId)).map((p) => purchaseOut(p, money, receiptNos.get(p.receiptId) ?? '')),
-    expiryDays: setting?.expiryDays ?? 7,
+    expiryDays: setting?.expiryDays ?? 14,
     schedules: schedules.map(scheduleOut),
     scheduleStudents: scheduleStudents.filter((x) => liveIds.has(x.studentId)),
     positions: shownPositions.map(positionOut),
@@ -257,11 +257,16 @@ router.delete('/teachers/:id', requirePerm('teachers', 'delete'), async (req, re
 const classBody = z.object({
   name: text(200).min(1), teacherId: z.union([id, z.literal('')]), description: text(2000), image: img,
   status: z.enum(['Active', 'Inactive']), price: z.number().min(0).max(10_000_000).nullable(),
-  months: z.number().int().min(1).max(120).default(1),
-});
+  months: z.number().int().min(0).max(120).default(1),
+  weeks: z.number().int().min(0).max(52).default(0),
+  days: z.array(z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'])).max(7).default([]),
+  startTime: z.union([z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'time_format'), z.literal('')]).default(''),
+  endTime: z.union([z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'time_format'), z.literal('')]).default(''),
+}).refine((b) => b.months + b.weeks > 0, { message: 'class_length', path: ['months'] });
 async function classData(b: z.infer<typeof classBody>) {
   if (b.teacherId) await liveTeacher(b.teacherId);
-  return { ...b, teacherId: b.teacherId || null, image: storeImage(b.image) };
+  const order = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  return { ...b, days: order.filter((d) => b.days.includes(d as never)).join(','), teacherId: b.teacherId || null, image: storeImage(b.image) };
 }
 async function getClass(cid: string) {
   const c = await prisma.danceClass.findUnique({ where: { id: cid } });
@@ -269,8 +274,8 @@ async function getClass(cid: string) {
   return c;
 }
 router.post('/classes', requirePerm('classes', 'add'), async (req, res) => {
-  const { id: cid, ...rest } = classBody.extend({ id: id.optional() }).parse(req.body);
-  const c = await prisma.danceClass.create({ data: { ...(cid ? { id: cid } : {}), ...(await classData(rest)) } });
+  const { id: cid, ...rest } = z.object({ id: id.optional() }).passthrough().parse(req.body);
+  const c = await prisma.danceClass.create({ data: { ...(cid ? { id: cid } : {}), ...(await classData(classBody.parse(rest))) } });
   await audit(req, 'insert', 'classes', c.id, c.name, null, c);
   res.status(201).json(classOut(c));
 });

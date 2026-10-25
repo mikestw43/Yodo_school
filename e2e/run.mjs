@@ -528,6 +528,27 @@ try {
   await page.reload();
   await page.getByTestId('classes-table').waitFor({ timeout: 5000 }).then(() => check('classes: the view is remembered', true), () => check('classes: the view is remembered', false));
   await page.getByTestId('classes-view-cards').click();
+  // class length in months + weeks, class days and time (owner 25/10/2026)
+  await page.getByRole('button', { name: 'เพิ่มคลาส' }).first().click();
+  {
+    const dlg = page.getByRole('dialog');
+    await dlg.getByRole('textbox').first().fill('Hip Hop 8W');
+    await dlg.getByTestId('class-months').fill('0');
+    await dlg.getByTestId('class-weeks').fill('8');
+    await dlg.getByTestId('class-day-mon').click();
+    await dlg.getByTestId('class-day-wed').click();
+    await dlg.getByTestId('class-start-h').selectOption('17');
+    await dlg.getByTestId('class-end-h').selectOption('18');
+    await page.screenshot({ path: `${SHOTS}/35d-class-form.png` });
+    await dlg.getByRole('button', { name: 'บันทึก' }).click();
+    await dlg.waitFor({ state: 'detached' });
+    const card = page.locator('[data-testid="class-when"]').filter({ hasText: 'จ, พ · 17:00–18:00' });
+    await card.first().waitFor({ timeout: 5000 }).then(() => check('class card shows the days and time', true), () => check('class card shows the days and time', false));
+    check('class length shows weeks', (await page.getByText('8 สัปดาห์').count()) > 0);
+    const hc = (await (await page.request.get(`${BASE}/api/data`)).json()).classes.find((c) => c.name === 'Hip Hop 8W');
+    check('class saved with weeks, days and time', hc && hc.months === 0 && hc.weeks === 8 && hc.days.join() === 'mon,wed' && hc.startTime === '17:00' && hc.endTime === '18:00', JSON.stringify(hc));
+    await page.screenshot({ path: `${SHOTS}/35e-class-card-when.png` });
+  }
   await post('/classes', { name: 'Jazz Course', teacherId: '', description: '', image: '', status: 'Active', price: 4500, months: 3 });
   // ---------- buy courses: two in one receipt, % and baht off, a remark (owner 12/10/2026) ----------
   await page.goto(BASE + '/students');
@@ -577,6 +598,13 @@ try {
     const pdf = await page.request.get(`${BASE}/api/receipts/${rid}/pdf?lang=en`, { headers: { 'x-yodo': '1' } });
     check('receipt PDF file for sharing', pdf.ok() && pdf.headers()['content-type'] === 'application/pdf' && (await pdf.body()).subarray(0, 4).toString() === '%PDF');
     check('share button shown', await det.getByTestId('receipt-share').isVisible());
+    {
+      // computers: Share saves the PDF (owner 25/10/2026: it did nothing on a computer)
+      const dl = page.waitForEvent('download', { timeout: 10000 });
+      await det.getByTestId('receipt-share').click();
+      const d = await dl.catch(() => null);
+      check('computer: Share saves the receipt PDF', !!d && /^Receipt-RC\d{4}-0001\.pdf$/.test(d.suggestedFilename()), d?.suggestedFilename() ?? 'no download');
+    }
     await det.getByTestId('receipt-email').click();
     const dlg = page.getByTestId('email-dialog');
     await dlg.waitFor();
