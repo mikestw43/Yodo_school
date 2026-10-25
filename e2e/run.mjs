@@ -44,7 +44,7 @@ async function overflow(page) {
 
 try {
   // ---------- computer ----------
-  const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'th-TH' });
+  const ctx = await browser.newContext({ timezoneId: 'Asia/Bangkok', viewport: { width: 1366, height: 900 }, locale: 'th-TH' });
   // Most checks read the Thai texts; the English pass is at the end (default for new accounts is English).
   await ctx.addInitScript(() => { try { if (!localStorage.getItem('yodo-lang')) localStorage.setItem('yodo-lang', 'th'); } catch { /* */ } });
   const page = await ctx.newPage();
@@ -220,7 +220,7 @@ try {
   await page.getByRole('button', { name: 'บันทึก' }).last().click();
   await page.getByText('ปุ่มเข้าด้วย Google จะขึ้น').waitFor().then(() => check('Google client ID saves', true), () => check('Google client ID saves', false));
   await page.screenshot({ path: `${SHOTS}/20-google-setup.png`, fullPage: true });
-  const anon = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const anon = await browser.newContext({ timezoneId: 'Asia/Bangkok', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   await anon.addInitScript(() => { try { localStorage.setItem('yodo-lang', 'th'); } catch { /* */ } });
   const ap = await anon.newPage();
   await ap.goto(BASE + '/auth');
@@ -231,7 +231,7 @@ try {
   await page.request.put(`${BASE}/api/settings/google`, { headers: H, data: { googleClientId: '' } });
 
   // ---------- phone ----------
-  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: await ctx.storageState() });
+  const phone = await browser.newContext({ timezoneId: 'Asia/Bangkok', viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: await ctx.storageState() });
   const pp = await phone.newPage();
   pp.on('pageerror', (e) => errors.push('phone: ' + e.message));
   for (const [p, name] of [['/', 'p1-dashboard'], ['/students', 'p2-students'], ['/classes', 'p3-classes'], ['/calendar', 'p4-calendar'], ['/teachers', 'p5-teachers'], ['/users', 'p6-users'], ['/audit-log', 'p7-audit'], ['/settings', 'p8-settings']]) {
@@ -887,6 +887,7 @@ try {
     await pp.screenshot({ path: `${SHOTS}/p17-calendar.png`, fullPage: true });
     // the teacher's nickname on calendar chips, the day list, the class window and class cards (owner 25/10/2026)
     check('calendar: chip shows the teacher nickname', (await ev.first().getByTestId('cal-event-teacher').innerText()).includes('ครู แอน'));
+    check('calendar: chip shows how many students that day', (await ev.first().getByTestId('cal-event-count').innerText()).trim() === String(inClass), `${await ev.first().getByTestId('cal-event-count').innerText()} vs ${inClass}`);
     check('phone calendar: day list shows the teacher nickname', (await pp.getByTestId('cal-daylist').innerText()).includes('ครู แอน'));
     await ev.first().click();
     check('calendar: class window shows the teacher nickname', (await page.getByTestId('cal-slot-teacher').innerText()).includes('ครู แอน'));
@@ -966,7 +967,7 @@ try {
     const dd = await (await page.request.get(`${BASE}/api/data`)).json();
     const pos = dd.positions.find((p) => p.kind === 'admin');
     const nu = await post('/users', { firstName: 'Ploy', lastName: 'Staff', nickname: 'Ploy', username: 'ploy', password: 'secret9', email: '', phone: '', positionId: pos.id, image: '' });
-    const uctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const uctx = await browser.newContext({ timezoneId: 'Asia/Bangkok', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     const up = await uctx.newPage();
     await uctx.request.post(`${BASE}/api/auth/login`, { headers: H, data: { identifier: 'ploy', password: 'secret9' } });
     await up.goto(BASE + '/calendar');
@@ -1043,7 +1044,7 @@ try {
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${SHOTS}/e11-student-form.png` });
   await page.keyboard.press('Escape');
-  const anon2 = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const anon2 = await browser.newContext({ timezoneId: 'Asia/Bangkok', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const a2 = await anon2.newPage();
   await a2.goto(BASE + '/auth');
   await a2.getByText('Welcome Back').waitFor().then(() => check('sign-in page is English for a new visitor', true), () => check('sign-in page is English for a new visitor', false));

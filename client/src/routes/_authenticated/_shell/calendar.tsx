@@ -93,7 +93,11 @@ function CalendarPage() {
           {s.start && <span className="shrink-0 font-semibold">{s.start}</span>}
           <span className={cn("min-w-0 truncate", compact && "text-[11px]")}>{c?.name}</span>
         </div>
-        <p className="truncate text-muted-foreground" data-testid="cal-event-teacher">{teacherLabel(t)}</p>
+        {/* teacher, then how many students that day (owner 25/10/2026) */}
+        <p className="flex min-w-0 items-center gap-1 text-muted-foreground">
+          <span className="min-w-0 flex-1 truncate" data-testid="cal-event-teacher">{teacherLabel(t)}</span>
+          <span className="flex shrink-0 items-center gap-0.5 font-semibold text-foreground/70" data-testid="cal-event-count" title={L("นักเรียน", "Students")}><UsersRound className="h-3 w-3" />{studentsOn(data, s.classId, s.date).length}</span>
+        </p>
         {!compact && s.start && <p className="text-muted-foreground">{s.start}{s.end ? `–${s.end}` : ""}</p>}
       </button>
     );
