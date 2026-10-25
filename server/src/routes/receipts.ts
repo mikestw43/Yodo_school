@@ -70,6 +70,20 @@ router.get('/receipts/summary', requireAuth, async (req, res) => {
   res.json({ month: m, total: live.reduce((t, r) => t + r.amount, 0), count: live.length, cancelled: rows.length - live.length, cash: by('cash'), transfer: by('transfer'), card: by('card') });
 });
 
+// Money in per month for the dashboard trend line (owner 26/10/2026, mockup Wh5svK5kTkob1JMvMAqqjf option A): the last
+// `months` months up to this one, oldest first, months without receipts as 0.
+router.get('/receipts/trend', requireAuth, async (req, res) => {
+  if (!(await can(req.user, 'receipts', 'view')) && !(await can(req.user, 'money', 'view'))) throw notFound();
+  const n = z.coerce.number().int().min(2).max(24).default(12).parse(req.query.months ?? 12);
+  const [y0, m0] = todayBkk().slice(0, 7).split('-').map(Number) as [number, number];
+  const months = Array.from({ length: n }, (_, i) => {
+    const d = new Date(Date.UTC(y0, m0 - 1 - (n - 1 - i), 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  });
+  const rows = await prisma.receipt.findMany({ where: { date: { gte: `${months[0]}-01` }, cancelledAt: null }, select: { date: true, amount: true } });
+  res.json(months.map((m) => ({ month: m, total: Math.round(rows.filter((r) => r.date.startsWith(m)).reduce((t, r) => t + r.amount, 0) * 100) / 100 })));
+});
+
 router.get('/receipts/:id', requirePerm('receipts', 'view'), async (req, res) => {
   const r = await prisma.receipt.findUnique({ where: { id: id.parse(req.params.id) } });
   if (!r) throw notFound();

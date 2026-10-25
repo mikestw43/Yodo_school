@@ -286,6 +286,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   (`yodo-last-page`, path + search), else the dashboard; one conversation keeps its Back button to the inbox.
 - 26/10/2026 (owner: "เอาไว้ก่อน"): dashboard decoration ideas shown, nothing chosen yet: mockups Jyuo5uFPk6wTzGDPPBpRsJ (A photo hero, B
   pastel cards, C dotted background) and 62DTnMLaAGxicL6YbTMBds (D theatre stage, E magazine, F ribbon + frosted bento; I suggested F).
+- 26/10/2026 (mockup Wh5svK5kTkob1JMvMAqqjf; owner "A แต่ช่องกราฟไม่ต้องใหญ่ ... แค่เห็นเทรนด์"): the dashboard money card (`IncomeCard`
+  in components/yodo/income-trend.tsx, still `money` 'view') is a white card: this month's money in, "up/down n% from last
+  month" (hidden when last month is 0), receipts link, 6 / 12 months buttons and a small line (76 px, last point dotted,
+  pointing/tapping shows that month's total). Data `GET /receipts/trend?months=` (cancelled receipts left out, months
+  without receipts = 0). Month labels use `monthShort` (i18n).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

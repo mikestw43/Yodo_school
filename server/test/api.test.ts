@@ -180,6 +180,11 @@ describe('roles and receipts (owner 12/10/2026)', () => {
     expect(hist[3]).toMatchObject({ fromExpiry: '2027-10-11', expiryDate: '2027-10-18', reason: 'ครูป่วย' });
     const sum = (await admin.get('/api/receipts/summary?month=2026-10')).body;
     expect(sum).toMatchObject({ total: 22500, count: 2, cancelled: 1, transfer: 22500 });
+    // the dashboard trend line: one point per month, oldest first, cancelled receipts left out (owner 26/10/2026)
+    const trend = (await admin.get('/api/receipts/trend?months=24')).body as { month: string; total: number }[];
+    expect(trend).toHaveLength(24);
+    expect(trend.find((t) => t.month === '2026-10')?.total).toBe(22500);
+    expect(trend.map((t) => t.month)).toEqual([...trend.map((t) => t.month)].sort());
     const list = (await admin.get('/api/receipts?month=2026-10')).body;
     expect(list.map((x: { no: string }) => x.no)).toEqual(['RC2610-0003', 'RC2610-0002', 'RC2610-0001']);
     // company details come with a receipt; an Admin may issue but not cancel or extend, and sees no money in the history

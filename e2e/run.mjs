@@ -815,6 +815,22 @@ try {
   await page.goto(BASE + '/');
   await page.getByTestId('money-card').waitFor({ timeout: 5000 }).then(() => check('dashboard shows the month\'s money to those allowed', true), () => check('dashboard shows the month\'s money to those allowed', false));
   await page.screenshot({ path: `${SHOTS}/40-dashboard-money.png` });
+  // a small trend line of money in per month, 6 / 12 months, hover shows the month (owner 26/10/2026)
+  {
+    const tr = page.getByTestId('income-trend');
+    await tr.waitFor({ timeout: 5000 }).catch(() => {});
+    const labels6 = await tr.locator('text').count();
+    const box = await tr.boundingBox();
+    check('dashboard: small money trend line (6 months)', !!box && box.height <= 100 && labels6 === 6, `${box?.height}px, ${labels6} labels`);
+    await page.mouse.move(box.x + box.width - 4, box.y + 30);
+    await page.getByTestId('income-tip').waitFor({ timeout: 3000 }).then(() => check('dashboard: pointing at the line shows that month', true), () => check('dashboard: pointing at the line shows that month', false));
+    await page.getByTestId('trend-12').click();
+    check('dashboard: 12 months', (await tr.locator('text').count()) === 5, String(await tr.locator('text').count()));
+    await page.getByTestId('trend-6').click();
+    await pp.goto(BASE + '/');
+    await pp.getByTestId('income-trend').waitFor({ timeout: 5000 }).catch(() => {});
+    await pp.screenshot({ path: `${SHOTS}/p26-dashboard-trend.png` });
+  }
   // phone: the receipt fits the screen
   await pp.goto(BASE + '/receipts');
   await pp.getByTestId('receipt-table').locator('tbody tr').first().click();

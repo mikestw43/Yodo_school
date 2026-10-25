@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { addDays, format, startOfWeek } from "date-fns";
-import { Banknote, CalendarHeart, ChevronRight, Crown, Hourglass, Music4, PersonStanding } from "lucide-react";
+import { CalendarHeart, ChevronRight, Crown, Hourglass, Music4, PersonStanding } from "lucide-react";
 import { courseState, lessonsOn, studentsOn } from "@/lib/courses";
 import { Card } from "@/components/ui/card";
 import { Avatar, PageHeader } from "@/components/yodo/ui";
 import { ageText, classColor, fullName, teacherLabel, useYodo } from "@/lib/yodo-store";
-import { L, fDayMonth, fMonthYear } from "@/lib/i18n";
+import { L, fDayMonth } from "@/lib/i18n";
 import { api } from "@/lib/api";
-import { money } from "@/lib/receipt-print";
+import { IncomeCard } from "@/components/yodo/income-trend";
 
 export const Route = createFileRoute("/_authenticated/_shell/")({
   head: () => ({
@@ -62,16 +62,7 @@ function Dashboard() {
         </div>
       </div>
 
-      {seeMoney && sum && (
-        <Card className="mb-4 flex-row items-center gap-4 rounded-3xl border-0 bg-primary p-5 text-primary-foreground" data-testid="money-card">
-          <Banknote className="h-7 w-7 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs opacity-85">{L(`รับเงิน ${fMonthYear(new Date())}`, `Money in, ${fMonthYear(new Date())}`)}</p>
-            <p className="font-display text-3xl font-semibold">{money(sum.total)} {L("บาท", "THB")}</p>
-          </div>
-          {can("receipts") && <Link to="/receipts" className="shrink-0 rounded-full bg-primary-foreground/15 px-4 py-2 text-sm hover:bg-primary-foreground/25">{L(`${sum.count} ใบเสร็จ`, `${sum.count} receipts`)}</Link>}
-        </Card>
-      )}
+      {seeMoney && sum && <IncomeCard count={sum.count} showReceipts={can("receipts")} />}
       {/* Courses ending soon (owner 12/10/2026): tap = the Courses page */}
       {can("courses") && (
         <Link to="/courses" search={{ show: "soon" }} className="mb-4 block" data-testid="soon-card">

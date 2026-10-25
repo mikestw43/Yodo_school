@@ -53,6 +53,7 @@ export const fMonthYear = (v: string | Date) => { const d = toDate(v); return `$
 /** "12 ต.ค. 2026" / "12 Oct 2026" */
 export const fDayMonth = (v: string | Date, withYear = true) => { const d = toDate(v); return `${d.getDate()} ${SHORT[current][d.getMonth()]}${withYear ? ` ${d.getFullYear()}` : ""}`; };
 export const monthName = (m: number) => MONTHS[current][m]!;
+export const monthShort = (m: number) => SHORT[current][m]!;
 export const dayName = (wd: number) => DAYS[current][wd]!;
 export const dayShort = (wd: number) => DAYS_SHORT[current][wd]!;
 
