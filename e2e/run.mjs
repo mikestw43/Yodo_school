@@ -265,7 +265,7 @@ try {
     await bn.getByTestId('nav-more').waitFor();
     const tabs = await bn.locator('a, button').allInnerTexts();
     const box = await bn.boundingBox();
-    check('phone: menu bar at the bottom, 4 pages + More, no hamburger', box.y + box.height >= 840 && tabs.map((t) => t.trim()).join('|') === 'ภาพรวม|นักเรียน|คลาส|วันหมดอายุ|เพิ่มเติม' && (await pp.getByLabel('เปิดเมนู').count()) === 0, tabs.join('|'));
+    check('phone: menu bar at the bottom, 4 pages + More, no hamburger', box.y + box.height >= 840 && tabs.map((t) => t.trim()).join('|') === 'ภาพรวม|นักเรียน|ปฏิทิน|วันหมดอายุ|เพิ่มเติม' && (await pp.getByLabel('เปิดเมนู').count()) === 0, tabs.join('|'));
     await pp.screenshot({ path: `${SHOTS}/p9-menu.png` });
     await bn.getByText('นักเรียน').click();
     await pp.waitForURL('**/students');
@@ -273,7 +273,7 @@ try {
     await pp.getByTestId('nav-more').click();
     const sheet = pp.getByRole('dialog');
     await sheet.getByText('ใบเสร็จรับเงิน').waitFor();
-    check('phone: More holds the rest, without Users / Permissions / Audit Log', (await sheet.getByText('ครู').count()) === 1 && (await sheet.getByText('ปฏิทิน').count()) === 1 && (await sheet.getByText('ผู้ใช้ระบบ').count()) === 0);
+    check('phone: More holds the rest, without Users / Permissions / Audit Log', (await sheet.getByText('ครู').count()) === 1 && (await sheet.getByText('คลาส', { exact: true }).count()) === 1 && (await sheet.getByText('ผู้ใช้ระบบ').count()) === 0);
     await pp.waitForTimeout(400);
     await pp.screenshot({ path: `${SHOTS}/p9b-more.png` });
     await sheet.getByText('ใบเสร็จรับเงิน').click();
@@ -704,13 +704,20 @@ try {
     const e2 = d3.enrollments.find((x) => x.studentId === s2.id && x.classId === c2.id);
     check('extend 7 days: new expiry, kept in the history', e2.expiryDate === plus(67) && d3.purchases.some((p) => p.kind === 'extend' && p.reason === 'ครูป่วย 1 สัปดาห์'), e2.expiryDate);
   }
-  await page.locator('table [data-testid="course-row"]').filter({ hasText: s2.firstName }).first().getByRole('link').click();
-  await page.waitForURL('**/students');
-  await page.getByRole('tab', { name: /คลาส/ }).click();
-  const sc = page.getByTestId('student-courses');
+  // the name opens the student's classes in a small window over the expiry page (owner 25/10/2026, option A)
+  await page.locator('table [data-testid="course-row"]').filter({ hasText: s2.firstName }).first().getByTestId('course-student').click();
+  const sc = page.getByTestId('student-classes').getByTestId('student-courses');
   await sc.waitFor();
-  check('student details: current courses and the purchase history', (await sc.getByTestId('course-card').count()) === 3 && (await sc.getByTestId('history-row').count()) === 3);
+  check('expiry dates: the name opens the classes window, not the application', (await sc.getByTestId('course-card').count()) === 3 && (await sc.getByTestId('history-row').count()) === 3 && (await page.getByTestId('student-classes').getByText(/^แก้ไข$/).count()) === 0, String(await sc.getByTestId('course-card').count()));
   await page.screenshot({ path: `${SHOTS}/42-student-courses.png` });
+  await page.keyboard.press('Escape');
+  await page.getByTestId('student-classes').waitFor({ state: 'detached' });
+  check('expiry dates: closing the window stays on the expiry page', new URL(page.url()).pathname === '/courses');
+  await page.goto(BASE + '/students');
+  await page.locator('tr').filter({ hasText: s2.firstName }).first().click();
+  await page.getByRole('tab', { name: /คลาส/ }).click();
+  await page.getByTestId('student-courses').waitFor();
+  check('student details: current courses and the purchase history', (await page.getByTestId('student-courses').getByTestId('course-card').count()) === 3);
   await page.keyboard.press('Escape');
   await page.goto(BASE + '/classes');
   await page.getByTestId('class-counts').first().waitFor();
@@ -938,6 +945,20 @@ try {
     check('calendar: Week before Month, Month open by default', wk.x < mo.x && (await pp.getByTestId('cal-view-month').getAttribute('aria-pressed')) === 'true');
     check('phone calendar: toolbar is two short lines', tb.height <= 90, `${tb.height}px`);
     await pp.screenshot({ path: `${SHOTS}/p22-calendar-toolbar.png` });
+    // the picked day survives a language switch (owner 25/10/2026: it jumped back to today)
+    {
+      const other = (await pp.locator('[data-testid="cal-day"]').evaluateAll((els, t) => els.map((e) => e.dataset.date).filter((d) => d !== t), today))[10];
+      await pp.locator(`[data-testid="cal-day"][data-date="${other}"]`).click();
+      await pp.waitForTimeout(300);
+      await pp.getByRole('button', { name: 'Switch to English' }).first().click();
+      await pp.getByRole('button', { name: 'เปลี่ยนเป็นภาษาไทย' }).first().waitFor();
+      await pp.waitForTimeout(500);
+      const sel = new URL(pp.url()).searchParams.get('day');
+      const title = await pp.getByTestId('cal-daylist').locator('p').first().innerText();
+      check('calendar: the picked day stays after switching the language', sel === other && title.includes(` ${Number(other.slice(8))} `), `${sel} vs ${other}: ${title}`);
+      await pp.getByRole('button', { name: 'เปลี่ยนเป็นภาษาไทย' }).first().click();
+      await pp.getByRole('button', { name: 'Switch to English' }).first().waitFor();
+    }
   }
 
   // ---------- English ----------

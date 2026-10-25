@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import { addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isSameMonth, parseISO, startOfMonth, startOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight, Clock, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, NativeSelect, PageHeader } from "@/components/yodo/ui";
-import { DaysBadge } from "@/components/yodo/courses";
+import { DaysBadge, openStudentClasses } from "@/components/yodo/courses";
 import { lessonsOn, studentsOn, type ClassSlot } from "@/lib/courses";
 import { classColor, fullName, teacherLabel, useYodo, type Student } from "@/lib/yodo-store";
 import { cn } from "@/lib/utils";
@@ -23,8 +23,20 @@ export const Route = createFileRoute("/_authenticated/_shell/calendar")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // The chosen day / month / view / class live in the address, so switching the language (which redraws the page) or
+  // coming Back keeps them (owner 25/10/2026: the calendar jumped back to today).
+  validateSearch: (s: Record<string, unknown>): CalSearch => {
+    const out: CalSearch = {};
+    const iso = (v: unknown) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if (iso(s["day"])) out.day = s["day"] as string;
+    if (iso(s["at"])) out.at = s["at"] as string;
+    if (s["view"] === "week") out.view = "week";
+    if (typeof s["cls"] === "string" && s["cls"]) out.cls = s["cls"];
+    return out;
+  },
   component: CalendarPage,
 });
+type CalSearch = { day?: string; at?: string; view?: "week"; cls?: string };
 
 // Monday first
 const DOW_INDEX = [1, 2, 3, 4, 5, 6, 0];
@@ -32,11 +44,23 @@ type Slot = ClassSlot & { date: string };
 
 function CalendarPage() {
   const { data } = useYodo();
-  const [view, setView] = useState<"month" | "week">("month");
-  const [cursor, setCursor] = useState(new Date());
-  const [classFilter, setClassFilter] = useState("all");
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const [view, setView] = useState<"month" | "week">(search.view ?? "month");
+  const [cursor, setCursor] = useState(() => (search.at ? parseISO(search.at) : new Date()));
+  const [classFilter, setClassFilter] = useState(search.cls ?? "all");
   const today = format(new Date(), "yyyy-MM-dd");
-  const [day, setDay] = useState(today); // phones: the day whose classes are listed
+  const [day, setDay] = useState(search.day ?? today); // phones: the day whose classes are listed
+  useEffect(() => {
+    const at = format(cursor, "yyyy-MM-dd");
+    const next: CalSearch = {
+      ...(day !== today ? { day } : {}),
+      ...(at !== today ? { at } : {}),
+      ...(view === "week" ? { view: "week" as const } : {}),
+      ...(classFilter !== "all" ? { cls: classFilter } : {}),
+    };
+    if (JSON.stringify(next) !== JSON.stringify(search)) void navigate({ search: next, replace: true });
+  }, [cursor, day, view, classFilter, today, search, navigate]);
   const [selected, setSelected] = useState<Slot | null>(null);
 
   const days = useMemo(() => {
@@ -197,7 +221,7 @@ function SlotDialog({ slot, onClose }: { slot: Slot | null; onClose: () => void 
               {rows.map(({ e, s }) => (
                 <li key={e.id} className="flex items-center gap-2 text-sm">
                   <Avatar src={s.image} name={s.firstName} className="h-7 w-7 text-xs" />
-                  <Link to="/students" search={{ view: s.id }} className="min-w-0 flex-1 truncate hover:underline">{fullName(s)}{s.nickname ? ` (${s.nickname})` : ""}</Link>
+                  <button type="button" onClick={() => openStudentClasses(s.id)} className="min-w-0 flex-1 truncate text-left hover:underline">{fullName(s)}{s.nickname ? ` (${s.nickname})` : ""}</button>
                   {e.expiryDate && <DaysBadge expiry={e.expiryDate} />}
                 </li>
               ))}

@@ -264,6 +264,14 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 - 25/10/2026 (owner, bug): the calendar shows a class on a day only when an ACTIVE student's period covers that day
   (`lessonsOn` / `studentsOn` in client lib/courses.ts; a Saturday class bought from 19/10 no longer shows on 3/10).
   Dashboard "Today's schedule" and "Lessons this week" use the same rule.
+- 25/10/2026 (owner "เอาแบบ A ... เอาตามที่คุณแนะนำ"): tapping a student on the expiry dates page or in the calendar's class
+  window opens a small window over the page (`openStudentClasses` / `ClassesHost` in components/yodo/courses.tsx: photo, name,
+  code, phone, `StudentCourses` without the fix-dates pencil, link "ดูข้อมูลนักเรียน" to the full details); closing it stays
+  on the page. The calendar keeps the picked day / month / Week view / class in the address (`?day=&at=&view=week&cls=`), so a
+  language switch or Back keeps them; opening the menu starts on today. Phone bottom bar: ภาพรวม, นักเรียน, ปฏิทิน,
+  วันหมดอายุ, More (คลาส, ครู, ใบเสร็จ) (`PHONE_ORDER` in AppShell.tsx); the computer side menu is unchanged.
+  Support chat: mockup D1GCdHAfNmKbMkrNXQBjed waiting for the owner (answered by the owner = SuperAdmin; menu item last in
+  More / side menu, no floating button).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

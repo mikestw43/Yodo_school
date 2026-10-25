@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { CalendarPlus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, EmptyState, PageHeader, Pagination, SearchFilters, usePagination } from "@/components/yodo/ui";
-import { DaysBadge, openBuy, openExtend } from "@/components/yodo/courses";
+import { DaysBadge, openBuy, openExtend, openStudentClasses } from "@/components/yodo/courses";
 import { courseState, daysLeft } from "@/lib/courses";
 import { fullName, teacherLabel, useYodo } from "@/lib/yodo-store";
 import { L, fd } from "@/lib/i18n";
@@ -52,10 +52,10 @@ function CoursesPage() {
     </div>
   );
   const who = (r: (typeof rows)[number]) => (
-    <Link to="/students" search={{ view: r.s!.id }} className="flex min-w-0 items-center gap-3 text-left hover:text-primary">
+    <button type="button" onClick={() => openStudentClasses(r.s!.id)} data-testid="course-student" className="flex min-w-0 items-center gap-3 text-left hover:text-primary">
       <Avatar src={r.s!.image} name={r.s!.firstName} className="h-9 w-9" />
       <span className="min-w-0"><span className="block truncate font-medium">{fullName(r.s!)}</span><span className="block font-mono text-xs text-muted-foreground">{r.s!.code}{r.s!.phone ? ` · ${r.s!.phone}` : ""}</span></span>
-    </Link>
+    </button>
   );
   return (
     <>

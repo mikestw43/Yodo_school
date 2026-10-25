@@ -158,9 +158,12 @@ type NavItem = (typeof NAV)[number];
 
 /** Phones: menu bar at the bottom like a phone app (owner 17/10/2026, mockup 2o1pdZZR6AXvK63C3a4rsf). Up to 5 pages show
  *  as they are; more than 5 = the first 4 + "More" (three dots), which opens the rest from the bottom. */
-function BottomNav({ nav }: { nav: NavItem[] }) {
+// Phone order (owner 25/10/2026): Calendar takes Classes' place in the bar, Classes moves into More. Computers keep NAV.
+const PHONE_ORDER = ["/", "/students", "/calendar", "/courses", "/classes", "/teachers", "/receipts"];
+function BottomNav({ nav: all }: { nav: NavItem[] }) {
   const [open, setOpen] = useState(false);
   const path = useRouterState({ select: (st) => st.location.pathname });
+  const nav = [...all].sort((a, b) => PHONE_ORDER.indexOf(a.to) - PHONE_ORDER.indexOf(b.to));
   const main = nav.length > 5 ? nav.slice(0, 4) : nav;
   const rest = nav.length > 5 ? nav.slice(4) : [];
   const on = (to: string) => (to === "/" ? path === "/" : path === to || path.startsWith(`${to}/`) || path.startsWith(`${to}_`));

@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DateField, Field, NativeSelect, ReceiptUpload } from "@/components/yodo/ui";
-import { useNavigate } from "@tanstack/react-router";
+import { Avatar, DateField, Field, NativeSelect, ReceiptUpload } from "@/components/yodo/ui";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { L, fd, getLang } from "@/lib/i18n";
 import { methodLabel, money } from "@/lib/receipt-print";
 import { addPeriod, courseEnd, courseState, lengthText, daysLeft, daysText, nextStart, todayIso, type PeriodUnit } from "@/lib/courses";
@@ -17,8 +17,11 @@ import { fullName, useYodo, type BuyLine, type Enrollment, type PaymentInput, ty
 
 const BUY = "yodo:open-buy";
 const EXTEND = "yodo:open-extend";
+const CLASSES = "yodo:open-student-classes";
 export const openBuy = (studentId: string, classId?: string) => window.dispatchEvent(new CustomEvent(BUY, { detail: { studentId, classId } }));
 export const openExtend = (enrollmentId: string) => window.dispatchEvent(new CustomEvent(EXTEND, { detail: enrollmentId }));
+/** A student's classes in a small window over the page (expiry dates, calendar): no application details, no Edit / PDF. */
+export const openStudentClasses = (studentId: string) => window.dispatchEvent(new CustomEvent(CLASSES, { detail: studentId }));
 
 const STATE_CLS = {
   ok: "bg-emerald-100 text-emerald-800",
@@ -34,7 +37,42 @@ export function DaysBadge({ expiry }: { expiry: string }) {
 }
 
 export function CourseHosts() {
-  return <><BuyHost /><ExtendHost /></>;
+  return <><BuyHost /><ExtendHost /><ClassesHost /></>;
+}
+
+// ---------- a student's classes (owner 25/10/2026, option A: opened from the expiry dates page and the calendar) ----------
+function ClassesHost() {
+  const navigate = useNavigate();
+  const { data } = useYodo();
+  const [id, setId] = useState<string | null>(null);
+  const path = useRouterState({ select: (r) => r.location.pathname });
+  useEffect(() => {
+    const on = (ev: Event) => setId((ev as CustomEvent<string>).detail);
+    window.addEventListener(CLASSES, on);
+    return () => window.removeEventListener(CLASSES, on);
+  }, []);
+  useEffect(() => { setId(null); }, [path]); // e.g. a receipt number was tapped
+  const s = data.students.find((x) => x.id === id);
+  return (
+    <Dialog open={!!s} onOpenChange={(o) => !o && setId(null)}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl" data-testid="student-classes">
+        {s && (
+          <>
+            <DialogHeader className="flex-row items-center gap-3 space-y-0 text-left">
+              <Avatar src={s.image} name={s.firstName} className="h-14 w-14 shrink-0" />
+              <div className="min-w-0">
+                <DialogTitle className="truncate font-display text-xl">{fullName(s)}</DialogTitle>
+                <DialogDescription className="font-mono text-xs">{[s.nickname, s.code, s.phone].filter(Boolean).join(" · ")}</DialogDescription>
+              </div>
+            </DialogHeader>
+            <StudentCourses student={s} />
+            <button type="button" className="mx-auto block text-sm font-semibold text-primary hover:underline" data-testid="student-classes-profile"
+              onClick={() => { setId(null); void navigate({ to: "/students", search: { view: s.id } }); }}>{L("ดูข้อมูลนักเรียน", "See student details")}</button>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ---------- buy ----------
@@ -260,7 +298,7 @@ function ExtendHost() {
 }
 
 // ---------- a student's courses (details window, "Courses" tab) ----------
-export function StudentCourses({ student, onEdit }: { student: Student; onEdit: (e: Enrollment) => void }) {
+export function StudentCourses({ student, onEdit }: { student: Student; onEdit?: (e: Enrollment) => void }) {
   const navigate = useNavigate();
   const { data, can } = useYodo();
   const mine = data.enrollments.filter((e) => e.studentId === student.id)
@@ -290,7 +328,7 @@ export function StudentCourses({ student, onEdit }: { student: Student; onEdit: 
                 <div className="flex flex-wrap gap-1.5">
                   {canBuy && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openBuy(student.id, e.classId)}><RefreshCw className="h-3.5 w-3.5" /> {L("ต่ออายุคลาส", "Renew")}</Button>}
                   {canExtend && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openExtend(e.id)}><CalendarPlus className="h-3.5 w-3.5" /> {L("ขยายเวลา", "Extend")}</Button>}
-                  {can("students", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground" title={L("แก้ไขวันที่ / นำออกจากคลาส", "Fix dates / remove from class")} aria-label={L(`แก้ไข ${c?.name ?? ""}`, `Edit ${c?.name ?? ""}`)} onClick={() => onEdit(e)}><Pencil className="h-3.5 w-3.5" /></Button>}
+                  {onEdit && can("students", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground" title={L("แก้ไขวันที่ / นำออกจากคลาส", "Fix dates / remove from class")} aria-label={L(`แก้ไข ${c?.name ?? ""}`, `Edit ${c?.name ?? ""}`)} onClick={() => onEdit(e)}><Pencil className="h-3.5 w-3.5" /></Button>}
                 </div>
               </div>
             );
