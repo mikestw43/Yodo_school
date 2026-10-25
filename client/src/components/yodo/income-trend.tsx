@@ -15,7 +15,10 @@ type Point = { month: string; total: number };
 
 const short = (m: string) => monthShort(Number(m.slice(5, 7)) - 1);
 
-function TrendLine({ points }: { points: Point[] }) {
+/** Blue for the students line, so it is never mixed up with the pink money line (validated pair, both themes). */
+const BLUE = "text-[#5b7bb8] dark:text-[#6a90e6]";
+
+function TrendLine({ points, label, value, testId, className }: { points: Point[]; label: string; value: (n: number) => string; testId: string; className?: string }) {
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(300);
   const [hover, setHover] = useState<number | null>(null);
@@ -40,9 +43,9 @@ function TrendLine({ points }: { points: Point[] }) {
   const every = n > 6 ? 3 : 1;
   const h = hover === null ? null : points[hover]!;
   return (
-    <div ref={box} className="relative mt-2 text-primary" data-testid="income-trend">
+    <div ref={box} className={cn("relative mt-2 text-primary", className)} data-testid={`${testId}-trend`}>
       <svg width={w} height={H} viewBox={`0 0 ${w} ${H}`} className="block touch-none overflow-visible" role="img"
-        aria-label={L("กราฟรายรับรายเดือน", "Monthly money in")}
+        aria-label={label}
         onPointerMove={(e) => pick(e.clientX)} onPointerDown={(e) => pick(e.clientX)} onPointerLeave={() => setHover(null)}>
         <line x1={pl} x2={w - pr} y1={y(0)} y2={y(0)} className="stroke-border" strokeWidth={1} />
         <path d={area} fill="currentColor" opacity={0.1} />
@@ -60,10 +63,23 @@ function TrendLine({ points }: { points: Point[] }) {
       </svg>
       {h && hover !== null && (
         <div className="pointer-events-none absolute -top-9 whitespace-nowrap rounded-xl bg-foreground px-2.5 py-1 text-xs text-background"
-          style={{ left: Math.max(0, Math.min(w - 130, x(hover) - 65)) }} data-testid="income-tip">
-          <b>{monthName(Number(h.month.slice(5, 7)) - 1)} {h.month.slice(0, 4)}</b> · {money(h.total)} {L("บาท", "THB")}
+          style={{ left: Math.max(0, Math.min(w - 130, x(hover) - 65)) }} data-testid={`${testId}-tip`}>
+          <b>{monthName(Number(h.month.slice(5, 7)) - 1)} {h.month.slice(0, 4)}</b> · {value(h.total)}
         </div>
       )}
+    </div>
+  );
+}
+
+function Periods({ value, onChange, testPrefix }: { value: 6 | 12; onChange: (m: 6 | 12) => void; testPrefix: string }) {
+  return (
+    <div className="mt-3 flex gap-1.5" role="group" aria-label={L("ช่วงเวลา", "Period")}>
+      {([6, 12] as const).map((m) => (
+        <button key={m} type="button" aria-pressed={value === m} onClick={() => onChange(m)} data-testid={`${testPrefix}-${m}`}
+          className={cn("h-7 rounded-full px-3 text-xs font-bold transition-colors", value === m ? "bg-primary text-primary-foreground" : "border border-border bg-background hover:bg-muted")}>
+          {L(`${m} เดือน`, `${m} months`)}
+        </button>
+      ))}
     </div>
   );
 }
@@ -77,7 +93,7 @@ export function IncomeCard({ count, showReceipts }: { count: number; showReceipt
   const now = points[points.length - 1]!.total, before = points[points.length - 2]!.total;
   const pct = before > 0 ? Math.round(((now - before) / before) * 100) : null;
   return (
-    <Card className="mb-4 gap-0 rounded-3xl p-5" data-testid="money-card">
+    <Card className="flex flex-col gap-0 rounded-3xl p-5" data-testid="money-card">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">{L(`รับเงิน ${fMonthYear(new Date())}`, `Money in, ${fMonthYear(new Date())}`)}</p>
@@ -91,15 +107,42 @@ export function IncomeCard({ count, showReceipts }: { count: number; showReceipt
         </div>
         {showReceipts && <Link to="/receipts" className="shrink-0 rounded-full bg-accent px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-accent/70">{L(`${count} ใบเสร็จ`, `${count} receipts`)}</Link>}
       </div>
-      <div className="mt-3 flex gap-1.5" role="group" aria-label={L("ช่วงเวลา", "Period")}>
-        {([6, 12] as const).map((m) => (
-          <button key={m} type="button" aria-pressed={months === m} onClick={() => setMonths(m)} data-testid={`trend-${m}`}
-            className={cn("h-7 rounded-full px-3 text-xs font-bold transition-colors", months === m ? "bg-primary text-primary-foreground" : "border border-border bg-background hover:bg-muted")}>
-            {L(`${m} เดือน`, `${m} months`)}
-          </button>
-        ))}
+      <div className="mt-auto">
+        <Periods value={months} onChange={setMonths} testPrefix="trend" />
+        <TrendLine points={shown} testId="income" label={L("กราฟรายรับรายเดือน", "Monthly money in")} value={(n) => `${money(n)} ${L("บาท", "THB")}`} />
       </div>
-      <TrendLine points={shown} />
+    </Card>
+  );
+}
+
+// New students per month (owner 26/10/2026, mockup L5xM6S1kDZLP5gn1Cve9qF option A: its own card beside the money card;
+// counted by the day the student was added; everyone who may see students).
+export function NewStudentsCard() {
+  const [months, setMonths] = useState<6 | 12>(6);
+  const [points, setPoints] = useState<Point[] | null>(null);
+  useEffect(() => { api<Point[]>("/students/trend?months=12").then(setPoints).catch(() => setPoints(null)); }, []);
+  if (!points) return null;
+  const now = points[points.length - 1]!.total, diff = now - points[points.length - 2]!.total;
+  const people = (n: number) => L(`${n} คน`, n === 1 ? "1 student" : `${n} students`);
+  return (
+    <Card className="flex flex-col gap-0 rounded-3xl p-5" data-testid="students-card">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">{L(`นักเรียนสมัครใหม่ ${fMonthYear(new Date())}`, `New students, ${fMonthYear(new Date())}`)}</p>
+          <p className="font-display text-3xl font-semibold">{people(now)}</p>
+          {diff !== 0 && (
+            <p className={cn("mt-0.5 flex items-center gap-1 text-xs font-semibold", diff > 0 ? "text-emerald-700 dark:text-emerald-400" : "text-orange-700 dark:text-orange-400")} data-testid="students-change">
+              {diff > 0 ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+              {diff > 0 ? L(`มากกว่าเดือนก่อน ${diff} คน`, `${diff} more than last month`) : L(`น้อยกว่าเดือนก่อน ${-diff} คน`, `${-diff} fewer than last month`)}
+            </p>
+          )}
+        </div>
+        <Link to="/students" className="shrink-0 rounded-full bg-accent px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-accent/70">{L("ดูนักเรียน", "See students")}</Link>
+      </div>
+      <div className="mt-auto">
+        <Periods value={months} onChange={setMonths} testPrefix="students-trend" />
+        <TrendLine points={points.slice(-months)} testId="students" className={BLUE} label={L("กราฟนักเรียนสมัครใหม่รายเดือน", "New students per month")} value={people} />
+      </div>
     </Card>
   );
 }

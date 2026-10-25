@@ -291,6 +291,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   month" (hidden when last month is 0), receipts link, 6 / 12 months buttons and a small line (76 px, last point dotted,
   pointing/tapping shows that month's total). Data `GET /receipts/trend?months=` (cancelled receipts left out, months
   without receipts = 0). Month labels use `monthShort` (i18n).
+- 26/10/2026 (mockup L5xM6S1kDZLP5gn1Cve9qF; owner "A, นับตามวันที่เพิ่มนักเรียนเข้าระบบ, ทุกคนเห็นไปก่อน"): dashboard "นักเรียนสมัครใหม่"
+  card (`NewStudentsCard`, same file): this month's count, "n more/fewer than last month", "ดูนักเรียน" link, 6 / 12 months, a
+  small BLUE line (#5b7bb8 / dark #6a90e6, so it is not mixed up with the pink money line). Counted by `Student.createdAt`
+  in Bangkok (moved students keep their old date), deleted ones left out; `GET /students/trend?months=` (students 'view').
+  Computers: money + students side by side (`lg:grid-cols-2`), phones stacked. Shared month list `lastMonths()` in lib/dates.ts.
 - 26/10/2026 (owner): the student's big photo (tap the photo in the details) fills the phone's width (96vw, up to 85vh), at
   least 28rem wide on computers (`photo-big`).
 - 26/10/2026 (mockup Vkm4yks4haeZwDYNJzxCb7 v2; owner "ข้อมูลเท่าเดิม แค่ตกแต่ง", "A ทำได้เลย"): the application keeps exactly the same

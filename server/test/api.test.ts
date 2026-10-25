@@ -185,6 +185,11 @@ describe('roles and receipts (owner 12/10/2026)', () => {
     expect(trend).toHaveLength(24);
     expect(trend.find((t) => t.month === '2026-10')?.total).toBe(22500);
     expect(trend.map((t) => t.month)).toEqual([...trend.map((t) => t.month)].sort());
+    // new students per month: everyone who may see students (owner 26/10/2026)
+    const st = (await admin.get('/api/students/trend?months=6')).body as { month: string; total: number }[];
+    expect(st).toHaveLength(6);
+    expect(st.reduce((t, x) => t + x.total, 0)).toBeGreaterThan(0);
+    expect((await request(app).get('/api/students/trend')).status).toBe(401);
     const list = (await admin.get('/api/receipts?month=2026-10')).body;
     expect(list.map((x: { no: string }) => x.no)).toEqual(['RC2610-0003', 'RC2610-0002', 'RC2610-0001']);
     // company details come with a receipt; an Admin may issue but not cancel or extend, and sees no money in the history

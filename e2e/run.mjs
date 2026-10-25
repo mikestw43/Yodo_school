@@ -831,6 +831,13 @@ try {
     await page.getByTestId('trend-12').click();
     check('dashboard: 12 months', (await tr.locator('text').count()) === 5, String(await tr.locator('text').count()));
     await page.getByTestId('trend-6').click();
+    // new students card beside it (owner 26/10/2026)
+    const sc = page.getByTestId('students-card');
+    await sc.waitFor({ timeout: 5000 }).catch(() => {});
+    const mb = await page.getByTestId('money-card').boundingBox(), sb = await sc.boundingBox();
+    check('dashboard: new students card beside the money card on computers', !!sb && Math.abs(sb.y - mb.y) < 2 && sb.x > mb.x, JSON.stringify({ mb, sb }));
+    check('dashboard: new students this month counted', /\d/.test(await sc.locator('p').nth(1).innerText()));
+    await page.screenshot({ path: `${SHOTS}/40b-dashboard-two-cards.png` });
     await pp.goto(BASE + '/');
     await pp.getByTestId('income-trend').waitFor({ timeout: 5000 }).catch(() => {});
     await pp.screenshot({ path: `${SHOTS}/p26-dashboard-trend.png` });

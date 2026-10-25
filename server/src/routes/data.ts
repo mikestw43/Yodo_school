@@ -7,7 +7,7 @@ import { bad, notFound } from '../lib/http.js';
 import { MENU_KEYS, can, displayName, isOwner, requireAuth, requireOwner, requirePerm } from '../lib/auth.js';
 import { audit } from '../lib/audit.js';
 import { storeImage } from '../lib/images.js';
-import { isDate } from '../lib/dates.js';
+import { isDate, lastMonths, monthBkk } from '../lib/dates.js';
 import { fdate, notifyAll } from '../lib/notify.js';
 import { optEmail, optPhone, username } from './auth.js';
 import { dropPins } from './pin.js';
@@ -115,6 +115,15 @@ export function nextStudentCode(codes: string[]) {
 }
 
 // ---------- students ----------
+// New students per month for the dashboard trend line (owner 26/10/2026, mockup L5xM6S1kDZLP5gn1Cve9qF option A): counted
+// by the day the student was added (students moved from the old app keep their old date); deleted ones left out.
+router.get('/students/trend', requirePerm('students', 'view'), async (req, res) => {
+  const n = z.coerce.number().int().min(2).max(24).default(12).parse(req.query.months ?? 12);
+  const months = lastMonths(n);
+  const from = new Date(Date.parse(`${months[0]}-01T00:00:00+07:00`));
+  const rows = await prisma.student.findMany({ where: { deletedAt: null, createdAt: { gte: from } }, select: { createdAt: true } });
+  res.json(months.map((m) => ({ month: m, total: rows.filter((r) => monthBkk(r.createdAt) === m).length })));
+});
 export const studentBody = z.object({
   prefix: text(30), firstName: text(100).min(1), lastName: text(100), nickname: text(100), dob: date,
   nationality: text(60), nationalityOther: text(100), religion: text(60), religionOther: text(100).default(''),

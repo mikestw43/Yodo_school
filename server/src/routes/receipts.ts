@@ -6,7 +6,7 @@ import { HttpError, bad, notFound } from '../lib/http.js';
 import { can, requireAuth, requirePerm } from '../lib/auth.js';
 import { audit } from '../lib/audit.js';
 import { storeImage } from '../lib/images.js';
-import { isDate, todayBkk } from '../lib/dates.js';
+import { isDate, lastMonths, todayBkk } from '../lib/dates.js';
 import { cancelPurchases, discountOf, purchaseOut, removePurchases } from './courses.js';
 import { decrypt, encrypt } from '../lib/crypto.js';
 import { picture, receiptPdf, type Lang as PdfLang, type PdfReceipt, type PdfStudent } from '../lib/receipt-pdf.js';
@@ -75,11 +75,7 @@ router.get('/receipts/summary', requireAuth, async (req, res) => {
 router.get('/receipts/trend', requireAuth, async (req, res) => {
   if (!(await can(req.user, 'receipts', 'view')) && !(await can(req.user, 'money', 'view'))) throw notFound();
   const n = z.coerce.number().int().min(2).max(24).default(12).parse(req.query.months ?? 12);
-  const [y0, m0] = todayBkk().slice(0, 7).split('-').map(Number) as [number, number];
-  const months = Array.from({ length: n }, (_, i) => {
-    const d = new Date(Date.UTC(y0, m0 - 1 - (n - 1 - i), 1));
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-  });
+  const months = lastMonths(n);
   const rows = await prisma.receipt.findMany({ where: { date: { gte: `${months[0]}-01` }, cancelledAt: null }, select: { date: true, amount: true } });
   res.json(months.map((m) => ({ month: m, total: Math.round(rows.filter((r) => r.date.startsWith(m)).reduce((t, r) => t + r.amount, 0) * 100) / 100 })));
 });

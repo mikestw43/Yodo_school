@@ -8,7 +8,7 @@ import { Avatar, PageHeader } from "@/components/yodo/ui";
 import { ageText, classColor, fullName, teacherLabel, useYodo } from "@/lib/yodo-store";
 import { L, fDayMonth } from "@/lib/i18n";
 import { api } from "@/lib/api";
-import { IncomeCard } from "@/components/yodo/income-trend";
+import { IncomeCard, NewStudentsCard } from "@/components/yodo/income-trend";
 
 export const Route = createFileRoute("/_authenticated/_shell/")({
   head: () => ({
@@ -62,7 +62,13 @@ function Dashboard() {
         </div>
       </div>
 
-      {seeMoney && sum && <IncomeCard count={sum.count} showReceipts={can("receipts")} />}
+      {/* money + new students side by side on computers, one above the other on phones (owner 26/10/2026) */}
+      {((seeMoney && sum) || can("students")) && (
+        <div className="mb-4 grid gap-4 lg:grid-cols-2">
+          {seeMoney && sum && <IncomeCard count={sum.count} showReceipts={can("receipts")} />}
+          {can("students") && <NewStudentsCard />}
+        </div>
+      )}
       {/* Courses ending soon (owner 12/10/2026): tap = the Courses page */}
       {can("courses") && (
         <Link to="/courses" search={{ show: "soon" }} className="mb-4 block" data-testid="soon-card">
