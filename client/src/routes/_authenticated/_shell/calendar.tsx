@@ -96,7 +96,7 @@ function CalendarPage() {
         {/* teacher, then how many students that day (owner 25/10/2026) */}
         <p className="flex min-w-0 items-center gap-1 text-muted-foreground">
           <span className="min-w-0 flex-1 truncate" data-testid="cal-event-teacher">{teacherLabel(t)}</span>
-          <span className="flex shrink-0 items-center gap-0.5 font-semibold text-foreground/70" data-testid="cal-event-count" title={L("นักเรียน", "Students")}><UsersRound className="h-3 w-3" />{studentsOn(data, s.classId, s.date).length}</span>
+          <span className="flex shrink-0 items-center gap-0.5 text-foreground/80" title={L("นักเรียน", "Students")}><b className="text-xs font-bold text-foreground" data-testid="cal-event-count">{studentsOn(data, s.classId, s.date).length}</b><UsersRound className="h-3 w-3" /></span>
         </p>
         {!compact && s.start && <p className="text-muted-foreground">{s.start}{s.end ? `–${s.end}` : ""}</p>}
       </button>
