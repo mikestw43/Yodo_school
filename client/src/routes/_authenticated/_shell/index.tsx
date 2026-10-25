@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { addDays, format, startOfWeek } from "date-fns";
 import { CalendarHeart, ChevronRight, Crown, Hourglass, Music4, PersonStanding } from "lucide-react";
@@ -7,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Avatar, PageHeader } from "@/components/yodo/ui";
 import { ageText, classColor, fullName, teacherLabel, useYodo } from "@/lib/yodo-store";
 import { L, fDayMonth } from "@/lib/i18n";
-import { api } from "@/lib/api";
 import { IncomeCard, NewStudentsCard } from "@/components/yodo/income-trend";
 
 export const Route = createFileRoute("/_authenticated/_shell/")({
@@ -28,8 +26,6 @@ function Dashboard() {
   const { data, can } = useYodo();
   // Money in this month, only for roles allowed to see money (owner 12/10/2026).
   const seeMoney = can("money");
-  const [sum, setSum] = useState<{ total: number; count: number } | null>(null);
-  useEffect(() => { if (seeMoney) api<{ total: number; count: number }>("/receipts/summary").then(setSum).catch(() => setSum(null)); }, [seeMoney]);
   const today = format(new Date(), "yyyy-MM-dd");
   const ws = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekDates = new Set(Array.from({ length: 7 }, (_, i) => format(addDays(ws, i), "yyyy-MM-dd")));
@@ -63,9 +59,9 @@ function Dashboard() {
       </div>
 
       {/* money + new students side by side on computers, one above the other on phones (owner 26/10/2026) */}
-      {((seeMoney && sum) || can("students")) && (
+      {(seeMoney || can("students")) && (
         <div className="mb-4 grid gap-4 lg:grid-cols-2">
-          {seeMoney && sum && <IncomeCard count={sum.count} showReceipts={can("receipts")} />}
+          {seeMoney && <IncomeCard showReceipts={can("receipts")} />}
           {can("students") && <NewStudentsCard />}
         </div>
       )}

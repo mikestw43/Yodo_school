@@ -838,6 +838,24 @@ try {
     check('dashboard: new students card beside the money card on computers', !!sb && Math.abs(sb.y - mb.y) < 2 && sb.x > mb.x, JSON.stringify({ mb, sb }));
     check('dashboard: new students this month counted', /\d/.test(await sc.locator('p').nth(1).innerText()));
     await page.screenshot({ path: `${SHOTS}/40b-dashboard-two-cards.png` });
+    // leaving the dashboard and coming back shows both cards at once, even when the data is slow (owner 26/10/2026:
+    // the two charts vanished for a moment, then popped back)
+    const cardH = (await page.getByTestId('money-card').boundingBox()).height;
+    const slow = async (r) => { await new Promise((ok) => setTimeout(ok, 1500)); await r.continue().catch(() => {}); };
+    await page.route(/\/api\/(receipts|students)\/(trend|summary)/, slow);
+    await sc.getByRole('link').click();
+    await page.waitForURL(/\/students/);
+    await page.goBack();
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    const atOnce = await page.waitForFunction(() => document.querySelector('[data-testid=money-card]') && document.querySelector('[data-testid=students-card]'), null, { timeout: 400 }).then(() => true, () => false);
+    check('dashboard: coming back shows both charts at once (no blink)', atOnce);
+    // first visit: a placeholder of the same size while the data comes, so nothing jumps
+    await page.reload();
+    const ph = page.getByTestId('money-card-waiting');
+    const phBox = await ph.waitFor({ timeout: 1000 }).then(() => ph.boundingBox(), () => null);
+    check('dashboard: first load holds the cards\' place', !!phBox && Math.abs(phBox.height - cardH) <= 12, `${phBox?.height} vs ${cardH}`);
+    await page.getByTestId('money-card').waitFor({ timeout: 5000 });
+    await page.unroute(/\/api\/(receipts|students)\/(trend|summary)/, slow);
     await pp.goto(BASE + '/');
     await pp.getByTestId('income-trend').waitFor({ timeout: 5000 }).catch(() => {});
     await pp.screenshot({ path: `${SHOTS}/p26-dashboard-trend.png` });

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api, pageCache } from "@/lib/api";
 import { L, fMonthYear, monthName, monthShort } from "@/lib/i18n";
 import { money } from "@/lib/receipt-print";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,26 @@ import { cn } from "@/lib/utils";
 // line; tapping/pointing at the line shows that month's total.
 
 type Point = { month: string; total: number };
+
+// Last answer per address, kept between visits: coming back to the dashboard (or a language switch, which redraws
+// every page) shows the cards at once and refreshes them quietly (owner 26/10/2026: the two charts vanished for a
+// moment and popped back in).
+function useCached<T>(url: string) {
+  // undefined = still waiting, null = could not load (card hidden, as before)
+  const [value, setValue] = useState<T | null | undefined>(() => pageCache.get(url) as T | undefined);
+  useEffect(() => {
+    let live = true;
+    api<T>(url).then((v) => { pageCache.set(url, v); if (live) setValue(v); })
+      .catch(() => { if (live) setValue((old) => old ?? null); });
+    return () => { live = false; };
+  }, [url]);
+  return value;
+}
+
+/** Same size as a loaded card, so nothing jumps on the very first load. */
+function CardWaiting({ testId }: { testId: string }) {
+  return <Card className="h-[236px] animate-pulse gap-0 rounded-3xl bg-muted/40 p-5" data-testid={`${testId}-waiting`} aria-hidden />;
+}
 
 const short = (m: string) => monthShort(Number(m.slice(5, 7)) - 1);
 
@@ -84,11 +104,13 @@ function Periods({ value, onChange, testPrefix }: { value: 6 | 12; onChange: (m:
   );
 }
 
-export function IncomeCard({ count, showReceipts }: { count: number; showReceipts: boolean }) {
+export function IncomeCard({ showReceipts }: { showReceipts: boolean }) {
   const [months, setMonths] = useState<6 | 12>(6);
-  const [points, setPoints] = useState<Point[] | null>(null);
-  useEffect(() => { api<Point[]>("/receipts/trend?months=12").then(setPoints).catch(() => setPoints(null)); }, []);
-  if (!points) return null;
+  const points = useCached<Point[]>("/receipts/trend?months=12");
+  const sum = useCached<{ total: number; count: number }>("/receipts/summary");
+  if (points === undefined || sum === undefined) return <CardWaiting testId="money-card" />;
+  if (!points || !sum) return null;
+  const count = sum.count;
   const shown = points.slice(-months);
   const now = points[points.length - 1]!.total, before = points[points.length - 2]!.total;
   const pct = before > 0 ? Math.round(((now - before) / before) * 100) : null;
@@ -119,8 +141,8 @@ export function IncomeCard({ count, showReceipts }: { count: number; showReceipt
 // counted by the day the student was added; everyone who may see students).
 export function NewStudentsCard() {
   const [months, setMonths] = useState<6 | 12>(6);
-  const [points, setPoints] = useState<Point[] | null>(null);
-  useEffect(() => { api<Point[]>("/students/trend?months=12").then(setPoints).catch(() => setPoints(null)); }, []);
+  const points = useCached<Point[]>("/students/trend?months=12");
+  if (points === undefined) return <CardWaiting testId="students-card" />;
   if (!points) return null;
   const now = points[points.length - 1]!.total, diff = now - points[points.length - 2]!.total;
   const people = (n: number) => L(`${n} คน`, n === 1 ? "1 student" : `${n} students`);

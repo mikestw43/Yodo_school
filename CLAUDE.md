@@ -296,6 +296,9 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   small BLUE line (#5b7bb8 / dark #6a90e6, so it is not mixed up with the pink money line). Counted by `Student.createdAt`
   in Bangkok (moved students keep their old date), deleted ones left out; `GET /students/trend?months=` (students 'view').
   Computers: money + students side by side (`lg:grid-cols-2`), phones stacked. Shared month list `lastMonths()` in lib/dates.ts.
+  Owner 26/10/2026 (bug: the two charts vanished for a moment after coming back to the dashboard): both cards keep their
+  last answers in `pageCache` (lib/api.ts, emptied with the account on sign-in / sign-out by `clearMeCache`) via `useCached`,
+  show them at once and refresh quietly; the very first load shows a placeholder of the card's size (`CardWaiting`).
 - 26/10/2026 (owner): the student's big photo (tap the photo in the details) fills the phone's width (96vw, up to 85vh), at
   least 28rem wide on computers (`photo-big`).
 - 26/10/2026 (mockup Vkm4yks4haeZwDYNJzxCb7 v2; owner "ข้อมูลเท่าเดิม แค่ตกแต่ง", "A ทำได้เลย"): the application keeps exactly the same
