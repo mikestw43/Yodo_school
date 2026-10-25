@@ -239,6 +239,9 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   (owner: not yet). "Ending soon" = 14 days (once key `once:expiry-14` moved 7 -> 14; fallback 14; still editable).
   Share on the receipt page: computers save the PDF ("Saved Receipt-....pdf"); phones fetch the PDF when the page opens so
   the share sheet opens straight from the tap, and save it if sharing fails (owner: Share did nothing on a computer).
+  Owner 25/10/2026: the months/weeks boxes can be emptied while typing (`NumBox`, text box, empty = 0; before, the 0 could
+  not be deleted and typing gave "02"); the Renew button reads "ต่อคลาส" (was "ต่ออายุ") on the expiry page and the student's
+  classes tab.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

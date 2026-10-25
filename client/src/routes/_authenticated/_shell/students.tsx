@@ -533,7 +533,7 @@ function EnrollDialog({ student: studentProp, enrollment: enrollmentProp, onClos
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{L("แก้ไขวันที่คลาส", "Fix class dates")}{cls ? ` · ${cls.name}` : ""}</DialogTitle>
-          <DialogDescription>{student && fullName(student)} · {L("ใช้แก้ข้อมูลที่ผิด ไม่เก็บเงิน (ต่ออายุ / ขยายเวลา ใช้ปุ่มของมันเอง)", "For corrections, no money (renew / extend have their own buttons)")}</DialogDescription>
+          <DialogDescription>{student && fullName(student)} · {L("ใช้แก้ข้อมูลที่ผิด ไม่เก็บเงิน (ต่อคลาส / ขยายเวลา ใช้ปุ่มของมันเอง)", "For corrections, no money (renew / extend have their own buttons)")}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <Field label={L("วันที่ซื้อ", "Purchase date")} required error={errors.purchaseDate}>

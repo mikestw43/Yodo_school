@@ -535,6 +535,12 @@ try {
     await dlg.getByRole('textbox').first().fill('Hip Hop 8W');
     await dlg.getByTestId('class-months').fill('0');
     await dlg.getByTestId('class-weeks').fill('8');
+    await dlg.getByTestId('class-months').click();
+    await page.keyboard.press('Backspace');
+    check('class length: the 0 can be deleted while typing', (await dlg.getByTestId('class-months').inputValue()) === '');
+    await page.keyboard.type('2');
+    check('class length: typing after clearing gives "2", not "02"', (await dlg.getByTestId('class-months').inputValue()) === '2');
+    await dlg.getByTestId('class-months').fill('0');
     await dlg.getByTestId('class-day-mon').click();
     await dlg.getByTestId('class-day-wed').click();
     await dlg.getByTestId('class-start-h').selectOption('17');
@@ -670,7 +676,7 @@ try {
   await crow.first().waitFor({ timeout: 5000 }).then(() => check('courses page lists what ends soon, with days left', true), () => check('courses page lists what ends soon, with days left', false));
   check('days left are counted', (await crow.locator('[data-state="soon"]').first().innerText()).includes('เหลือ 5 วัน'));
   await page.screenshot({ path: `${SHOTS}/41-courses.png`, fullPage: true });
-  await crow.getByRole('button', { name: 'ต่ออายุ' }).first().click();
+  await crow.getByRole('button', { name: 'ต่อคลาส' }).first().click();
   const bd = page.getByTestId('buy-dialog');
   await bd.waitFor();
   check('renew: the class is picked and starts the day after the old end', (await bd.getByTestId('buy-line').first().innerText()).includes('Ballet Kids'));

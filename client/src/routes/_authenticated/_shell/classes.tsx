@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -189,6 +189,19 @@ function ClassesPage() {
   );
 }
 
+/** Whole number box that can be emptied while typing (owner 25/10/2026: the 0 could not be deleted, typing gave "02").
+ *  Empty counts as 0; the text tidies itself when the box is left. */
+function NumBox({ value, max, onChange, testId, label }: { value: number; max: number; onChange: (n: number) => void; testId: string; label: string }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { setText((t) => (Number(t || 0) === value ? t : String(value))); }, [value]);
+  return (
+    <Input type="text" inputMode="numeric" className="w-20 text-center" value={text} data-testid={testId} aria-label={label}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => { const t = e.target.value.replace(/\D/g, "").slice(0, 3); setText(t); onChange(Math.min(max, Number(t || 0))); }}
+      onBlur={() => setText(String(value))} />
+  );
+}
+
 /** 24-hour time as hour + minute lists (a bare time box shows AM/PM on some phones). "" = not set. */
 function Time24({ value, onChange, testId, label }: { value: string; onChange: (v: string) => void; testId: string; label: string }) {
   const [h, m] = value ? value.split(":") : ["", ""];
@@ -266,9 +279,9 @@ function ClassForm({ open, onOpenChange, editing }: { open: boolean; onOpenChang
           {/* Length = months + weeks, class days and one time for all of them (owner 25/10/2026, mockup YHSLoC7LASXrQ6ChhFMRee) */}
           <Field label={L("ระยะเวลาคลาส", "Class length")} error={errors.length}>
             <div className="flex flex-wrap items-center gap-2">
-              <Input type="number" inputMode="numeric" min={0} max={120} step="1" className="w-20 text-center" value={f.months} onChange={(e) => setF({ ...f, months: Math.min(120, Math.max(0, Math.round(Number(e.target.value) || 0))) })} data-testid="class-months" aria-label={L("เดือน", "Months")} />
+              <NumBox value={f.months} max={120} onChange={(n) => setF({ ...f, months: n })} testId="class-months" label={L("เดือน", "Months")} />
               <span className="text-sm text-muted-foreground">{L("เดือน", "months")}</span>
-              <Input type="number" inputMode="numeric" min={0} max={52} step="1" className="w-20 text-center" value={f.weeks} onChange={(e) => setF({ ...f, weeks: Math.min(52, Math.max(0, Math.round(Number(e.target.value) || 0))) })} data-testid="class-weeks" aria-label={L("สัปดาห์", "Weeks")} />
+              <NumBox value={f.weeks} max={52} onChange={(n) => setF({ ...f, weeks: n })} testId="class-weeks" label={L("สัปดาห์", "Weeks")} />
               <span className="text-sm text-muted-foreground">{L("สัปดาห์", "weeks")}</span>
             </div>
             {f.months + f.weeks > 0 && <p className="mt-1.5 rounded-xl bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">{L(`เช่น ซื้อวันนี้ ${fd(todayIso())} → หมดอายุ ${fd(courseEnd(todayIso(), f.months, f.weeks))}`, `e.g. bought today ${fd(todayIso())} → ends ${fd(courseEnd(todayIso(), f.months, f.weeks))}`)}</p>}
