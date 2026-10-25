@@ -887,6 +887,12 @@ try {
   await pp.waitForTimeout(500);
   const rw = await pp.getByTestId('receipt-frame').evaluate((e) => e.getBoundingClientRect().width);
   check('phone: the receipt is shrunk to fit', rw <= 390, `${Math.round(rw)}px`);
+  {
+    // no squeezed receipt number spilling over the TH/EN switch (owner 26/10/2026)
+    const spill = await pp.getByTestId('receipt-view-title').evaluate((e) => { const r = e.getBoundingClientRect(); return [...e.querySelectorAll('p')].some((p) => p.getBoundingClientRect().width > 0 && p.getBoundingClientRect().right > r.right + 1); });
+    const shown = await pp.getByTestId('receipt-view-title').locator('p').first().isVisible();
+    check('phone: the receipt window top bar has no squeezed number', !spill && !shown);
+  }
   await pp.screenshot({ path: `${SHOTS}/p12-receipt.png` });
   await pp.getByRole('button', { name: 'กลับ' }).click();
 

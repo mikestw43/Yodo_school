@@ -72,9 +72,13 @@ export function ReceiptHost() {
           <DialogPrimitive.Description className="sr-only">{full?.receipt.no ?? ""}</DialogPrimitive.Description>
           <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background px-3 py-2.5 sm:px-5">
             <Button variant="outline" className="rounded-full" onClick={() => setId(null)}><ChevronLeft className="h-4 w-4" /> {L("กลับ", "Back")}</Button>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{L("ใบเสร็จรับเงิน", "Receipt")}</p>
-              <p className="font-mono text-xs text-muted-foreground">{full?.receipt.no}</p>
+            {/* title + number on computers only: phones had no room and the number spilled over TH/EN (owner 26/10/2026);
+                the receipt itself shows its number */}
+            <div className="min-w-0 flex-1" data-testid="receipt-view-title">
+              <div className="hidden sm:block">
+                <p className="truncate text-sm font-semibold">{L("ใบเสร็จรับเงิน", "Receipt")}</p>
+                <p className="truncate font-mono text-xs text-muted-foreground">{full?.receipt.no}</p>
+              </div>
             </div>
             <div className="inline-flex shrink-0 rounded-full border border-border bg-background p-0.5 text-xs font-bold" role="group" aria-label={L("ภาษาของใบเสร็จ", "Language of the receipt")}>
               {(["th", "en"] as const).map((x) => (

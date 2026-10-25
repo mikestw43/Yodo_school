@@ -303,6 +303,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   under each name, "ครู <nickname> · ส · 10:00–11:00" (`hints` on `NativeSelect`, `hint` on `SelectItem`: list only, the box
   shows just the name); the picked class shows a pink box (`buy-class-info`): teacher, "ทุกวันเสาร์ · 10:00–11:00" /
   "Every Saturday · ..." (`everyText` in lib/courses.ts) and the length; "now ends dd/mm/yyyy" stays under it.
+  Owner 26/10/2026 (bug): the full-screen receipt window's top bar shows "Receipt" + number on computers only
+  (`receipt-view-title`); on phones it was squeezed between Back and TH/EN and the number spilled over.
   Teachers page as photo cards (mockup GrduSa1HUD86DFK8N9vfYx, 3 a row on phones, details window) still waits for answers.
 - 26/10/2026 (owner): the student's big photo (tap the photo in the details) fills the phone's width (96vw, up to 85vh), at
   least 28rem wide on computers (`photo-big`).
