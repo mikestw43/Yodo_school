@@ -689,7 +689,7 @@ try {
     const e1 = d2.enrollments.find((x) => x.studentId === s1.id && x.classId === c1.id);
     check('renewing adds the course length after the old end, the start stays', e1.startDate === today && e1.expiryDate > plus(30), JSON.stringify(e1));
   }
-  await page.getByTestId('filter-active').click();
+  await page.getByTestId('filter-all').click();
   const r2row = page.locator('table [data-testid="course-row"]').filter({ hasText: s2.firstName }).filter({ hasText: 'Jazz Teens' });
   await r2row.getByRole('button', { name: 'ขยายเวลา' }).first().click();
   const xd = page.getByTestId('extend-dialog');
@@ -908,6 +908,30 @@ try {
       await page.screenshot({ path: `${SHOTS}/49-teacher-nickname.png` });
       await page.keyboard.press('Escape');
     }
+    // expiry dates: three chips; All = newest bought first, Expire in n days = soonest first, Expired = latest ended first (owner 25/10/2026)
+    await pp.goto(BASE + '/courses');
+    await pp.getByTestId('filter-all').waitFor();
+    const chipIds = await pp.locator('[data-testid^="filter-"]').evaluateAll((els) => els.map((e) => e.dataset.testid));
+    check('expiry dates: chips are All / Expire in n days / Expired', JSON.stringify(chipIds) === '["filter-all","filter-soon","filter-ended"]', JSON.stringify(chipIds));
+    const attrs = async (a) => pp.locator('[data-testid="course-row"]:visible').evaluateAll((els, k) => els.map((e) => e.getAttribute(k)), a);
+    const sorted = (xs, desc) => xs.every((x, i) => i === 0 || (desc ? xs[i - 1] >= x : xs[i - 1] <= x));
+    const bAll = await attrs('data-bought');
+    check('expiry dates: All shows the newest bought first', bAll.length > 1 && sorted(bAll, true), JSON.stringify(bAll));
+    await pp.getByTestId('filter-soon').click();
+    await pp.waitForTimeout(300);
+    check('expiry dates: Expire in n days shows the soonest first', sorted(await attrs('data-expiry'), false));
+    await pp.getByTestId('filter-ended').click();
+    await pp.waitForTimeout(300);
+    check('expiry dates: Expired shows the latest ended first', sorted(await attrs('data-expiry'), true));
+    await pp.getByTestId('filter-all').click();
+    await pp.screenshot({ path: `${SHOTS}/p21-expiry-chips.png` });
+    // calendar toolbar: Week before Month, opens on Month, two short lines on phones (owner 25/10/2026)
+    await pp.goto(BASE + '/calendar');
+    await pp.getByTestId('cal-view-month').waitFor();
+    const wk = await pp.getByTestId('cal-view-week').boundingBox(), mo = await pp.getByTestId('cal-view-month').boundingBox(), tb = await pp.getByTestId('cal-toolbar').boundingBox();
+    check('calendar: Week before Month, Month open by default', wk.x < mo.x && (await pp.getByTestId('cal-view-month').getAttribute('aria-pressed')) === 'true');
+    check('phone calendar: toolbar is two short lines', tb.height <= 90, `${tb.height}px`);
+    await pp.screenshot({ path: `${SHOTS}/p22-calendar-toolbar.png` });
   }
 
   // ---------- English ----------

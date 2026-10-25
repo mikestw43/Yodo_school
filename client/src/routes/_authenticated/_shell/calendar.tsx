@@ -79,23 +79,28 @@ function CalendarPage() {
   return (
     <>
       <PageHeader title={L("ปฏิทิน", "Calendar")} subtitle={L("คลาสในแต่ละวัน ตามวันและเวลาเรียนของคลาส", "Classes on each day, from each class's days and time")} />
-      <Card className="mb-4 flex flex-row flex-wrap items-center gap-3 rounded-3xl p-4">
-        <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" onClick={() => move(-1)} aria-label={L("ก่อนหน้า", "Previous")}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button size="sm" variant="outline" className="rounded-full" onClick={() => { setCursor(new Date()); setDay(today); }}>{L("วันนี้", "Today")}</Button>
-          <Button size="icon" variant="ghost" onClick={() => move(1)} aria-label={L("ถัดไป", "Next")}><ChevronRight className="h-4 w-4" /></Button>
+      {/* Two lines on phones, one row on computers, no card (owner 25/10/2026, mockup FFawaauS5UjgYce8FeYNg5): month with
+          arrows + Today, then the class filter + Week / Month (week first; the page opens on Month). */}
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:gap-3" data-testid="cal-toolbar">
+        <div className="flex min-w-0 items-center gap-1.5 md:flex-1">
+          <Button size="icon" variant="outline" className="h-9 w-9 shrink-0 rounded-full" onClick={() => move(-1)} aria-label={L("ก่อนหน้า", "Previous")}><ChevronLeft className="h-4 w-4" /></Button>
+          <h2 className="min-w-0 flex-1 truncate text-center font-display text-2xl font-semibold md:flex-none md:px-2" data-testid="cal-title">{title}</h2>
+          <Button size="icon" variant="outline" className="h-9 w-9 shrink-0 rounded-full" onClick={() => move(1)} aria-label={L("ถัดไป", "Next")}><ChevronRight className="h-4 w-4" /></Button>
+          <Button size="sm" variant="outline" className="h-9 shrink-0 rounded-full" onClick={() => { setCursor(new Date()); setDay(today); }}>{L("วันนี้", "Today")}</Button>
         </div>
-        <h2 className="flex-1 font-display text-2xl font-semibold">{title}</h2>
-        <NativeSelect value={classFilter} onValueChange={setClassFilter} className="w-52 rounded-full">
-          <option value="all">{L("ทุกคลาส", "All classes")}</option>
-          {data.classes.filter((c) => !c.disabled).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </NativeSelect>
-        <div className="flex rounded-full bg-muted p-1">
-          {(["month", "week"] as const).map((v) => (
-            <button key={v} type="button" onClick={() => setView(v)} className={cn("rounded-full px-4 py-1 text-sm font-medium capitalize", view === v ? "bg-card shadow-sm" : "text-muted-foreground")}>{v === "month" ? L("เดือน", "Month") : L("สัปดาห์", "Week")}</button>
-          ))}
+        <div className="flex min-w-0 items-center gap-2">
+          <NativeSelect value={classFilter} onValueChange={setClassFilter} className="h-9 min-w-0 flex-1 rounded-full md:w-52 md:flex-none">
+            <option value="all">{L("ทุกคลาส", "All classes")}</option>
+            {data.classes.filter((c) => !c.disabled).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </NativeSelect>
+          <div className="inline-flex h-9 shrink-0 overflow-hidden rounded-full border border-border bg-background text-sm font-semibold" role="group" aria-label={L("มุมมอง", "View")}>
+            {(["week", "month"] as const).map((v) => (
+              <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} data-testid={`cal-view-${v}`}
+                className={cn("px-3.5 transition-colors", view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>{v === "month" ? L("เดือน", "Month") : L("สัปดาห์", "Week")}</button>
+            ))}
+          </div>
         </div>
-      </Card>
+      </div>
       {noDays && <p className="mb-3 rounded-2xl bg-accent/40 px-4 py-2.5 text-sm">{L("ยังไม่มีคลาสที่ตั้งวันเรียน: ใส่วันและเวลาเรียนได้ที่หน้าคลาส › แก้ไข", "No class has class days yet: set the days and time on the Classes page › Edit")}</p>}
 
       <Card className="rounded-3xl p-0">

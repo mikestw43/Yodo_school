@@ -256,6 +256,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   teacher has no nickname) on class cards (own line with the picture, `class-teacher`), calendar chips / phone day list /
   class window, and expiry rows (the same class runs with different teachers). Teacher nickname (and first name) required
   in the form; the server refuses an empty nickname.
+- 25/10/2026 (mockup FFawaauS5UjgYce8FeYNg5; owner "ok, สัปดาห์มาอยู่หน้า เดือนไปอยู่หลัง default เดือน / 2 3 ok มีปุ่ม Expired อีกอัน"):
+  calendar toolbar without a card (`cal-toolbar`): month title between arrows + Today, then the class filter + Week | Month
+  (week first, the page opens on Month). Expiry dates page has three chips: All (newest bought first: newest buy purchase,
+  else joinedAt), "หมดใน n วัน"/"Expire in n days" (= `Setting.expiryDays`, not the ended ones, soonest first) and
+  "หมดอายุแล้ว"/"Expired" (all ended, latest ended first); the old "not ended" / "ended in 30 days" chips are gone.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
