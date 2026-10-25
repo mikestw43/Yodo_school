@@ -284,6 +284,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   the chat number are kept between redraws (`lastMe` in AppShell.tsx, `lastUnread`) so a language switch no longer blinks them.
   Owner 25/10/2026: "ปิด"/"Close" (X) at the top left of the chat and the inbox (`CloseChat`): back to the page before the chat
   (`yodo-last-page`, path + search), else the dashboard; one conversation keeps its Back button to the inbox.
+- 26/10/2026 (owner: "เอาไว้ก่อน"): dashboard decoration ideas shown, nothing chosen yet: mockups Jyuo5uFPk6wTzGDPPBpRsJ (A photo hero, B
+  pastel cards, C dotted background) and 62DTnMLaAGxicL6YbTMBds (D theatre stage, E magazine, F ribbon + frosted bento; I suggested F).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
