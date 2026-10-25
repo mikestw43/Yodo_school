@@ -986,6 +986,16 @@ try {
     // the SuperAdmin: badge, bell, inbox, details line, reply
     await page.goto(BASE + '/');
     await page.getByTestId('support-badge').first().waitFor({ timeout: 35000 }).then(() => check('chat: the SuperAdmin gets a badge on the menu', true), () => check('chat: the SuperAdmin gets a badge on the menu', false));
+    // phones: the inbox sits under More, so More carries the number too (owner 25/10/2026)
+    await pp.goto(BASE + '/');
+    await pp.getByTestId('nav-more').getByTestId('support-badge').waitFor({ timeout: 35000 }).then(() => check('phone: More shows the number of new chats', true), () => check('phone: More shows the number of new chats', false));
+    await pp.screenshot({ path: `${SHOTS}/p25-more-badge.png` });
+    // the account picture stays while the language switches
+    await pp.getByRole('button', { name: 'Switch to English' }).first().click();
+    await pp.waitForTimeout(60);
+    check('phone: the account picture does not blink away on a language switch', (await pp.getByRole('button', { name: /Account menu|เมนูบัญชี/ }).count()) > 0);
+    await pp.getByRole('button', { name: 'เปลี่ยนเป็นภาษาไทย' }).first().click();
+    await pp.getByRole('button', { name: 'Switch to English' }).first().waitFor();
     const bell = await (await page.request.get(`${BASE}/api/notices`)).json();
     check('chat: the SuperAdmin gets a bell notice (and a phone push)', JSON.stringify(bell).includes(`/support/${nu.id}`));
     check('chat: the SuperAdmin\'s menu item reads Inbox', (await page.getByRole('link', { name: /กล่องข้อความ/ }).count()) > 0);

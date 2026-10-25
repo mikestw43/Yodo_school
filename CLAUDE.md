@@ -279,6 +279,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   (shrunk to 1600 px, new uploads only), "อ่านแล้ว"/"Read" on the sender's last message. New message = bell row (kind
   `support`, ref `support:<userId>`, cannot be turned off) + push to the other side; reading clears those bell rows.
   Pages poll every 5 s while open. Client `components/yodo/support.tsx`.
+  Owner 25/10/2026: the number also sits on the phone's More button (the inbox is inside More); the account picture and
+  the chat number are kept between redraws (`lastMe` in AppShell.tsx, `lastUnread`) so a language switch no longer blinks them.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

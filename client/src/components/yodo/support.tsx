@@ -20,11 +20,13 @@ const REFRESH = "yodo:support-refresh";
 const refreshBadge = () => window.dispatchEvent(new Event(REFRESH));
 
 /** Unread messages for the menu badge: answers for a user, new messages for the SuperAdmin. */
+let lastUnread = 0; // kept between redraws (language switch)
+export const forgetSupportUnread = () => { lastUnread = 0; };
 export function useSupportUnread() {
-  const [n, setN] = useState(0);
+  const [n, setN] = useState(lastUnread);
   useEffect(() => {
     let alive = true;
-    const load = () => api<{ unread: number }>("/support/unread").then((r) => alive && setN(r.unread)).catch(() => null);
+    const load = () => api<{ unread: number }>("/support/unread").then((r) => { lastUnread = r.unread; if (alive) setN(r.unread); }).catch(() => null);
     void load();
     const t = setInterval(load, 30_000);
     window.addEventListener(REFRESH, load);

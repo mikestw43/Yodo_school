@@ -13,7 +13,7 @@ import { LangToggle } from "@/components/yodo/LangToggle";
 import { L } from "@/lib/i18n";
 import { ReceiptHost } from "@/components/yodo/receipt";
 import { CourseHosts } from "@/components/yodo/courses";
-import { rememberPage, useSupportUnread } from "@/components/yodo/support";
+import { forgetSupportUnread, rememberPage, useSupportUnread } from "@/components/yodo/support";
 import logoImg from "@/assets/yodo-logo.png";
 import markImg from "@/assets/yodo-mark.png";
 
@@ -36,14 +36,17 @@ const ADMIN = [
   { to: "/audit-log", th: "ประวัติการแก้ไข", en: "Audit Log", icon: History, key: "auditlog" },
 ] as const satisfies readonly { to: string; th: string; en: string; key: MenuKey; icon: unknown }[];
 
+// Kept between redraws: a language switch redraws the page, and the account picture must not blink away (owner 25/10/2026).
+let lastMe: Me | null = null;
 function useMe() {
-  const [me, setMe] = useState<Me | null>(null);
+  const [me, setMe] = useState<Me | null>(lastMe);
   useEffect(() => {
     const load = async () => {
       try {
         const p = await getMe();
         // top right shows the nickname, else the first name (owner 13/10/2026); the open menu keeps the full name
-        setMe({ name: p.name, short: p.nickname.trim() || p.firstName.trim() || p.name, role: p.positionName || ROLE_LABEL[p.role] || p.role || "-", image: p.image });
+        lastMe = { name: p.name, short: p.nickname.trim() || p.firstName.trim() || p.name, role: p.positionName || ROLE_LABEL[p.role] || p.role || "-", image: p.image };
+        setMe(lastMe);
       } catch { /* signed out */ }
     };
     void load();
@@ -69,6 +72,8 @@ export function useSignOut() {
   return async () => {
     try { await api("/auth/logout", { body: {} }); } catch { /* signed out anyway */ }
     clearMeCache();
+    lastMe = null;
+    forgetSupportUnread();
     await qc.cancelQueries();
     qc.clear();
     clear();
