@@ -345,6 +345,10 @@ try {
   await view.getByRole('button', { name: 'ดูรูปใหญ่' }).click();
   await page.getByTestId('photo-big').waitFor().then(() => check('tapping the photo shows it big', true), () => check('tapping the photo shows it big', false));
   await page.screenshot({ path: `${SHOTS}/32-photo-big.png` });
+  {
+    const bw = (await page.getByTestId('photo-big').boundingBox())?.width ?? 0;
+    check('computer: the big photo is really big', bw >= 440, `${bw}px`);
+  }
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   await view.getByRole('button', { name: 'ดู PDF' }).click();
@@ -955,6 +959,17 @@ try {
     check('expiry dates: Expired shows the latest ended first', sorted(await attrs('data-expiry'), true));
     await pp.getByTestId('filter-all').click();
     await pp.screenshot({ path: `${SHOTS}/p21-expiry-chips.png` });
+    // phone: the big student photo fills the screen width (owner 26/10/2026)
+    await pp.goto(BASE + '/students');
+    await pp.getByText('มะลิ').first().click();
+    await pp.getByRole('dialog').getByRole('button', { name: 'ดูรูปใหญ่' }).click();
+    {
+      const pw = (await pp.getByTestId('photo-big').boundingBox())?.width ?? 0;
+      check('phone: the big photo fills the screen width', pw >= 340, `${pw}px`);
+      await pp.screenshot({ path: `${SHOTS}/p27-photo-big.png` });
+      await pp.keyboard.press('Escape');
+      await pp.keyboard.press('Escape');
+    }
     // calendar toolbar: Week before Month, opens on Month, two short lines on phones (owner 25/10/2026)
     await pp.goto(BASE + '/calendar');
     await pp.getByTestId('cal-view-month').waitFor();

@@ -291,6 +291,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   month" (hidden when last month is 0), receipts link, 6 / 12 months buttons and a small line (76 px, last point dotted,
   pointing/tapping shows that month's total). Data `GET /receipts/trend?months=` (cancelled receipts left out, months
   without receipts = 0). Month labels use `monthShort` (i18n).
+- 26/10/2026 (owner): the student's big photo (tap the photo in the details) fills the phone's width (96vw, up to 85vh), at
+  least 28rem wide on computers (`photo-big`). Terms page redesign mockup Vkm4yks4haeZwDYNJzxCb7 (A letterhead / B pink band) waiting.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

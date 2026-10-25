@@ -434,12 +434,12 @@ function StudentView({ student, onClose, onEdit }: { student: Student | null; on
       </DialogContent>
     </Dialog>
     <EnrollDialog student={editEn ? s : null} enrollment={editEn} onClose={() => setEditEn(null)} />
-    {/* Tap the photo to see it big (owner 12/10/2026) */}
+    {/* Tap the photo to see it big (owner 12/10/2026); as wide as the screen allows (owner 26/10/2026: it opened small) */}
     <Dialog open={photoOpen} onOpenChange={setPhotoOpen}>
-      <DialogContent className="w-auto max-w-[92vw] p-3 sm:max-w-2xl">
+      <DialogContent className="w-[96vw] max-w-[96vw] p-2 sm:w-auto sm:max-w-3xl">
         <DialogTitle className="sr-only">{s ? fullName(s) : ""}</DialogTitle>
         <DialogDescription className="sr-only">{L("รูปนักเรียน", "Student photo")}</DialogDescription>
-        {s?.image && <img src={s.image} alt={fullName(s)} className="max-h-[80vh] max-w-full rounded-2xl object-contain" data-testid="photo-big" />}
+        {s?.image && <img src={s.image} alt={fullName(s)} className="mx-auto max-h-[85vh] w-full rounded-2xl object-contain sm:w-auto sm:min-w-[28rem]" data-testid="photo-big" />}
       </DialogContent>
     </Dialog>
     {/* View the application in the app, print only on request (owner 12/10/2026) */}
