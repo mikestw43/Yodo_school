@@ -119,7 +119,7 @@ try {
   const sch = await post('/schedules', { items: [{ classId: c1.id, date: plus(1), start: '16:00', end: '17:00' }, { classId: c2.id, date: plus(2), start: '17:30', end: '18:30' }] });
   await post(`/schedules/${sch[0].id}/students`, { studentId: s1.id });
 
-  for (const [p, name, text] of [['/', '04-dashboard', null], ['/students', '05-students', 'มะลิ'], ['/classes', '06-classes', 'Ballet Kids'], ['/teachers', '07-teachers', 'แอนนา'], ['/calendar', '08-calendar', null], ['/users', '09-users', 'mike'], ['/permissions', '10-permissions', null], ['/audit-log', '11-audit', 'นักเรียน'], ['/settings', '12-settings', 'mike']]) {
+  for (const [p, name, text] of [['/', '04-dashboard', null], ['/students', '05-students', 'มะลิ'], ['/classes', '06-classes', 'Ballet Kids'], ['/teachers', '07-teachers', 'ครู แอน'], ['/calendar', '08-calendar', null], ['/users', '09-users', 'mike'], ['/permissions', '10-permissions', null], ['/audit-log', '11-audit', 'นักเรียน'], ['/settings', '12-settings', 'mike']]) {
     await page.goto(BASE + p);
     await page.waitForLoadState('networkidle');
     if (text) await page.getByText(text).locator('visible=true').first().waitFor({ timeout: 8000 }).then(() => check(`computer ${p} shows data`, true), () => check(`computer ${p} shows data`, false, text));
@@ -963,6 +963,7 @@ try {
     for (const [pth, first, last] of [['/students', 'status-all', 'status-Disabled'], ['/classes', 'status-all', 'status-Disabled'], ['/teachers', 'status-all', 'status-Disabled'], ['/courses', 'filter-all', 'filter-ended']]) {
       await pp.goto(BASE + pth);
       await pp.getByTestId(last).waitFor();
+      await pp.waitForTimeout(300);
       const a = await pp.getByTestId(first).boundingBox(), b = await pp.getByTestId(last).boundingBox(), sb = await pp.getByTestId('list-search').boundingBox();
       check(`phone ${pth}: filter chips on one line under a low search box`, Math.abs(a.y - b.y) < 2 && sb.height <= 40 && a.y > sb.y + sb.height - 1, JSON.stringify({ a: a.y, b: b.y, s: sb }));
       const sw = await pp.evaluate(() => document.documentElement.scrollWidth);
@@ -985,6 +986,42 @@ try {
       await dlg.getByText('กรุณากรอกชื่อเล่น').waitFor({ timeout: 3000 }).then(() => check('teacher form: the nickname is required', true), () => check('teacher form: the nickname is required', false));
       await page.screenshot({ path: `${SHOTS}/49-teacher-nickname.png` });
       await page.keyboard.press('Escape');
+    }
+    // teachers as photo cards: 3 a row on phones, 6 on computers, tap = details (owner 26/10/2026)
+    {
+      await page.waitForTimeout(300);
+      const g = await page.getByTestId('teacher-grid').boundingBox();
+      const c = await page.getByTestId('teacher-card').first().boundingBox();
+      check('teachers: 6 a row on computers', c.width < g.width / 5.5 && c.width > g.width / 7, `${Math.round(c.width)} of ${Math.round(g.width)}`);
+      const anne = page.getByTestId('teacher-card').filter({ hasText: 'ครู แอน' });
+      check('teachers: card shows "ครู <nickname>" and the classes', /ครู แอน[\s\S]*\d+ คลาส/.test(await anne.innerText()), await anne.innerText());
+      await anne.click();
+      const tv = page.getByTestId('teacher-view');
+      await tv.waitFor();
+      const tvt = await tv.innerText();
+      check('teachers: details show contact, classes and Edit', tvt.includes('0811111111') && tvt.includes('Ballet Kids') && await tv.getByTestId('teacher-edit').isVisible(), tvt.slice(0, 200));
+      await page.screenshot({ path: `${SHOTS}/49b-teacher-view.png` });
+      await tv.getByTestId('teacher-edit').click();
+      await page.getByRole('dialog').getByText('แก้ไขครู').waitFor({ timeout: 3000 }).then(() => check('teachers: Edit opens the form', true), () => check('teachers: Edit opens the form', false));
+      await page.keyboard.press('Escape');
+      await page.screenshot({ path: `${SHOTS}/49c-teachers-grid.png` });
+      // a few more teachers without photos, only for the screenshots (pastel colours), removed again below
+      const extra = [];
+      for (const nick of ['ฝ้าย', 'มายด์', 'บีม', 'แพรว', 'ต้น']) extra.push(await post('/teachers', { image: '', prefix: 'นางสาว', firstName: 'ทดสอบ' + nick, lastName: '', nickname: nick, phone: '', email: '', lineId: '', specializations: [] }));
+      await page.reload();
+      await page.getByTestId('teacher-card').nth(5).waitFor();
+      await page.screenshot({ path: `${SHOTS}/49d-teachers-grid-many.png` });
+      await pp.goto(BASE + '/teachers');
+      await pp.getByTestId('teacher-card').first().waitFor();
+      const pg2 = await pp.getByTestId('teacher-grid').boundingBox(), pc2 = await pp.getByTestId('teacher-card').first().boundingBox();
+      check('teachers: 3 a row on phones', pc2.width < pg2.width / 2.8 && pc2.width > pg2.width / 3.6, `${Math.round(pc2.width)} of ${Math.round(pg2.width)}`);
+      await pp.screenshot({ path: `${SHOTS}/p27-teachers-grid.png` });
+      await pp.getByTestId('teacher-card').first().click();
+      await pp.getByTestId('teacher-view').waitFor();
+      await pp.waitForTimeout(300);
+      await pp.screenshot({ path: `${SHOTS}/p28-teacher-view.png` });
+      await pp.keyboard.press('Escape');
+      for (const x of extra) await page.request.delete(`${BASE}/api/teachers/${x.id ?? x.teacher?.id}`, { headers: H });
     }
     // expiry dates: three chips; All = newest bought first, Expire in n days = soonest first, Expired = latest ended first (owner 25/10/2026)
     await pp.goto(BASE + '/courses');

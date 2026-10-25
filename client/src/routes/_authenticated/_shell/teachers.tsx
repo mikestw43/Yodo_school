@@ -2,14 +2,15 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Ban, Mail, MessageCircle, Pencil, Phone, Plus, RotateCcw, Music2, Trash2 } from "lucide-react";
+import { Ban, Clock, Mail, MessageCircle, Pencil, Phone, Plus, RotateCcw, Trash2, UserRound, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Avatar, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, RowActions, SearchFilters, onlyDigits10, usePagination } from "@/components/yodo/ui";
-import { TEACHER_PREFIXES, fullName, useYodo, type Teacher, type TeacherInput } from "@/lib/yodo-store";
+import { ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, RowActions, SearchFilters, onlyDigits10, usePagination } from "@/components/yodo/ui";
+import { TEACHER_PREFIXES, fullName, teacherLabel, useYodo, type YodoData, type Teacher, type TeacherInput } from "@/lib/yodo-store";
 import { L, bothLang, opt } from "@/lib/i18n";
+import { courseState, whenText } from "@/lib/courses";
+import { cn } from "@/lib/utils";
 
 
 export const Route = createFileRoute("/_authenticated/_shell/teachers")({
@@ -40,6 +41,34 @@ const makeSchema = () => z.object({
   specializations: z.array(z.string()),
 });
 
+// Photo cards (owner 26/10/2026, mockup GrduSa1HUD86DFK8N9vfYx: 3 a row on phones, 6 on computers, each teacher their own
+// pastel colour, tap = details). Colours go round in the order teachers were added, so neighbours never share one.
+const PASTELS = [
+  "bg-[#fbd9e1] text-[#d58aa0] dark:bg-[#4a2a34] dark:text-[#c98097]",
+  "bg-[#fde2cf] text-[#e0a57c] dark:bg-[#4a3424] dark:text-[#d39a70]",
+  "bg-[#e6dcf7] text-[#a892dc] dark:bg-[#352c4a] dark:text-[#a48fd6]",
+  "bg-[#d5f0e3] text-[#7fc4a3] dark:bg-[#22403a] dark:text-[#7cbf9f]",
+  "bg-[#d7e8f8] text-[#83b0de] dark:bg-[#233648] dark:text-[#80abd8]",
+  "bg-[#fbf0c9] text-[#d4b75a] dark:bg-[#453d22] dark:text-[#cdb25c]",
+];
+const pastel = (i: number) => PASTELS[Math.max(0, i) % PASTELS.length]!;
+
+function TeacherPhoto({ t, className }: { t: Teacher; className?: string }) {
+  const { data } = useYodo();
+  return (
+    <div className={cn("relative grid aspect-[1/1.08] max-w-full place-items-end overflow-hidden rounded-2xl", t.status === "Disabled" ? "bg-muted text-muted-foreground grayscale" : pastel(data.teachers.findIndex((x) => x.id === t.id)), className)}>
+      {t.image
+        ? <img src={t.image} alt={t.nickname} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+        : <UserRound className="mx-auto mb-[-8%] h-[78%] w-[78%]" strokeWidth={1.5} />}
+    </div>
+  );
+}
+
+/** Classes a teacher teaches (not switched off) with the students whose class has not ended. */
+const classesOf = (data: YodoData, id: string) => data.classes.filter((c) => c.teacherId === id && !c.disabled).map((c) => ({
+  c, students: data.enrollments.filter((e) => e.classId === c.id && courseState(e.expiryDate, data.expiryDays) !== "ended").length,
+}));
+
 const empty: TeacherInput = { image: "", prefix: "", firstName: "", lastName: "", nickname: "", phone: "", email: "", lineId: "", specializations: [] };
 
 function TeachersPage() {
@@ -58,7 +87,9 @@ function TeachersPage() {
       .filter((t) => !k || [t.firstName, t.lastName, t.nickname, t.phone, t.email, ...t.specializations].join(" ").toLowerCase().includes(k));
   }, [data.teachers, q, status]);
 
-  const pg = usePagination(list, 6, `${q}|${status}`);
+  const pg = usePagination(list, 18, `${q}|${status}`);
+  const [viewId, setViewId] = useState<string | null>(null);
+  const viewing = data.teachers.find((t) => t.id === viewId) ?? null;
 
   const openAdd = () => { setEditing(null); setOpen(true); };
 
@@ -76,35 +107,17 @@ function TeachersPage() {
         <EmptyState title={L("ไม่พบครู", "No teachers found")} text={L("ลองเปลี่ยนคำค้นหา หรือเพิ่มครูใหม่", "Try another search, or add a new teacher")} action={can("teachers", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> {L("เพิ่มครู", "Add Teacher")}</Button>} />
       ) : (
         <>
-          <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-3 gap-x-2.5 gap-y-4 md:grid-cols-4 md:gap-x-4 md:gap-y-5 xl:grid-cols-6" data-testid="teacher-grid">
             {pg.pageItems.map((t) => {
-              const classes = data.classes.filter((c) => c.teacherId === t.id && !c.disabled);
+              const n = classesOf(data, t.id).length;
               return (
-                <Card key={t.id} className={`flex min-w-0 flex-col gap-5 rounded-3xl p-7 ${t.status === "Disabled" ? "opacity-60" : ""}`}>
-                  <div className="flex items-center gap-4">
-                    <Avatar src={t.image} name={t.nickname} className="h-16 w-16 text-2xl" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-display text-xl font-semibold">{t.nickname}</p>
-                      <p className="truncate text-sm text-muted-foreground">{fullName(t)}</p>
-                    </div>
-                    <StatusBadge status={t.status} />
-                    <RowActions name={fullName(t)} items={[
-                      can("teachers", "edit") && { label: L("แก้ไข", "Edit"), icon: <Pencil />, onSelect: () => { setEditing(t); setOpen(true); } },
-                      can("teachers", "edit") && t.status === "Active" && { label: L("ปิดใช้งาน", "Disable"), icon: <Ban />, onSelect: () => setDisabling(t) },
-                      can("teachers", "edit") && t.status !== "Active" && { label: L("เปิดใช้งาน", "Enable"), icon: <RotateCcw />, onSelect: () => { setTeacherStatus(t.id, "Active"); toast.success(L("เปิดใช้งานครูแล้ว", "Teacher enabled")); } },
-                      can("teachers", "delete") && { label: L("ลบ", "Delete"), icon: <Trash2 />, danger: true, onSelect: () => setDeleting(t) },
-                    ]} />
-                  </div>
-                  <div className="space-y-2.5 rounded-2xl bg-accent/30 px-4 py-3.5 text-sm text-muted-foreground">
-                    <p className="flex items-center gap-2.5"><Phone className="h-4 w-4 shrink-0 text-primary/70" /> {t.phone}</p>
-                    <p className="flex items-center gap-2.5 truncate"><Mail className="h-4 w-4 shrink-0 text-primary/70" /> {t.email}</p>
-                    <p className="flex items-center gap-2.5"><MessageCircle className="h-4 w-4 shrink-0 text-primary/70" /> {t.lineId || "-"}</p>
-                  </div>
-                  <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                    <Music2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/60" />
-                    <span>{L(`สอน ${classes.length} คลาส`, `Teaches ${classes.length} ${classes.length === 1 ? "class" : "classes"}`)}{classes.length ? `: ${classes.map((c) => c.name).join(", ")}` : ""}</span>
-                  </p>
-                </Card>
+                <button key={t.id} type="button" onClick={() => setViewId(t.id)} className="group min-w-0 rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring" data-testid="teacher-card" aria-label={teacherLabel(t)}>
+                  <TeacherPhoto t={t} className={cn("transition-transform group-hover:-translate-y-0.5", t.status === "Disabled" && "opacity-65")} />
+                  <p className="mt-1.5 truncate text-[13.5px] font-extrabold md:text-[15px]">{teacherLabel(t)}</p>
+                  <span className={cn("mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10.5px] font-bold md:text-xs", t.status === "Disabled" ? "bg-muted text-muted-foreground" : "bg-accent text-accent-foreground")}>
+                    {t.status === "Disabled" ? opt("Disabled") : L(`${n} คลาส`, n === 1 ? "1 class" : `${n} classes`)}
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -114,6 +127,66 @@ function TeachersPage() {
 
 
       <TeacherForm open={open} onOpenChange={setOpen} editing={editing} />
+      <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewId(null)}>
+        <DialogContent className="max-h-[92vh] overflow-y-auto rounded-3xl sm:max-w-md" data-testid="teacher-view">
+          {viewing && (() => {
+            const t = viewing;
+            const cls = classesOf(data, t.id);
+            const contact = [
+              t.phone && { icon: <Phone />, text: t.phone },
+              t.lineId && { icon: <MessageCircle />, text: `LINE: ${t.lineId}` },
+              t.email && { icon: <Mail />, text: t.email },
+            ].filter(Boolean) as { icon: React.ReactNode; text: string }[];
+            return (
+              <>
+                <DialogHeader className="sr-only"><DialogTitle>{teacherLabel(t)}</DialogTitle><DialogDescription>{fullName(t)}</DialogDescription></DialogHeader>
+                <div className="flex items-center gap-4 pr-6">
+                  <TeacherPhoto t={t} className="w-28 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-display text-3xl font-semibold leading-tight">{teacherLabel(t)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{fullName(t)}</p>
+                    <div className="mt-2"><StatusBadge status={t.status} /></div>
+                  </div>
+                </div>
+                {contact.length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{L("ติดต่อ", "Contact")}</p>
+                    <div className="divide-y divide-border rounded-2xl bg-muted px-3.5">
+                      {contact.map((x) => <p key={x.text} className="flex items-center gap-2.5 py-2.5 text-sm [&>svg]:h-4 [&>svg]:w-4 [&>svg]:shrink-0 [&>svg]:text-primary">{x.icon}<span className="min-w-0 break-all">{x.text}</span></p>)}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{L(`คลาสที่สอน (${cls.length})`, `Classes (${cls.length})`)}</p>
+                  {cls.length === 0 ? <p className="text-sm text-muted-foreground">{L("ยังไม่มีคลาส", "No classes yet")}</p> : (
+                    <div className="space-y-2">
+                      {cls.map(({ c, students }) => (
+                        <div key={c.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border px-3.5 py-2.5" data-testid="teacher-class">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold">{c.name}</p>
+                            {whenText(c) && <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground"><Clock className="h-3 w-3 shrink-0" />{whenText(c)}</p>}
+                          </div>
+                          <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold" title={L("นักเรียนที่ยังไม่หมดอายุ", "Students not ended")}>{students}<UsersRound className="h-4 w-4 text-muted-foreground" /></span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {(can("teachers", "edit") || can("teachers", "delete")) && (
+                  <div className="flex items-center gap-2">
+                    {can("teachers", "edit") && <Button className="h-11 flex-1 rounded-full" onClick={() => { setEditing(t); setOpen(true); setViewId(null); }} data-testid="teacher-edit"><Pencil className="h-4 w-4" /> {L("แก้ไข", "Edit")}</Button>}
+                    <RowActions name={fullName(t)} items={[
+                      can("teachers", "edit") && t.status === "Active" && { label: L("ปิดใช้งาน", "Disable"), icon: <Ban />, onSelect: () => { setViewId(null); setDisabling(t); } },
+                      can("teachers", "edit") && t.status !== "Active" && { label: L("เปิดใช้งาน", "Enable"), icon: <RotateCcw />, onSelect: () => { setTeacherStatus(t.id, "Active"); toast.success(L("เปิดใช้งานครูแล้ว", "Teacher enabled")); } },
+                      can("teachers", "delete") && { label: L("ลบ", "Delete"), icon: <Trash2 />, danger: true, onSelect: () => { setViewId(null); setDeleting(t); } },
+                    ]} />
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
       <ConfirmDialog open={!!disabling} onOpenChange={(o) => !o && setDisabling(null)} title={L("ปิดใช้งานครู?", "Disable teacher?")} text={L(`${disabling?.nickname ?? ""} จะไม่สามารถถูกเลือกในคลาสใหม่ได้`, `${disabling?.nickname ?? ""} can no longer be picked for new classes`)} confirmLabel={L("ปิดใช้งาน", "Disable")} destructive onConfirm={() => { if (disabling) { setTeacherStatus(disabling.id, "Disabled"); toast.success(L("ปิดใช้งานครูแล้ว", "Teacher disabled")); } }} />
       <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title={L("ลบครู?", "Delete teacher?")} text={deleting ? L(`ต้องการลบ ${fullName(deleting)} ใช่หรือไม่`, `Delete ${fullName(deleting)}?`) : ""} confirmLabel={L("ลบ", "Delete")} destructive onConfirm={() => { if (deleting) { deleteTeacher(deleting.id); toast.success(L("ลบครูแล้ว", "Teacher deleted")); } }} />
     </>

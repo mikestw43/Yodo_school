@@ -305,7 +305,12 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   "Every Saturday · ..." (`everyText` in lib/courses.ts) and the length; "now ends dd/mm/yyyy" stays under it.
   Owner 26/10/2026 (bug): the full-screen receipt window's top bar shows "Receipt" + number on computers only
   (`receipt-view-title`); on phones it was squeezed between Back and TH/EN and the number spilled over.
-  Teachers page as photo cards (mockup GrduSa1HUD86DFK8N9vfYx, 3 a row on phones, details window) still waits for answers.
+- 26/10/2026 (mockup GrduSa1HUD86DFK8N9vfYx; owner "1 ok 2 a 3 คลาสพอ 4 ok 5 ok"): Teachers page = photo cards (`teacher-grid`),
+  3 a row on phones, 4 on small computers, 6 from xl; photo on a pastel colour (6 colours `PASTELS` in teachers.tsx, in turn by
+  the teacher's place in the list = order added; disabled = grey), "ครู <nickname>" + "n คลาส" chip (disabled: "ปิดใช้งาน").
+  18 a page. Tap = details window (`teacher-view`): photo, name, full name, status, contact (phone / LINE / email, empty ones
+  hidden), classes taught with days + time and the students not ended, Edit + the "more" button (disable/enable/delete).
+  The card has no action button any more.
 - 26/10/2026 (owner): the student's big photo (tap the photo in the details) fills the phone's width (96vw, up to 85vh), at
   least 28rem wide on computers (`photo-big`).
 - 26/10/2026 (mockup Vkm4yks4haeZwDYNJzxCb7 v2; owner "ข้อมูลเท่าเดิม แค่ตกแต่ง", "A ทำได้เลย"): the application keeps exactly the same
