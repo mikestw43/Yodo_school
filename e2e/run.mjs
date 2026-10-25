@@ -676,7 +676,7 @@ try {
   await crow.first().waitFor({ timeout: 5000 }).then(() => check('courses page lists what ends soon, with days left', true), () => check('courses page lists what ends soon, with days left', false));
   check('days left are counted', (await crow.locator('[data-state="soon"]').first().innerText()).includes('เหลือ 5 วัน'));
   await page.screenshot({ path: `${SHOTS}/41-courses.png`, fullPage: true });
-  await crow.getByRole('button', { name: 'ต่อคลาส' }).first().click();
+  await crow.getByRole('button', { name: 'ต่ออายุคลาส' }).first().click();
   const bd = page.getByTestId('buy-dialog');
   await bd.waitFor();
   check('renew: the class is picked and starts the day after the old end', (await bd.getByTestId('buy-line').first().innerText()).includes('Ballet Kids'));
@@ -849,6 +849,30 @@ try {
   check('bell: "remove read" empties it', (await rows.count()) === 0);
   await page.screenshot({ path: `${SHOTS}/23-bell-empty.png` });
   await page.keyboard.press('Escape');
+
+  // ---------- calendar from the class days (owner 25/10/2026) ----------
+  {
+    const dd = await (await page.request.get(`${BASE}/api/data`)).json();
+    const bk = dd.classes.find((c) => c.name === 'Ballet Kids');
+    const H2 = { 'x-yodo': '1' };
+    await page.request.put(`${BASE}/api/classes/${bk.id}`, { headers: H2, data: { name: bk.name, teacherId: bk.teacherId, description: bk.description, image: '', status: bk.status, price: bk.price, months: bk.months, weeks: bk.weeks, days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], startTime: '16:00', endTime: '17:00' } });
+    const inClass = dd.enrollments.filter((e) => e.classId === bk.id && e.startDate <= today && e.expiryDate >= today).length;
+    await page.goto(BASE + '/calendar');
+    const ev = page.locator(`[data-testid="cal-day"][data-date="${today}"] [data-testid="cal-event"]`).filter({ hasText: 'Ballet Kids' });
+    await ev.first().waitFor({ timeout: 5000 }).then(() => check('calendar: today shows the class from its days and time', true), () => check('calendar: today shows the class from its days and time', false));
+    check('calendar: no "add lesson" any more', (await page.getByText('คลิกที่วันเพื่อเพิ่มตารางเรียน').count()) === 0);
+    await page.screenshot({ path: `${SHOTS}/48-calendar.png` });
+    await ev.first().click();
+    const slot = page.getByTestId('cal-slot');
+    await slot.waitFor();
+    check('calendar: tapping a class shows the teacher and the students that day', (await slot.innerText()).includes('16:00–17:00') && (await slot.getByTestId('cal-students').locator('li').count()) === inClass, `${inClass} expected`);
+    await page.screenshot({ path: `${SHOTS}/48b-calendar-class.png` });
+    await page.keyboard.press('Escape');
+    await pp.goto(BASE + '/calendar');
+    await pp.getByTestId('cal-daylist').getByTestId('cal-row').first().waitFor({ timeout: 5000 }).catch(() => {});
+    check('phone calendar: count per day and the day list', (await pp.locator(`[data-testid="cal-day"][data-date="${today}"] [data-testid="cal-count"]`).count()) === 1 && (await pp.getByTestId('cal-daylist').innerText()).includes('Ballet Kids'));
+    await pp.screenshot({ path: `${SHOTS}/p17-calendar.png`, fullPage: true });
+  }
 
   // ---------- English ----------
   await page.goto(BASE + '/');

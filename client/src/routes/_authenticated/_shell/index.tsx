@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { addDays, format, startOfWeek } from "date-fns";
 import { Banknote, CalendarHeart, ChevronRight, Crown, Hourglass, Music4, PersonStanding } from "lucide-react";
-import { courseState } from "@/lib/courses";
+import { courseState, classesOn, enrolledOn } from "@/lib/courses";
 import { Card } from "@/components/ui/card";
 import { Avatar, PageHeader } from "@/components/yodo/ui";
 import { ageText, classColor, fullName, useYodo } from "@/lib/yodo-store";
@@ -38,11 +38,12 @@ function Dashboard() {
     { label: L("นักเรียนที่ใช้งาน", "Active students"), value: data.students.filter((s) => s.status === "Active").length, icon: PersonStanding, to: "/students" as const },
     { label: L("คลาสที่เปิดอยู่", "Open classes"), value: liveClasses.filter((c) => c.status === "Active").length, icon: Music4, to: "/classes" as const },
     { label: L("ครูผู้สอน", "Teachers"), value: data.teachers.filter((t) => t.status === "Active").length, icon: Crown, to: "/teachers" as const },
-    { label: L("คาบเรียนสัปดาห์นี้", "Lessons this week"), value: data.schedules.filter((s) => weekDates.has(s.date)).length, icon: CalendarHeart, to: "/calendar" as const },
+    { label: L("คาบเรียนสัปดาห์นี้", "Lessons this week"), value: [...weekDates].reduce((n, d) => n + classesOn(data.classes, d).length, 0), icon: CalendarHeart, to: "/calendar" as const },
 
   ];
   const soon = data.enrollments.filter((e) => courseState(e.expiryDate, data.expiryDays) === "soon").length;
-  const todays = data.schedules.filter((s) => s.date === today).sort((a, b) => a.start.localeCompare(b.start));
+  // From the class days and time (owner 25/10/2026), like the calendar
+  const todays = classesOn(data.classes, today);
   const recent = [...data.students].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
   const maxCount = Math.max(1, ...liveClasses.map((c) => data.enrollments.filter((e) => e.classId === c.id).length));
 
@@ -107,12 +108,12 @@ function Dashboard() {
                 const c = data.classes.find((x) => x.id === s.classId);
                 const t = data.teachers.find((x) => x.id === c?.teacherId);
                 return (
-                  <li key={s.id} className="flex items-center gap-4 rounded-2xl bg-muted/60 p-3">
+                  <li key={s.classId} className="flex items-center gap-4 rounded-2xl bg-muted/60 p-3">
                     <span className="h-10 w-1.5 rounded-full" style={{ background: classColor(data.classes, s.classId) }} />
-                    <div className="w-24 text-sm font-semibold">{s.start}–{s.end}</div>
+                    <div className="w-24 text-sm font-semibold">{s.start ? `${s.start}${s.end ? `–${s.end}` : ""}` : "-"}</div>
                     <div className="flex-1">
                       <p className="font-medium">{c?.name}</p>
-                      <p className="text-xs text-muted-foreground">{t ? t.nickname : "-"} · {data.scheduleStudents.filter((entry) => entry.scheduleId === s.id).length} {L("นักเรียน", "students")}</p>
+                      <p className="text-xs text-muted-foreground">{t ? t.nickname : "-"} · {enrolledOn(data.enrollments, s.classId, today).length} {L("นักเรียน", "students")}</p>
                     </div>
                   </li>
                 );

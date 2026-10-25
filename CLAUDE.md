@@ -241,7 +241,13 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   the share sheet opens straight from the tap, and save it if sharing fails (owner: Share did nothing on a computer).
   Owner 25/10/2026: the months/weeks boxes can be emptied while typing (`NumBox`, text box, empty = 0; before, the 0 could
   not be deleted and typing gave "02"); the Renew button reads "ต่อคลาส" (was "ต่ออายุ") on the expiry page and the student's
-  classes tab.
+  classes tab. Owner 25/10/2026 later: that button reads "ต่ออายุคลาส".
+- 25/10/2026 (mockup FdcxhSow1MpxYu8V4CK2nT; owner "1-3 ตามที่คุณแนะนำ"): the calendar comes from each class's days + time
+  (`classesOn` / `enrolledOn` in client lib/courses.ts): computer month/week grid shows "16:00 Ballet Kids" chips (+n);
+  phones show a count per day and the tapped day's list below (by time, teacher, students); tapping a class opens time,
+  teacher and the students whose class runs that day with days left (`SlotDialog`). The old "add lesson" sessions are no
+  longer used or shown (Schedule rows and their endpoints stay in the database/server, unused). Dashboard "Today's
+  schedule" and "Lessons this week" use the same class days. No school holidays yet (offered for later).
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

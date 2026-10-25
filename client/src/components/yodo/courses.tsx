@@ -288,7 +288,7 @@ export function StudentCourses({ student, onEdit }: { student: Student; onEdit: 
                 <div className="flex items-center justify-between gap-2"><span className="font-semibold">{c?.name ?? "-"}</span><DaysBadge expiry={e.expiryDate} /></div>
                 <p className="text-xs text-muted-foreground">{fd(e.startDate)} – {fd(e.expiryDate)}{ext ? L(` · ขยายแล้ว ${ext} วัน`, ` · extended ${ext} days`) : ""}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {canBuy && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openBuy(student.id, e.classId)}><RefreshCw className="h-3.5 w-3.5" /> {L("ต่อคลาส", "Renew")}</Button>}
+                  {canBuy && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openBuy(student.id, e.classId)}><RefreshCw className="h-3.5 w-3.5" /> {L("ต่ออายุคลาส", "Renew")}</Button>}
                   {canExtend && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openExtend(e.id)}><CalendarPlus className="h-3.5 w-3.5" /> {L("ขยายเวลา", "Extend")}</Button>}
                   {can("students", "edit") && <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground" title={L("แก้ไขวันที่ / นำออกจากคลาส", "Fix dates / remove from class")} aria-label={L(`แก้ไข ${c?.name ?? ""}`, `Edit ${c?.name ?? ""}`)} onClick={() => onEdit(e)}><Pencil className="h-3.5 w-3.5" /></Button>}
                 </div>

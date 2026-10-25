@@ -64,3 +64,20 @@ export function daysText(n: number | null) {
   if (n === 0) return L("วันนี้วันสุดท้าย", "Last day today");
   return L(`เหลือ ${n} วัน`, n === 1 ? "1 day left" : `${n} days left`);
 }
+
+// Calendar from the class days (owner 25/10/2026, mockup FdcxhSow1MpxYu8V4CK2nT): no sessions to add one by one.
+const DOW_KEY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+export type ClassSlot = { classId: string; start: string; end: string };
+/** Classes held on a yyyy-MM-dd date, by start time (open classes with that weekday ticked). */
+export function classesOn(classes: { id: string; disabled: boolean; days?: string[]; startTime?: string; endTime?: string }[], date: string): ClassSlot[] {
+  const d = parseISO(date);
+  if (!isValid(d)) return [];
+  const key = DOW_KEY[d.getDay()]!;
+  return classes.filter((c) => !c.disabled && (c.days ?? []).includes(key))
+    .map((c) => ({ classId: c.id, start: c.startTime ?? "", end: c.endTime ?? "" }))
+    .sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
+}
+/** Enrollments of a class that cover the date (bought, not ended that day). */
+export function enrolledOn(enrollments: Enrollment[], classId: string, date: string) {
+  return enrollments.filter((e) => e.classId === classId && (!e.startDate || e.startDate <= date) && (!e.expiryDate || e.expiryDate >= date));
+}

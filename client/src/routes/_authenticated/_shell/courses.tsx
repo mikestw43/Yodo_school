@@ -51,7 +51,7 @@ function CoursesPage() {
   ];
   const actions = (r: (typeof rows)[number]) => (
     <div className="flex flex-wrap gap-1.5">
-      {canBuy && r.s!.status === "Active" && <Button size="sm" className="h-8 rounded-full" onClick={() => openBuy(r.s!.id, r.c!.id)}><RefreshCw className="h-3.5 w-3.5" /> {L("ต่อคลาส", "Renew")}</Button>}
+      {canBuy && r.s!.status === "Active" && <Button size="sm" className="h-8 rounded-full" onClick={() => openBuy(r.s!.id, r.c!.id)}><RefreshCw className="h-3.5 w-3.5" /> {L("ต่ออายุคลาส", "Renew")}</Button>}
       {canExtend && r.st !== "ended" && <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => openExtend(r.e.id)}><CalendarPlus className="h-3.5 w-3.5" /> {L("ขยายเวลา", "Extend")}</Button>}
     </div>
   );
