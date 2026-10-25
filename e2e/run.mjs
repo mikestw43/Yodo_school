@@ -860,7 +860,13 @@ try {
     await page.goto(BASE + '/calendar');
     const ev = page.locator(`[data-testid="cal-day"][data-date="${today}"] [data-testid="cal-event"]`).filter({ hasText: 'Ballet Kids' });
     await ev.first().waitFor({ timeout: 5000 }).then(() => check('calendar: today shows the class from its days and time', true), () => check('calendar: today shows the class from its days and time', false));
-    check('calendar: no "add lesson" any more', (await page.getByText('คลิกที่วันเพื่อเพิ่มตารางเรียน').count()) === 0);
+    // a class with nobody in it on a day is not shown that day (owner 25/10/2026)
+    {
+      const hh = dd.classes.find((c) => c.name === 'Hip Hop 8W');
+      const hhIn = dd.enrollments.some((e) => e.classId === hh.id);
+      check('calendar: a class with no students that day is not shown', !hhIn && (await page.locator('[data-testid="cal-event"]').filter({ hasText: 'Hip Hop 8W' }).count()) === 0, `enrolled: ${hhIn}`);
+    }
+    check('calendar: no "add lesson" any more',(await page.getByText('คลิกที่วันเพื่อเพิ่มตารางเรียน').count()) === 0);
     await page.screenshot({ path: `${SHOTS}/48-calendar.png` });
     await ev.first().click();
     const slot = page.getByTestId('cal-slot');

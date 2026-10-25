@@ -81,3 +81,13 @@ export function classesOn(classes: { id: string; disabled: boolean; days?: strin
 export function enrolledOn(enrollments: Enrollment[], classId: string, date: string) {
   return enrollments.filter((e) => e.classId === classId && (!e.startDate || e.startDate <= date) && (!e.expiryDate || e.expiryDate >= date));
 }
+type LessonData = { classes: Parameters<typeof classesOn>[0]; enrollments: Enrollment[]; students: { id: string; status: string }[] };
+/** Active students whose class runs on the date. */
+export function studentsOn(data: LessonData, classId: string, date: string) {
+  return enrolledOn(data.enrollments, classId, date).filter((e) => data.students.some((s) => s.id === e.studentId && s.status === "Active"));
+}
+/** The calendar's lessons: a class on its days, only on the days someone is in it (owner 25/10/2026: an empty
+ *  Saturday must not show the class). */
+export function lessonsOn(data: LessonData, date: string): ClassSlot[] {
+  return classesOn(data.classes, date).filter((x) => studentsOn(data, x.classId, date).length > 0);
+}

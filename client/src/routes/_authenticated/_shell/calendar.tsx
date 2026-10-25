@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, NativeSelect, PageHeader } from "@/components/yodo/ui";
 import { DaysBadge } from "@/components/yodo/courses";
-import { classesOn, enrolledOn, type ClassSlot } from "@/lib/courses";
+import { lessonsOn, studentsOn, type ClassSlot } from "@/lib/courses";
 import { classColor, fullName, teacherLabel, useYodo, type Student } from "@/lib/yodo-store";
 import { cn } from "@/lib/utils";
 import { L, dayName, dayShort, fDayMonth, fMonthYear, monthName } from "@/lib/i18n";
@@ -46,7 +46,7 @@ function CalendarPage() {
     for (let d = start; d <= end; d = addDays(d, 1)) out.push(d);
     return out;
   }, [view, cursor]);
-  const on = (date: string) => classesOn(data.classes, date).filter((x) => classFilter === "all" || x.classId === classFilter).map((x) => ({ ...x, date }));
+  const on = (date: string) => lessonsOn(data, date).filter((x) => classFilter === "all" || x.classId === classFilter).map((x) => ({ ...x, date }));
 
   const move = (n: number) => setCursor((c) => (view === "month" ? addMonths(c, n) : addWeeks(c, n)));
   const title = view === "month" ? fMonthYear(cursor) : `${fDayMonth(days[0]!, false)} – ${fDayMonth(days[6]!)}`;
@@ -156,7 +156,7 @@ function CalendarPage() {
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: classColor(data.classes, s.classId) }} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{c?.name}</span>
-                <span className="block truncate text-xs text-muted-foreground">{s.start ? `${s.start}${s.end ? `–${s.end}` : ""} · ` : ""}{teacherLabel(t)} · {L(`${enrolledOn(data.enrollments, s.classId, day).length} คน`, `${enrolledOn(data.enrollments, s.classId, day).length} students`)}</span>
+                <span className="block truncate text-xs text-muted-foreground">{s.start ? `${s.start}${s.end ? `–${s.end}` : ""} · ` : ""}{teacherLabel(t)} · {L(`${studentsOn(data, s.classId, day).length} คน`, `${studentsOn(data, s.classId, day).length} students`)}</span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             </button>
@@ -174,7 +174,7 @@ function SlotDialog({ slot, onClose }: { slot: Slot | null; onClose: () => void 
   const { data } = useYodo();
   const c = data.classes.find((x) => x.id === slot?.classId);
   const t = data.teachers.find((x) => x.id === c?.teacherId);
-  const rows = slot ? enrolledOn(data.enrollments, slot.classId, slot.date)
+  const rows = slot ? studentsOn(data, slot.classId, slot.date)
     .map((e) => ({ e, s: data.students.find((x) => x.id === e.studentId) }))
     .filter((r): r is { e: (typeof r)["e"]; s: Student } => !!r.s && r.s.status === "Active")
     .sort((a, b) => fullName(a.s).localeCompare(fullName(b.s))) : [];

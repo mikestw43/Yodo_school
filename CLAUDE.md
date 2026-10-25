@@ -261,6 +261,9 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   (week first, the page opens on Month). Expiry dates page has three chips: All (newest bought first: newest buy purchase,
   else joinedAt), "หมดใน n วัน"/"Expire in n days" (= `Setting.expiryDays`, not the ended ones, soonest first) and
   "หมดอายุแล้ว"/"Expired" (all ended, latest ended first); the old "not ended" / "ended in 30 days" chips are gone.
+- 25/10/2026 (owner, bug): the calendar shows a class on a day only when an ACTIVE student's period covers that day
+  (`lessonsOn` / `studentsOn` in client lib/courses.ts; a Saturday class bought from 19/10 no longer shows on 3/10).
+  Dashboard "Today's schedule" and "Lessons this week" use the same rule.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
