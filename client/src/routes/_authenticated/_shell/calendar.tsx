@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Avatar, NativeSelect, PageHeader } from "@/components/yodo/ui";
 import { DaysBadge } from "@/components/yodo/courses";
 import { classesOn, enrolledOn, type ClassSlot } from "@/lib/courses";
-import { classColor, fullName, useYodo, type Student } from "@/lib/yodo-store";
+import { classColor, fullName, teacherLabel, useYodo, type Student } from "@/lib/yodo-store";
 import { cn } from "@/lib/utils";
 import { L, dayName, dayShort, fDayMonth, fMonthYear, monthName } from "@/lib/i18n";
 
@@ -55,6 +55,7 @@ function CalendarPage() {
 
   const Event = ({ s, compact }: { s: Slot; compact?: boolean }) => {
     const c = data.classes.find((x) => x.id === s.classId);
+    const t = data.teachers.find((x) => x.id === c?.teacherId);
     const color = classColor(data.classes, s.classId);
     return (
       <button
@@ -68,6 +69,7 @@ function CalendarPage() {
           {s.start && <span className="shrink-0 font-semibold">{s.start}</span>}
           <span className={cn("min-w-0 truncate", compact && "text-[11px]")}>{c?.name}</span>
         </div>
+        <p className="truncate text-muted-foreground" data-testid="cal-event-teacher">{teacherLabel(t)}</p>
         {!compact && s.start && <p className="text-muted-foreground">{s.start}{s.end ? `–${s.end}` : ""}</p>}
       </button>
     );
@@ -149,7 +151,7 @@ function CalendarPage() {
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: classColor(data.classes, s.classId) }} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{c?.name}</span>
-                <span className="block truncate text-xs text-muted-foreground">{s.start ? `${s.start}${s.end ? `–${s.end}` : ""} · ` : ""}{t ? t.nickname : L("ไม่มีครู", "No teacher")} · {L(`${enrolledOn(data.enrollments, s.classId, day).length} คน`, `${enrolledOn(data.enrollments, s.classId, day).length} students`)}</span>
+                <span className="block truncate text-xs text-muted-foreground">{s.start ? `${s.start}${s.end ? `–${s.end}` : ""} · ` : ""}{teacherLabel(t)} · {L(`${enrolledOn(data.enrollments, s.classId, day).length} คน`, `${enrolledOn(data.enrollments, s.classId, day).length} students`)}</span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             </button>
@@ -182,7 +184,7 @@ function SlotDialog({ slot, onClose }: { slot: Slot | null; onClose: () => void 
             </DialogHeader>
             <div className="space-y-3 rounded-2xl bg-muted/50 p-4 text-sm">
               <p className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> {(() => { const d = parseISO(slot.date); return `${dayName(d.getDay())} ${d.getDate()} ${monthName(d.getMonth())} ${d.getFullYear()}`; })()}{slot.start ? ` · ${slot.start}${slot.end ? `–${slot.end}` : ""}` : ""}</p>
-              <div className="flex items-center gap-2"><Avatar src={t?.image} name={t?.nickname ?? "?"} className="h-7 w-7 text-sm" /> {t ? `${t.nickname} (${fullName(t)})` : L("ไม่มีครู", "No teacher")}</div>
+              <div className="flex items-center gap-2"><Avatar src={t?.image} name={t?.nickname || t?.firstName || "?"} className="h-7 w-7 text-sm" /> <span data-testid="cal-slot-teacher">{teacherLabel(t)}{t ? ` (${fullName(t)})` : ""}</span></div>
               <p className="flex items-center gap-2"><UsersRound className="h-4 w-4 text-primary" /> {L(`นักเรียน ${rows.length} คน`, `${rows.length} students`)}</p>
             </div>
             {rows.length === 0 && <p className="text-sm text-muted-foreground">{L("ยังไม่มีนักเรียนที่เรียนคลาสนี้ในวันนั้น", "No student has this class running that day")}</p>}

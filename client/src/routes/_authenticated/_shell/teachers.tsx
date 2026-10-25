@@ -2,12 +2,12 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Ban, Mail, MessageCircle, Pencil, Phone, Plus, RotateCcw, Search, Music2, Trash2 } from "lucide-react";
+import { Ban, Mail, MessageCircle, Pencil, Phone, Plus, RotateCcw, Music2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Avatar, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, RowActions, onlyDigits10, usePagination } from "@/components/yodo/ui";
+import { Avatar, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, RowActions, SearchFilters, onlyDigits10, usePagination } from "@/components/yodo/ui";
 import { TEACHER_PREFIXES, fullName, useYodo, type Teacher, type TeacherInput } from "@/lib/yodo-store";
 import { L, bothLang, opt } from "@/lib/i18n";
 
@@ -29,9 +29,10 @@ export const Route = createFileRoute("/_authenticated/_shell/teachers")({
 // Built on use so the error messages follow the current language.
 const makeSchema = () => z.object({
   prefix: z.string(),
-  firstName: z.string().trim().max(100),
+  firstName: z.string().trim().min(1, L("กรุณากรอกชื่อ", "Please enter the first name")).max(100),
   lastName: z.string().trim().max(100),
-  nickname: z.string().trim().max(50),
+  // Required (owner 25/10/2026): class cards and the calendar tell teachers apart by nickname.
+  nickname: z.string().trim().min(1, L("กรุณากรอกชื่อเล่น", "Please enter the nickname")).max(50),
   phone: z.string().refine((v) => v === "" || /^\d{10}$/.test(v), L("เบอร์โทรต้องเป็นตัวเลข 10 หลัก", "Phone number must be 10 digits")),
   email: z.string().trim().max(255).refine((v) => v === "" || z.string().email().safeParse(v).success, L("รูปแบบอีเมลไม่ถูกต้อง", "Invalid email address")),
   lineId: z.string().trim().max(50),
@@ -64,17 +65,12 @@ function TeachersPage() {
   return (
     <>
       <PageHeader title={L("ครู", "Teachers")} subtitle={L(`ครูทั้งหมด ${data.teachers.length} คน`, `${data.teachers.length} teachers in total`)} action={can("teachers", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> {L("เพิ่มครู", "Add Teacher")}</Button>} />
-      <Card className="mb-6 flex flex-row flex-wrap gap-3 rounded-3xl p-4">
-        <div className="relative min-w-60 flex-1">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("ค้นหาชื่อ, ความถนัด...", "Search name, speciality...")} className="rounded-full pl-9" />
-        </div>
-        <NativeSelect value={status} onValueChange={setStatus} className="w-44 rounded-full">
-          <option value="all">{L("ทุกสถานะ", "All statuses")}</option>
-          <option value="Active">{opt("Active")}</option>
-          <option value="Disabled">{opt("Disabled")}</option>
-        </NativeSelect>
-      </Card>
+      <SearchFilters q={q} onQ={setQ} placeholder={L("ค้นหาชื่อ ความถนัด", "Search name, speciality")} testPrefix="status"
+        value={status} onValue={setStatus} chips={[
+          { value: "all", label: L("ทั้งหมด", "All"), count: data.teachers.length },
+          { value: "Active", label: opt("Active"), count: data.teachers.filter((t) => t.status === "Active").length },
+          { value: "Disabled", label: opt("Disabled"), count: data.teachers.filter((t) => t.status === "Disabled").length },
+        ]} />
 
       {list.length === 0 ? (
         <EmptyState title={L("ไม่พบครู", "No teachers found")} text={L("ลองเปลี่ยนคำค้นหา หรือเพิ่มครูใหม่", "Try another search, or add a new teacher")} action={can("teachers", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> {L("เพิ่มครู", "Add Teacher")}</Button>} />
@@ -164,8 +160,8 @@ function TeacherForm({ open, onOpenChange, editing }: { open: boolean; onOpenCha
               {TEACHER_PREFIXES.map((p) => <option key={p} value={p}>{bothLang(p)}</option>)}
             </NativeSelect>
           </Field>
-          <Field label={L("ชื่อเล่น", "Nickname")} error={errors.nickname}><Input value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></Field>
-          <Field label={L("ชื่อ", "First Name")} error={errors.firstName}><Input value={f.firstName} onChange={(e) => set("firstName", e.target.value)} /></Field>
+          <Field label={L("ชื่อเล่น", "Nickname")} required error={errors.nickname}><Input value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></Field>
+          <Field label={L("ชื่อ", "First Name")} required error={errors.firstName}><Input value={f.firstName} onChange={(e) => set("firstName", e.target.value)} /></Field>
           <Field label={L("นามสกุล", "Last Name")} error={errors.lastName}><Input value={f.lastName} onChange={(e) => set("lastName", e.target.value)} /></Field>
           <Field label={L("เบอร์โทร", "Phone")} error={errors.phone}><Input inputMode="numeric" value={f.phone} onChange={(e) => set("phone", onlyDigits10(e.target.value))} /></Field>
           <Field label={L("อีเมล", "Email")} error={errors.email}><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>

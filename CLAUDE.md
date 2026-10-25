@@ -248,6 +248,14 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   teacher and the students whose class runs that day with days left (`SlotDialog`). The old "add lesson" sessions are no
   longer used or shown (Schedule rows and their endpoints stay in the database/server, unused). Dashboard "Today's
   schedule" and "Lessons this week" use the same class days. No school holidays yet (offered for later).
+- 25/10/2026 (mockup VeE7DE1eWKPHXRhqPhGvDg v3; owner "1 ok 2 ok 3 ok ทำได้เลย"): list pages (students, classes, teachers,
+  expiry dates) use `SearchFilters` (components/yodo/ui.tsx): a low search box on its own line (testid `list-search`), the
+  classes page's Cards/Table switch as icons at its end (`ViewIcons`), then the filter chips with counts on ONE line that
+  slides sideways (status dropdowns replaced; testids `status-<value>` / expiry `filter-<value>`); computers one row.
+  Teacher shown as "ครู <nickname>" / "Teacher <nickname>" (`teacherLabel` in lib/yodo-store.tsx, first name when an old
+  teacher has no nickname) on class cards (own line with the picture, `class-teacher`), calendar chips / phone day list /
+  class window, and expiry rows (the same class runs with different teachers). Teacher nickname (and first name) required
+  in the form; the server refuses an empty nickname.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarPlus, RefreshCw, Search } from "lucide-react";
+import { CalendarPlus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, EmptyState, PageHeader, Pagination, usePagination } from "@/components/yodo/ui";
+import { Avatar, EmptyState, PageHeader, Pagination, SearchFilters, usePagination } from "@/components/yodo/ui";
 import { DaysBadge, openBuy, openExtend } from "@/components/yodo/courses";
 import { courseState, daysLeft } from "@/lib/courses";
-import { fullName, useYodo } from "@/lib/yodo-store";
+import { fullName, teacherLabel, useYodo } from "@/lib/yodo-store";
 import { L, fd } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/_shell/courses")({
@@ -43,11 +42,11 @@ function CoursesPage() {
   const pg = usePagination(list, 25, `${filter}|${k}`);
   const canBuy = can("students", "edit");
   const canExtend = can("courses", "edit");
-  const chips: [Filter, string][] = [
-    ["all", L(`ทั้งหมด ${count.all}`, `All ${count.all}`)],
-    ["soon", L(`ใกล้หมด (${data.expiryDays} วัน) ${count.soon}`, `Ending soon (${data.expiryDays} days) ${count.soon}`)],
-    ["active", L(`ยังไม่หมดอายุ ${count.active}`, `Not ended ${count.active}`)],
-    ["ended", L(`หมดแล้ว 30 วันล่าสุด ${count.ended}`, `Ended in the last 30 days ${count.ended}`)],
+  const chips: [Filter, string, number][] = [
+    ["all", L("ทั้งหมด", "All"), count.all],
+    ["soon", L("ใกล้หมด", "Ending soon"), count.soon],
+    ["active", L("ยังไม่หมด", "Not ended"), count.active],
+    ["ended", L("หมด 30 วัน", "Ended 30 days"), count.ended],
   ];
   const actions = (r: (typeof rows)[number]) => (
     <div className="flex flex-wrap gap-1.5">
@@ -64,23 +63,15 @@ function CoursesPage() {
   return (
     <>
       <PageHeader title={L("วันหมดอายุ", "Expiry dates")} subtitle={L("นักเรียนทุกคนกับคลาสที่ซื้อ เรียงจากใกล้หมดก่อน", "Every student's classes, ending soonest first")} />
-      <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label={L("แสดง", "Show")}>
-        {chips.map(([f, t]) => (
-          <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} data-testid={`filter-${f}`}
-            className={`h-9 rounded-full px-4 text-sm font-semibold transition-colors ${filter === f ? (f === "soon" ? "bg-orange-700 text-white" : "bg-primary text-primary-foreground") : "border border-border bg-background hover:bg-muted"}`}>{t}</button>
-        ))}
-        <div className="relative ml-auto w-full sm:w-64">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("ค้นหาชื่อ / คลาส", "Search name / class")} className="rounded-full pl-9" />
-        </div>
-      </div>
+      <SearchFilters q={q} onQ={setQ} placeholder={L("ค้นหาชื่อ / คลาส", "Search name / class")} value={filter} onValue={(v: string) => setFilter(v as Filter)}
+        chips={chips.map(([f, t, n]) => ({ value: f, label: t, count: n, ...(f === "soon" ? { tone: "warn" as const } : {}) }))} />
       {list.length === 0 ? <EmptyState title={filter === "soon" ? L("ไม่มีคลาสใกล้หมดอายุ", "No classes ending soon") : L("ไม่พบรายการ", "Nothing found")} /> : (
         <>
           <div className="space-y-3 md:hidden">
             {pg.pageItems.map((r) => (
               <Card key={r.e.id} className="gap-3 rounded-3xl p-4" data-testid="course-row">
                 <div className="flex items-start justify-between gap-2">{who(r)}<DaysBadge expiry={r.e.expiryDate} /></div>
-                <p className="text-sm"><span className="font-semibold">{r.c!.name}</span> <span className="text-muted-foreground">· {fd(r.e.startDate)} – {fd(r.e.expiryDate)}</span></p>
+                <p className="text-sm"><span className="font-semibold">{r.c!.name}</span> <span className="text-muted-foreground">· {teacherLabel(data.teachers.find((t) => t.id === r.c!.teacherId))} · {fd(r.e.startDate)} – {fd(r.e.expiryDate)}</span></p>
                 {actions(r)}
               </Card>
             ))}
@@ -101,7 +92,7 @@ function CoursesPage() {
                 {pg.pageItems.map((r) => (
                   <TableRow key={r.e.id} className={`[&>td]:py-3 ${r.st === "ended" ? "text-muted-foreground" : ""}`} data-testid="course-row">
                     <TableCell>{who(r)}</TableCell>
-                    <TableCell className="font-medium">{r.c!.name}</TableCell>
+                    <TableCell><span className="block font-medium">{r.c!.name}</span><span className="block text-xs text-muted-foreground">{teacherLabel(data.teachers.find((t) => t.id === r.c!.teacherId))}</span></TableCell>
                     <TableCell>{fd(r.e.startDate)}</TableCell>
                     <TableCell>{fd(r.e.expiryDate)}</TableCell>
                     <TableCell><DaysBadge expiry={r.e.expiryDate} /></TableCell>

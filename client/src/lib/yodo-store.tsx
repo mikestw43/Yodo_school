@@ -212,6 +212,11 @@ export function nextStudentCode(students: { code: string }[], deletedCodes: stri
 export const fullName = (p: { prefix: string; firstName: string; lastName: string }) =>
   `${prefixed(p.prefix, p.firstName)} ${p.lastName}`;
 
+/** "ครู preaw" / "Teacher preaw" on class cards and the calendar (owner 25/10/2026: the same class runs with
+ *  different teachers). Older teachers without a nickname show their first name. */
+export const teacherLabel = (t: { nickname: string; firstName: string } | undefined) =>
+  t ? L(`ครู ${t.nickname || t.firstName}`, `Teacher ${t.nickname || t.firstName}`) : L("ไม่มีครู", "No teacher");
+
 // ---------- Store ----------
 // Same API the pages always used. Changes show at once (optimistic) and are sent to our server;
 // if the server refuses, the error is shown and everything is reloaded from the server.

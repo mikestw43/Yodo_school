@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { Ban, CalendarDays, ChevronLeft, Eye, LayoutGrid, List, Pencil, Plus, RotateCcw, Search } from "lucide-react";
+import { Ban, CalendarDays, ChevronLeft, Eye, LayoutGrid, List, Pencil, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Avatar, ClassCover, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, RowActions, usePagination } from "@/components/yodo/ui";
+import { Avatar, ClassCover, ConfirmDialog, EmptyState, Field, ImageUpload, NativeSelect, PageHeader, Pagination, StatusBadge, RowActions, SearchFilters, ViewIcons, usePagination } from "@/components/yodo/ui";
 
-import { ageText, classColor, fullName, useYodo, type ClassInput, type DanceClass } from "@/lib/yodo-store";
+import { ageText, classColor, fullName, teacherLabel, useYodo, type ClassInput, type DanceClass } from "@/lib/yodo-store";
 import { L, dayShort, fDayMonth, fd, opt } from "@/lib/i18n";
 import { DAYS, courseEnd, courseState, dayLabel, lengthText, todayIso, whenText } from "@/lib/courses";
 import { DaysBadge } from "@/components/yodo/courses";
@@ -78,24 +78,10 @@ function ClassesPage() {
   return (
     <>
       <PageHeader title={L("คลาส", "Classes")} subtitle={L(`คลาสทั้งหมด ${data.classes.length} คลาส`, `${data.classes.length} classes in total`)} action={can("classes", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> {L("เพิ่มคลาส", "Add Class")}</Button>} />
-      <Card className="mb-6 flex flex-row flex-wrap gap-3 rounded-3xl p-4">
-        <div className="relative min-w-60 flex-1">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("ค้นหาชื่อคลาส หรือครู...", "Search class or teacher...")} className="rounded-full pl-9" />
-        </div>
-        <NativeSelect value={status} onValueChange={setStatus} className="w-44 rounded-full">
-          <option value="all">{L("ทุกสถานะ", "All statuses")}</option>
-          <option value="Active">{opt("Active")}</option>
-          <option value="Inactive">{opt("Inactive")}</option>
-          <option value="Disabled">{opt("Disabled")}</option>
-        </NativeSelect>
-        <div className="inline-flex h-9 shrink-0 overflow-hidden rounded-full border border-border bg-background text-sm font-semibold" role="group" aria-label={L("มุมมอง", "View")}>
-          {([["cards", LayoutGrid, L("การ์ด", "Cards")], ["table", List, L("ตาราง", "Table")]] as const).map(([v, Icon, label]) => (
-            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} data-testid={`classes-view-${v}`}
-              className={`inline-flex items-center gap-1.5 px-3.5 transition-colors ${view === v ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}><Icon className="h-4 w-4" />{label}</button>
-          ))}
-        </div>
-      </Card>
+      <SearchFilters q={q} onQ={setQ} placeholder={L("ค้นหาคลาส หรือครู", "Search class or teacher")} testPrefix="status"
+        value={status} onValue={setStatus}
+        chips={(["all", "Active", "Inactive", "Disabled"] as const).map((v) => ({ value: v, label: v === "all" ? L("ทั้งหมด", "All") : opt(v), count: v === "all" ? data.classes.length : data.classes.filter((c) => statusOf(c) === v).length }))}
+        extra={<ViewIcons value={view} onChange={setView} testPrefix="classes-view" options={[["cards", <LayoutGrid />, L("การ์ด", "Cards")], ["table", <List />, L("ตาราง", "Table")]]} />} />
 
       {list.length === 0 ? (
         <EmptyState title={L("ไม่พบคลาส", "No classes found")} text={L("ลองเปลี่ยนคำค้นหา หรือเพิ่มคลาสใหม่", "Try another search, or add a new class")} action={can("classes", "add") && <Button className="rounded-full" onClick={openAdd}><Plus className="h-4 w-4" /> {L("เพิ่มคลาส", "Add Class")}</Button>} />
@@ -115,7 +101,8 @@ function ClassesPage() {
                       <StatusBadge status={statusOf(c)} />
                       {actions(c)}
                     </div>
-                    <p className="truncate text-sm text-muted-foreground"><span className="font-semibold text-primary">{coursePrice(c)}</span> · {t ? t.nickname : L("ไม่มีครู", "No teacher")}</p>
+                    <p className="truncate text-sm font-semibold text-primary">{coursePrice(c)}</p>
+                    <p className="flex min-w-0 items-center gap-1.5 text-sm" data-testid="class-teacher"><Avatar src={t?.image} name={t?.nickname || t?.firstName || "?"} className="h-5 w-5 text-[10px]" /><span className="truncate">{teacherLabel(t)}</span></p>
                     {whenText(c) && <p className="flex items-center gap-1.5 truncate text-sm" data-testid="class-when"><CalendarDays className="h-3.5 w-3.5 shrink-0 text-primary/70" />{whenText(c)}</p>}
                     {/* Bought / not ended / ending soon (owner 12/10/2026, mockup WTr5LoqwQAEnSrKDuzZiMi board 4) */}
                     <button type="button" onClick={(e) => { e.stopPropagation(); setViewId(c.id); }} className="grid grid-cols-3 gap-1.5 text-center" data-testid="class-counts" aria-label={L(`ดูนักเรียนใน ${c.name}`, `See the students of ${c.name}`)}>
@@ -143,7 +130,7 @@ function ClassesPage() {
                     return (
                       <tr key={c.id} onClick={() => setViewId(c.id)} className={`cursor-pointer border-t border-border/60 tabular-nums hover:bg-muted/40 [&>td]:px-4 [&>td]:py-3 ${c.disabled ? "opacity-60" : ""}`}>
                         <td><span className="mr-2.5 inline-block h-2.5 w-2.5 rounded-full align-middle" style={{ background: classColor(data.classes, c.id) }} /><span className="font-semibold">{c.name}</span></td>
-                        <td>{t ? t.nickname : "-"}</td>
+                        <td>{t ? t.nickname || t.firstName : "-"}</td>
                         <td>{whenText(c) || "-"}</td>
                         <td>{coursePrice(c)}</td>
                         <td className="text-center">{k.bought}</td>

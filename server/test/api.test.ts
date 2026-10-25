@@ -53,7 +53,10 @@ describe('first-run setup and sign-in', () => {
 
 describe('school data', () => {
   it('teachers and classes', async () => {
-    const t = await admin.post('/api/teachers').set(H).send({ image: PNG, prefix: 'นาง', firstName: 'ครูแอน', lastName: '', nickname: '', phone: '', email: '', lineId: '', specializations: ['Ballet'] });
+    // the nickname is required (owner 25/10/2026)
+    const noNick = await admin.post('/api/teachers').set(H).send({ image: '', prefix: 'นาง', firstName: 'ครูแอน', lastName: '', nickname: '  ', phone: '', email: '', lineId: '', specializations: [] });
+    expect(noNick.status).toBe(400);
+    const t = await admin.post('/api/teachers').set(H).send({ image: PNG, prefix: 'นาง', firstName: 'ครูแอน', lastName: '', nickname: 'แอน', phone: '', email: '', lineId: '', specializations: ['Ballet'] });
     expect(t.status).toBe(201);
     expect(t.body.image).toMatch(/^\/api\/files\/[a-f0-9-]+\.png$/);
     expect(t.body.specializations).toEqual(['Ballet']);

@@ -4,7 +4,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Children, isValidElement, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Ellipsis, ImagePlus, Minus, Pencil, Plus, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Ellipsis, ImagePlus, Minus, Pencil, Plus, Search, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -536,6 +536,53 @@ export function RowActions({ name, items, className }: { name: string; items: (R
           {danger.map((x) => <DropdownMenuItem key={x.label} className="gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-destructive focus:text-destructive [&_svg]:size-4" data-testid={x.testId} onSelect={x.onSelect}>{x.icon}{x.label}</DropdownMenuItem>)}
         </DropdownMenuContent>
       </DropdownMenu>
+    </div>
+  );
+}
+
+export type FilterChip = { value: string; label: string; count?: number; tone?: "warn" };
+
+/** Search + filter bar of the list pages (owner 25/10/2026, mockup VeE7DE1eWKPHXRhqPhGvDg v3): a low search box on its
+ *  own line (with `extra`, e.g. the view icons, at its end), then the filter chips on ONE line that slides sideways when
+ *  the screen is too narrow. Computers: everything on one row. */
+export function SearchFilters({ q, onQ, placeholder, chips, value, onValue, extra, testPrefix = "filter" }: {
+  q: string; onQ: (v: string) => void; placeholder: string;
+  chips: FilterChip[]; value: string; onValue: (v: string) => void; extra?: ReactNode; testPrefix?: string;
+}) {
+  return (
+    <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+      <div className="flex min-w-0 items-center gap-2 md:w-80 md:shrink-0">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input value={q} onChange={(e) => onQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} data-testid="list-search"
+            className="h-9 w-full min-w-0 rounded-full border border-border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" />
+        </div>
+        {extra}
+      </div>
+      <div className="-mx-1 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto px-1 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label={L("แสดง", "Show")}>
+        {chips.map((c) => {
+          const on = value === c.value;
+          return (
+            <button key={c.value} type="button" aria-pressed={on} onClick={() => onValue(c.value)} data-testid={`${testPrefix}-${c.value}`}
+              className={cn("inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 text-xs font-bold transition-colors",
+                on ? (c.tone === "warn" ? "bg-orange-700 text-white" : "bg-primary text-primary-foreground") : "border border-border bg-background hover:bg-muted")}>
+              {c.label}{c.count !== undefined && <span className={cn("font-semibold", on ? "opacity-85" : "text-muted-foreground")}>{c.count}</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Icon-only view switch (cards / table) for the end of the search line. */
+export function ViewIcons<T extends string>({ value, onChange, options, testPrefix }: { value: T; onChange: (v: T) => void; options: [T, ReactNode, string][]; testPrefix: string }) {
+  return (
+    <div className="inline-flex h-9 shrink-0 overflow-hidden rounded-full border border-border bg-background" role="group" aria-label={L("มุมมอง", "View")}>
+      {options.map(([v, icon, label]) => (
+        <button key={v} type="button" aria-pressed={value === v} aria-label={label} title={label} onClick={() => onChange(v)} data-testid={`${testPrefix}-${v}`}
+          className={cn("inline-flex w-9 items-center justify-center transition-colors [&_svg]:size-4", value === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>{icon}</button>
+      ))}
     </div>
   );
 }

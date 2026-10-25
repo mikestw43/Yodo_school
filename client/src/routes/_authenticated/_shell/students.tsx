@@ -3,7 +3,7 @@ import { differenceInCalendarMonths, format, isValid, parseISO } from "date-fns"
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Ban, ChevronLeft, FileText, PenLine, Pencil, Plus, Printer, RotateCcw, Search, Ticket, Trash2, X } from "lucide-react";
+import { Ban, ChevronLeft, FileText, PenLine, Pencil, Plus, Printer, RotateCcw, Ticket, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, ChipSelect, ConfirmDialog, DateField, EmptyState, Field, ImageUpload, NativeSelect, ReceiptUpload, PageHeader, Pagination, SectionTitle, StatusBadge, RowActions, onlyDigits10, usePagination } from "@/components/yodo/ui";
+import { Avatar, ChipSelect, ConfirmDialog, DateField, EmptyState, Field, ImageUpload, NativeSelect, ReceiptUpload, PageHeader, Pagination, SectionTitle, StatusBadge, RowActions, SearchFilters, onlyDigits10, usePagination } from "@/components/yodo/ui";
 
 import { useReceiptOpen } from "@/components/yodo/receipt";
 import { StudentCourses, openBuy } from "@/components/yodo/courses";
@@ -126,17 +126,12 @@ function StudentsPage() {
         subtitle={L(`นักเรียนทั้งหมด ${data.students.length} คน`, `${data.students.length} students in total`)}
         action={can("students", "add") && <Button className="rounded-full" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="h-4 w-4" /> {L("เพิ่มนักเรียน", "Add Student")}</Button>}
       />
-      <Card className="mb-4 flex flex-row flex-wrap gap-3 rounded-3xl p-4">
-        <div className="relative min-w-60 flex-1">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("ค้นหาด้วยชื่อ, ชื่อเล่น, รหัส, เบอร์โทร...", "Search by name, nickname, ID, phone...")} className="rounded-full pl-9" />
-        </div>
-        <NativeSelect value={status} onValueChange={setStatus} className="w-44 rounded-full">
-          <option value="all">{L("ทุกสถานะ", "All statuses")}</option>
-          <option value="Active">{opt("Active")}</option>
-          <option value="Disabled">{opt("Disabled")}</option>
-        </NativeSelect>
-      </Card>
+      <SearchFilters q={q} onQ={setQ} placeholder={L("ค้นหาชื่อ ชื่อเล่น รหัส เบอร์โทร", "Search name, nickname, ID, phone")} testPrefix="status"
+        value={status} onValue={setStatus} chips={[
+          { value: "all", label: L("ทั้งหมด", "All"), count: data.students.length },
+          { value: "Active", label: opt("Active"), count: data.students.filter((s) => s.status === "Active").length },
+          { value: "Disabled", label: opt("Disabled"), count: data.students.filter((s) => s.status === "Disabled").length },
+        ]} />
 
       {list.length === 0 ? (
         <EmptyState title={L("ไม่พบนักเรียน", "No students found")} text={q || status !== "all" ? L("ลองเปลี่ยนคำค้นหาหรือตัวกรอง", "Try a different search or filter") : L("เริ่มต้นเพิ่มนักเรียนคนแรกของคุณ", "Start by adding your first student")} action={can("students", "add") && <Button className="rounded-full" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="h-4 w-4" /> {L("เพิ่มนักเรียน", "Add Student")}</Button>} />

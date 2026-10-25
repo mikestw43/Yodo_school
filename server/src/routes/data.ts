@@ -218,7 +218,7 @@ router.post('/enrollments/remove', requirePerm('students', 'edit'), async (req, 
 
 // ---------- teachers ----------
 const teacherBody = z.object({
-  image: img, prefix: text(30), firstName: text(100).min(1), lastName: text(100), nickname: text(100), phone: text(20),
+  image: img, prefix: text(30), firstName: text(100).min(1), lastName: text(100), nickname: text(100).min(1), phone: text(20),
   email: text(255), lineId: text(100), specializations: z.array(text(60)).max(30),
 });
 const teacherData = (b: z.infer<typeof teacherBody>) => ({ ...b, image: storeImage(b.image), specializations: JSON.stringify(b.specializations) });

@@ -872,6 +872,42 @@ try {
     await pp.getByTestId('cal-daylist').getByTestId('cal-row').first().waitFor({ timeout: 5000 }).catch(() => {});
     check('phone calendar: count per day and the day list', (await pp.locator(`[data-testid="cal-day"][data-date="${today}"] [data-testid="cal-count"]`).count()) === 1 && (await pp.getByTestId('cal-daylist').innerText()).includes('Ballet Kids'));
     await pp.screenshot({ path: `${SHOTS}/p17-calendar.png`, fullPage: true });
+    // the teacher's nickname on calendar chips, the day list, the class window and class cards (owner 25/10/2026)
+    check('calendar: chip shows the teacher nickname', (await ev.first().getByTestId('cal-event-teacher').innerText()).includes('ครู แอน'));
+    check('phone calendar: day list shows the teacher nickname', (await pp.getByTestId('cal-daylist').innerText()).includes('ครู แอน'));
+    await ev.first().click();
+    check('calendar: class window shows the teacher nickname', (await page.getByTestId('cal-slot-teacher').innerText()).includes('ครู แอน'));
+    await page.keyboard.press('Escape');
+    await pp.goto(BASE + '/classes');
+    await pp.getByTestId('class-teacher').first().waitFor();
+    check('class card: own teacher line with the nickname', (await pp.getByTestId('class-teacher').allInnerTexts()).some((t) => t.includes('ครู แอน')));
+    // phones: search on its own line, the filter chips on ONE line, view icons beside the search (owner 25/10/2026)
+    for (const [pth, first, last] of [['/students', 'status-all', 'status-Disabled'], ['/classes', 'status-all', 'status-Disabled'], ['/teachers', 'status-all', 'status-Disabled'], ['/courses', 'filter-all', 'filter-ended']]) {
+      await pp.goto(BASE + pth);
+      await pp.getByTestId(last).waitFor();
+      const a = await pp.getByTestId(first).boundingBox(), b = await pp.getByTestId(last).boundingBox(), sb = await pp.getByTestId('list-search').boundingBox();
+      check(`phone ${pth}: filter chips on one line under a low search box`, Math.abs(a.y - b.y) < 2 && sb.height <= 40 && a.y > sb.y + sb.height - 1, JSON.stringify({ a: a.y, b: b.y, s: sb }));
+      const sw = await pp.evaluate(() => document.documentElement.scrollWidth);
+      check(`phone ${pth}: fits the screen`, sw <= 391, `${sw}px`);
+      if (pth === '/classes') {
+        const v = await pp.getByTestId('classes-view-table').boundingBox();
+        check('phone classes: view icons on the search line', Math.abs((v.y + v.height / 2) - (sb.y + sb.height / 2)) < 3);
+        await pp.screenshot({ path: `${SHOTS}/p18-classes-filters.png` });
+      }
+      if (pth === '/students') await pp.screenshot({ path: `${SHOTS}/p19-students-filters.png` });
+      if (pth === '/courses') await pp.screenshot({ path: `${SHOTS}/p20-courses-filters.png` });
+    }
+    // the teacher form needs a nickname
+    await page.goto(BASE + '/teachers');
+    await page.getByRole('button', { name: 'เพิ่มครู' }).first().click();
+    {
+      const dlg = page.getByRole('dialog');
+      await dlg.getByRole('textbox').nth(1).fill('ทดสอบ');
+      await dlg.getByRole('button', { name: /บันทึก|เพิ่ม/ }).last().click();
+      await dlg.getByText('กรุณากรอกชื่อเล่น').waitFor({ timeout: 3000 }).then(() => check('teacher form: the nickname is required', true), () => check('teacher form: the nickname is required', false));
+      await page.screenshot({ path: `${SHOTS}/49-teacher-nickname.png` });
+      await page.keyboard.press('Escape');
+    }
   }
 
   // ---------- English ----------
