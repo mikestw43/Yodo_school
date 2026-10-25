@@ -229,8 +229,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const nav = NAV.filter((n) => n.key === "support" || can(n.key));
   const superadmin = !!who?.superadmin;
   const unread = useSupportUnread();
-  const path = useRouterState({ select: (st) => st.location.pathname });
-  useEffect(() => { rememberPage(path); }, [path]); // the chat sends the page the person came from
+  const href = useRouterState({ select: (st) => st.location.href });
+  useEffect(() => { rememberPage(href); }, [href]); // the chat sends the page the person came from; Close goes back there
   // Folded side menu (icons only), remembered on this device (owner 12/10/2026).
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const toggle = () => setCollapsed((c) => {

@@ -1013,6 +1013,10 @@ try {
     const userView = await up.getByTestId('chat-messages').innerText();
     check('chat: the answer shows as "Support", read mark on the user\'s message', userView.includes('Support') && !userView.includes('Mike') && (await up.getByTestId('chat-read').count()) === 1, userView);
     await up.screenshot({ path: `${SHOTS}/p24-chat-answered.png` });
+    // Close leaves the chat for the page the person was on (owner 25/10/2026)
+    await up.getByTestId('chat-close').click();
+    await up.waitForURL('**/calendar**');
+    check('chat: Close goes back to the page before the chat', new URL(up.url()).pathname === '/calendar');
     await uctx.close();
   }
 

@@ -281,6 +281,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   Pages poll every 5 s while open. Client `components/yodo/support.tsx`.
   Owner 25/10/2026: the number also sits on the phone's More button (the inbox is inside More); the account picture and
   the chat number are kept between redraws (`lastMe` in AppShell.tsx, `lastUnread`) so a language switch no longer blinks them.
+  Owner 25/10/2026: "ปิด"/"Close" (X) at the top left of the chat and the inbox (`CloseChat`): back to the page before the chat
+  (`yodo-last-page`, path + search), else the dashboard; one conversation keeps its Back button to the inbox.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

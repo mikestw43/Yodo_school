@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { CheckCheck, ChevronRight, Monitor, Paperclip, SendHorizontal, Smartphone, X } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -43,6 +43,18 @@ async function appVersion() {
   return versionCache;
 }
 const isPhone = () => window.matchMedia("(max-width: 767px)").matches;
+
+/** "ปิด" / "Close" at the top left of the chat and the inbox (owner 25/10/2026): leaves the chat for the page the person was
+ *  on before (the conversation stays as it is), else the dashboard. */
+export function CloseChat() {
+  const router = useRouter();
+  return (
+    <button type="button" onClick={() => router.history.push(lastPage() || "/")} data-testid="chat-close"
+      className="mb-3 inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-muted">
+      <X className="h-4 w-4" /> {L("ปิด", "Close")}
+    </button>
+  );
+}
 
 /** Where the person was before opening the chat (the page they want to talk about). */
 function lastPage() {
