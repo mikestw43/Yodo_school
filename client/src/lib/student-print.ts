@@ -58,7 +58,7 @@ export function ageDetail(dob: string) {
 /** The two statements ticked before signing (owner's wording 12/10/2026). */
 export const agreeText = (lang?: Lang) => pickLang(lang, "ข้าพเจ้าได้อ่านและยอมรับข้อตกลงและเงื่อนไขของโรงเรียนด้านบนแล้ว", "I have read and agree to the school's terms and conditions above.");
 /** A tick box line for the printed application: ticked once signed (signing needs both ticks; owner 12/10/2026). */
-export const BOX_SVG = (on: boolean) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2b2024" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/>${on ? '<path d="m9 12 2 2 4-4"/>' : ""}</svg>`;
+export const BOX_SVG = (on: boolean) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#b85c78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/>${on ? '<path d="m9 12 2 2 4-4"/>' : ""}</svg>`;
 export const correctText = (lang?: Lang) => pickLang(lang, "ขอยืนยันว่าข้อมูลที่กรอกในใบสมัครทั้งหมดถูกต้องตามความเป็นจริง", "I confirm that the information provided in this application form is true and correct.");
 
 /** The applicant's label under the signature line (owner 12/10/2026). */
@@ -129,14 +129,17 @@ export function printStudentDocument(student: Student): boolean {
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: #fff; color: #171717; font-family: Tahoma, Arial, sans-serif; font-weight: 400; }
+  html, body { margin: 0; padding: 0; background: #fff; color: #171717; font-family: Tahoma, Arial, sans-serif; font-weight: 400; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .sheet { width: 210mm; height: 297mm; padding: 12mm 27mm 11mm; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; break-after: page; page-break-after: always; }
   .sheet:last-child { break-after: auto; page-break-after: auto; }
   .logo { width: 66mm; height: 34mm; object-fit: contain; display: block; margin: 0 auto; }
-  .terms { margin-top: 11mm; font-size: 10.2pt; font-weight: 400; line-height: 1.55; }
-  .terms-title { margin: 0 0 5mm; font-size: 10.6pt; font-weight: 400; }
-  .terms ol { margin: 0; padding-left: 10mm; }
-  .terms li { padding-left: 3mm; margin-bottom: 3.1mm; }
+  /* design A (owner 26/10/2026, mockup Vkm4yks4haeZwDYNJzxCb7): pink rule, centred title, numbers in pink circles, tinted tick line */
+  .rule { height: 0.6mm; margin: 3mm 0 0; background: linear-gradient(90deg, #b85c78, #f2c9d6 60%, transparent); border-radius: 1mm; }
+  .terms { margin-top: 7mm; font-size: 10.2pt; font-weight: 400; line-height: 1.55; font-family: 'Noto Sans Thai', Tahoma, sans-serif; color: #2b2024; }
+  .terms-title { margin: 0 0 6mm; font-family: 'Noto Serif Thai', serif; font-size: 17pt; font-weight: 700; text-align: center; color: #3a2a30; letter-spacing: 0.2mm; }
+  .terms ol { margin: 0; padding: 0; list-style: none; counter-reset: t; }
+  .terms li { position: relative; padding-left: 9mm; margin-bottom: 3mm; counter-increment: t; }
+  .terms li::before { content: counter(t); position: absolute; left: 0; top: 0.4mm; width: 5.4mm; height: 5.4mm; border-radius: 50%; background: #b85c78; color: #fff; font-size: 7.8pt; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
   .signature { width: 72mm; margin: auto 0 0 auto; font-size: 10pt; font-weight: 400; text-align: center; }
   .sign-line .line { display: block; height: 16mm; border-bottom: 1px solid #111; position: relative; }
   .sign-img { position: absolute; left: 50%; bottom: 1mm; transform: translateX(-50%); max-height: 15mm; max-width: 100%; object-fit: contain; }
@@ -155,20 +158,21 @@ export function printStudentDocument(student: Student): boolean {
   .sec-title { display: flex; align-items: center; gap: 2.5mm; font-size: 10pt; font-weight: 600; color: #8e2d4c; white-space: nowrap; }
   .sec-title i { flex: 1; height: 1px; background: #e6c9d2; }
   .grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 4.5mm; row-gap: 2.6mm; }
-  .tick { display: flex; align-items: flex-start; gap: 2mm; font-size: 10.2pt; margin-top: 3mm; }
+  .tick { display: flex; align-items: flex-start; gap: 2mm; font-size: 10.2pt; margin-top: 4mm; padding: 2.2mm 3mm; background: #fdf1f5; border-left: 0.8mm solid #b85c78; border-radius: 0 2mm 2mm 0; font-weight: 600; }
   .tick svg { flex-shrink: 0; margin-top: 0.6mm; }
   .lbl { font-size: 8.3pt; color: #7a666c; }
   .val { font-size: 10.5pt; min-height: 6mm; padding-bottom: 0.8mm; border-bottom: 1px dotted #b9a2a9; word-break: break-word; }
   @media screen { body { background: #eee; } .sheet { background: #fff; box-shadow: 0 2px 15px #bbb; margin: 10mm auto; } }
   @media print { html, body { width: 210mm; } .sheet { margin: 0; box-shadow: none; } }
 </style></head><body>
-<section class="sheet"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" />
+<section class="sheet"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" /><div class="rule"></div>
 <div class="terms"><p class="terms-title">${escapeHtml(L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions"))}</p><ol>${terms().map((term) => `<li>${escapeHtml(term)}</li>`).join("")}</ol><div class="tick">${BOX_SVG(!!student.signature)}<span>${escapeHtml(agreeText())}</span></div></div>
 ${signature(today, student.signature)}</section>
 <section class="sheet p2"><div class="head"><div class="head-text"><img class="logo" src="${escapeHtml(logoUrl)}" alt="YODO You Only Dance Once" />
 <h1>${escapeHtml(L("ใบสมัครเรียน", "Application form"))}</h1>
 <div class="meta"><span>${escapeHtml(L("รหัสนักเรียน", "Student ID"))} <b>${escapeHtml(student.code)}</b></span><span>${escapeHtml(L("วันที่สมัคร", "Applied on"))} <b>${escapeHtml(appliedOn(student))}</b></span></div></div>
 ${image}</div>
+<div class="rule" style="margin:0"></div>
 ${sections}
 <div class="tick">${BOX_SVG(!!student.signature)}<span>${escapeHtml(correctText())}</span></div>
 ${signature(today, student.signature)}</section>

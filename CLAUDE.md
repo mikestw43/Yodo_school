@@ -292,7 +292,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   pointing/tapping shows that month's total). Data `GET /receipts/trend?months=` (cancelled receipts left out, months
   without receipts = 0). Month labels use `monthShort` (i18n).
 - 26/10/2026 (owner): the student's big photo (tap the photo in the details) fills the phone's width (96vw, up to 85vh), at
-  least 28rem wide on computers (`photo-big`). Terms page redesign mockup Vkm4yks4haeZwDYNJzxCb7 (A letterhead / B pink band) waiting.
+  least 28rem wide on computers (`photo-big`).
+- 26/10/2026 (mockup Vkm4yks4haeZwDYNJzxCb7 v2; owner "ข้อมูลเท่าเดิม แค่ตกแต่ง", "A ทำได้เลย"): the application keeps exactly the same
+  content; decoration A in both the print window (lib/student-print.ts) and the in-app view (student-document.tsx): pink
+  gradient rule under the logo (page 2: under the header), centred serif title, term numbers in pink circles, the tick
+  lines on a pale pink band with a pink left edge and a pink box.
 
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.

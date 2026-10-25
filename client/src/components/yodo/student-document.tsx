@@ -95,10 +95,13 @@ export function StudentDocument({ student, signMode = false, canvasRef, onDirty,
         .ydoc-root { color: #171717; font-family: Tahoma, Arial, sans-serif; }
         .ydoc-sheet { width: 210mm; min-height: 297mm; padding: 12mm 14mm 11mm; margin: 0 auto 8mm; background: #fff; box-shadow: 0 2px 15px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; }
         .ydoc-logo { width: 66mm; height: 34mm; object-fit: contain; display: block; margin: 0 auto; }
-        .ydoc-terms { margin-top: 8mm; font-size: 10.2pt; line-height: 1.55; }
-        .ydoc-terms-title { margin: 0 0 5mm; font-size: 10.6pt; }
-        .ydoc-terms ol { margin: 0; padding-left: 10mm; list-style: decimal; }
-        .ydoc-terms li { padding-left: 3mm; margin-bottom: 3.1mm; }
+        /* design A (owner 26/10/2026, mockup Vkm4yks4haeZwDYNJzxCb7), same as the print window */
+        .ydoc-rule { height: 0.6mm; margin: 3mm 0 0; background: linear-gradient(90deg, #b85c78, #f2c9d6 60%, transparent); border-radius: 1mm; }
+        .ydoc-terms { margin-top: 7mm; font-size: 10.2pt; line-height: 1.55; font-family: 'Noto Sans Thai', Tahoma, sans-serif; color: #2b2024; }
+        .ydoc-terms-title { margin: 0 0 6mm; font-family: 'Noto Serif Thai', serif; font-size: 17pt; font-weight: 700; text-align: center; color: #3a2a30; letter-spacing: 0.2mm; }
+        .ydoc-terms ol { margin: 0; padding: 0; list-style: none; counter-reset: t; }
+        .ydoc-terms li { position: relative; padding-left: 9mm; margin-bottom: 3mm; counter-increment: t; }
+        .ydoc-terms li::before { content: counter(t); position: absolute; left: 0; top: 0.4mm; width: 5.4mm; height: 5.4mm; border-radius: 50%; background: #b85c78; color: #fff; font-size: 7.8pt; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
         .ydoc-signature { width: 72mm; margin: auto 0 0 auto; font-size: 10pt; padding-top: 8mm; text-align: center; }
         .ydoc-line { display: block; height: 16mm; border-bottom: 1px solid #111; position: relative; }
         .ydoc-sign-img { position: absolute; left: 50%; bottom: 1mm; transform: translateX(-50%); max-height: 15mm; max-width: 100%; object-fit: contain; }
@@ -118,13 +121,14 @@ export function StudentDocument({ student, signMode = false, canvasRef, onDirty,
         .ydoc-sec-title { display: flex; align-items: center; gap: 2.5mm; font-size: 10pt; font-weight: 600; color: #8e2d4c; white-space: nowrap; }
         .ydoc-sec-title i { flex: 1; height: 1px; background: #e6c9d2; }
         .ydoc-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 4.5mm; row-gap: 2.6mm; }
-        .ydoc-tick { display: flex; align-items: flex-start; gap: 2mm; font-size: 10.2pt; margin-top: 3mm; }
-        .ydoc-tick svg { margin-top: 0.6mm; }
+        .ydoc-tick { display: flex; align-items: flex-start; gap: 2mm; font-size: 10.2pt; margin-top: 4mm; padding: 2.2mm 3mm; background: #fdf1f5; border-left: 0.8mm solid #b85c78; border-radius: 0 2mm 2mm 0; font-weight: 600; }
+        .ydoc-tick svg { margin-top: 0.6mm; color: #b85c78; }
         .ydoc-lbl { font-size: 8.3pt; color: #7a666c; }
         .ydoc-val { font-size: 10.5pt; min-height: 6mm; padding-bottom: 0.8mm; border-bottom: 1px dotted #b9a2a9; word-break: break-word; }
       `}</style>
       <section className="ydoc-sheet">
         <img className="ydoc-logo" src={logo.url} alt="YODO You Only Dance Once" />
+        <div className="ydoc-rule" />
         <div className="ydoc-terms">
           <p className="ydoc-terms-title">{L("ข้อตกลงและเงื่อนไขของโรงเรียน", "School terms and conditions")}</p>
           <ol>{terms().map((term, i) => <li key={i}>{term}</li>)}</ol>
@@ -146,6 +150,7 @@ export function StudentDocument({ student, signMode = false, canvasRef, onDirty,
             ? <img className="ydoc-photo" src={student.image!} alt={L("รูปนักเรียน", "Student photo")} />
             : <div className="ydoc-photo-empty" />}
         </div>
+        <div className="ydoc-rule" style={{ margin: 0 }} />
         {formSections(student).map((sec) => (
           <div key={sec.title} className="ydoc-sec">
             <div className="ydoc-sec-title"><span>{sec.title}</span><i /></div>
