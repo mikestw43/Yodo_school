@@ -299,6 +299,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   Owner 26/10/2026 (bug: the two charts vanished for a moment after coming back to the dashboard): both cards keep their
   last answers in `pageCache` (lib/api.ts, emptied with the account on sign-in / sign-out by `clearMeCache`) via `useCached`,
   show them at once and refresh quietly; the very first load shows a placeholder of the card's size (`CardWaiting`).
+- 26/10/2026 (mockup NvLj6Q84zcgygB9UZmxsHp; owner "1 ok 2 ok ทำได้เลย"): Buy classes window: the class list shows a second line
+  under each name, "ครู <nickname> · ส · 10:00–11:00" (`hints` on `NativeSelect`, `hint` on `SelectItem`: list only, the box
+  shows just the name); the picked class shows a pink box (`buy-class-info`): teacher, "ทุกวันเสาร์ · 10:00–11:00" /
+  "Every Saturday · ..." (`everyText` in lib/courses.ts) and the length; "now ends dd/mm/yyyy" stays under it.
+  Teachers page as photo cards (mockup GrduSa1HUD86DFK8N9vfYx, 3 a row on phones, details window) still waits for answers.
 - 26/10/2026 (owner): the student's big photo (tap the photo in the details) fills the phone's width (96vw, up to 85vh), at
   least 28rem wide on computers (`photo-big`).
 - 26/10/2026 (mockup Vkm4yks4haeZwDYNJzxCb7 v2; owner "ข้อมูลเท่าเดิม แค่ตกแต่ง", "A ทำได้เลย"): the application keeps exactly the same

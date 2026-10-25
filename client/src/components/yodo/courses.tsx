@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Banknote, CalendarPlus, Pencil, Plus, RefreshCw, X } from "lucide-react";
+import { Banknote, CalendarPlus, Clock, Hourglass, Pencil, Plus, RefreshCw, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,8 @@ import { Avatar, DateField, Field, NativeSelect, ReceiptUpload } from "@/compone
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { L, fd, getLang } from "@/lib/i18n";
 import { methodLabel, money } from "@/lib/receipt-print";
-import { addPeriod, courseEnd, courseState, lengthText, daysLeft, daysText, nextStart, todayIso, type PeriodUnit } from "@/lib/courses";
-import { fullName, useYodo, type BuyLine, type Enrollment, type PaymentInput, type Student } from "@/lib/yodo-store";
+import { addPeriod, courseEnd, courseState, everyText, lengthText, whenText, daysLeft, daysText, nextStart, todayIso, type PeriodUnit } from "@/lib/courses";
+import { fullName, teacherLabel, useYodo, type BuyLine, type Enrollment, type PaymentInput, type Student } from "@/lib/yodo-store";
 
 // Buying courses, free extensions and a student's course history (owner 12/10/2026, mockup WTr5LoqwQAEnSrKDuzZiMi).
 // Any page opens the windows with openBuy / openExtend; <CourseHosts/> in the shell shows them.
@@ -116,6 +116,10 @@ function BuyHost() {
   const [pendingClass, setPendingClass] = useState<string | null>(null);
   if (studentId && pendingClass !== null && lines.length === 0) { setLines([blank(pendingClass)]); setPendingClass(null); }
 
+  type Cls = (typeof data.classes)[number];
+  const teacherOf = (c: Cls) => { const t = data.teachers.find((x) => x.id === c.teacherId); return t ? teacherLabel(t) : ""; };
+  // second line in the class list: "ครู ฝ้าย · ส · 10:00–11:00"
+  const classHint = (c: Cls) => [teacherOf(c), whenText(c)].filter(Boolean).join(" · ") || undefined;
   const usable = (l: Line) => data.classes.filter((c) => c.id === l.classId || (!lines.some((x) => x.classId === c.id) && ((c.status === "Active" && !c.disabled) || !!enrollmentOf(c.id))));
   const setLine = (key: number, patch: Partial<Line>) => setLines((ls) => ls.map((l) => {
     if (l.key !== key) return l;
@@ -171,12 +175,21 @@ function BuyHost() {
               <div key={l.key} className="grid gap-3 rounded-2xl border border-border/70 bg-background p-3 sm:grid-cols-2" data-testid="buy-line">
                 <div>
                   <Field label={L(`คลาสที่ ${i + 1}`, `Class ${i + 1}`)}>
-                    <NativeSelect value={l.classId} onValueChange={(v) => setLine(l.key, { classId: v })}>
+                    <NativeSelect value={l.classId} onValueChange={(v) => setLine(l.key, { classId: v })}
+                      hints={Object.fromEntries(usable(l).map((x) => [x.id, classHint(x)]))}>
                       <option value="">{L("เลือกคลาส", "Choose a class")}</option>
                       {usable(l).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                     </NativeSelect>
                   </Field>
-                  {c && <p className="mt-1 text-xs text-muted-foreground">{lengthText(c.months, c.weeks)}{en?.expiryDate ? ` · ${L("ตอนนี้หมดอายุ", "now ends")} ${fd(en.expiryDate)}` : ""}</p>}
+                  {/* teacher, days + time, length of the picked class (owner 26/10/2026, mockup NvLj6Q84zcgygB9UZmxsHp) */}
+                  {c && (
+                    <div className="mt-2 grid gap-1 rounded-xl bg-accent px-3 py-2 text-xs text-accent-foreground" data-testid="buy-class-info">
+                      {teacherOf(c) && <p className="flex items-center gap-2"><UserRound className="h-3.5 w-3.5 shrink-0" />{teacherOf(c)}</p>}
+                      {everyText(c) && <p className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 shrink-0" />{everyText(c)}</p>}
+                      {lengthText(c.months, c.weeks) && <p className="flex items-center gap-2"><Hourglass className="h-3.5 w-3.5 shrink-0" />{lengthText(c.months, c.weeks)}</p>}
+                    </div>
+                  )}
+                  {en?.expiryDate && <p className="mt-1 text-xs text-muted-foreground">{L("ตอนนี้หมดอายุ", "now ends")} {fd(en.expiryDate)}</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Field label={L("เริ่ม", "Start")}><DateField value={l.startDate} onChange={(v) => setLine(l.key, { startDate: v })} /></Field>

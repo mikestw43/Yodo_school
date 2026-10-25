@@ -130,9 +130,11 @@ export function Field({ label, error, required, children, className }: { label: 
   );
 }
 
-export function NativeSelect({ className, children, value, onValueChange }: {
+export function NativeSelect({ className, children, value, onValueChange, hints }: {
   className?: string;
   children: ReactNode;
+  /** a second line under an option in the open list, by value */
+  hints?: Record<string, ReactNode>;
   value: string;
   onValueChange: (value: string) => void;
 }) {
@@ -145,7 +147,7 @@ export function NativeSelect({ className, children, value, onValueChange }: {
       </SelectTrigger>
       <SelectContent className="rounded-lg border-border bg-popover p-1 shadow-soft">
         {options.filter((o) => o.props.value !== "").map((o) => (
-          <SelectItem key={o.props.value ?? String(o.props.children)} value={o.props.value ?? String(o.props.children)} disabled={o.props.disabled ?? false} className="my-0.5 cursor-pointer rounded-md px-3 py-2 pr-8 text-foreground focus:bg-accent focus:text-accent-foreground">
+          <SelectItem key={o.props.value ?? String(o.props.children)} value={o.props.value ?? String(o.props.children)} disabled={o.props.disabled ?? false} hint={hints?.[o.props.value ?? ""]} className="my-0.5 cursor-pointer rounded-md px-3 py-2 pr-8 text-foreground focus:bg-accent focus:text-accent-foreground">
             {o.props.children}
           </SelectItem>
         ))}

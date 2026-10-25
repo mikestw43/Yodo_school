@@ -569,7 +569,20 @@ try {
   await page.getByRole('menuitem', { name: 'ซื้อคลาส' }).click();
   const ed = page.getByTestId('buy-dialog');
   await ed.getByRole('combobox').first().click();
-  await page.getByRole('option', { name: 'Ballet Course' }).click();
+  // the class list shows the teacher, days and time under each name (owner 26/10/2026)
+  {
+    const hip = await page.getByRole('option', { name: /Hip Hop 8W/ }).innerText();
+    check('buy: the class list shows days and time under the name', hip.includes('จ, พ · 17:00–18:00'), hip);
+    await page.getByRole('option', { name: /Hip Hop 8W/ }).click();
+    await page.waitForTimeout(200);
+    const info = await ed.getByTestId('buy-class-info').innerText();
+    check('buy: the picked class shows every day + time and the length', info.includes('ทุกวันจันทร์, พุธ · 17:00–18:00') && info.includes('8 สัปดาห์'), info);
+    check('buy: the picked box shows only the class name', (await ed.getByRole('combobox').first().innerText()).trim() === 'Hip Hop 8W', await ed.getByRole('combobox').first().innerText());
+    await page.screenshot({ path: `${SHOTS}/36a-buy-class-info.png` });
+    await ed.getByRole('combobox').first().click();
+    await page.screenshot({ path: `${SHOTS}/36a2-buy-class-list.png` });
+  }
+  await page.getByRole('option', { name: /Ballet Course/ }).click();
   await page.waitForTimeout(300);
   const pbox = ed.getByTestId('payment-box');
   const l1 = ed.getByTestId('buy-line').first();
@@ -581,7 +594,7 @@ try {
   await ed.getByRole('button', { name: 'เพิ่มคลาส' }).click();
   const l2 = ed.getByTestId('buy-line').nth(1);
   await l2.getByRole('combobox').click();
-  await page.getByRole('option', { name: 'Jazz Course' }).click();
+  await page.getByRole('option', { name: /Jazz Course/ }).click();
   await page.waitForTimeout(200);
   await l2.getByTestId('line-discount').fill('500');
   check('two courses in one bill, baht and % off', (await ed.getByTestId('buy-total').innerText()) === '13,000.00', await ed.getByTestId('buy-total').innerText());

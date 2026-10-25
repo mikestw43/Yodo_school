@@ -31,6 +31,14 @@ export function whenText(c: { days?: string[]; startTime?: string; endTime?: str
   return [days, time].filter(Boolean).join(" · ");
 }
 
+const dayFull = (d: string) => ({ mon: L("จันทร์", "Monday"), tue: L("อังคาร", "Tuesday"), wed: L("พุธ", "Wednesday"), thu: L("พฤหัสบดี", "Thursday"), fri: L("ศุกร์", "Friday"), sat: L("เสาร์", "Saturday"), sun: L("อาทิตย์", "Sunday") } as Record<string, string>)[d] ?? d;
+/** "ทุกวันเสาร์ · 10:00–11:00" / "Every Saturday · 10:00–11:00" (buy window, owner 26/10/2026), "" when nothing is set. */
+export function everyText(c: { days?: string[]; startTime?: string; endTime?: string }) {
+  const days = (c.days ?? []).map(dayFull).join(", ");
+  const time = c.startTime ? `${c.startTime}${c.endTime ? `–${c.endTime}` : ""}` : "";
+  return [days ? L(`ทุกวัน${days}`, `Every ${days}`) : "", time].filter(Boolean).join(" · ");
+}
+
 /** A renewal starts the day after the course still running ends (no days lost), else today (owner's choice). */
 export function nextStart(e?: Enrollment | null) {
   const today = todayIso();
