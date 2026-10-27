@@ -10,6 +10,7 @@ import { audit } from '../lib/audit.js';
 import { isAllPowerful, requireAuth } from '../lib/auth.js';
 import { bad, forbidden, HttpError, notFound } from '../lib/http.js';
 import { finishLogin, throttle } from './auth.js';
+import { pinOwner } from './pin.js';
 
 // Other ways to sign in (copied from FinHR): "Continue with Google" and Face ID / fingerprint (passkeys).
 // Both only sign in people who already have an active account here.
@@ -137,10 +138,20 @@ router.delete('/me/passkeys/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// The apps on the owner's NAS share one host name, so without a list the iPhone offered every app's passkeys to pick
+// from (owner 27/10/2026). This device's person (its PIN cookie; Face ID needs a PIN first) narrows it to their own,
+// else every YODO passkey (still none of the other apps').
+async function ownKeys(req: Request) {
+  const userId = await pinOwner(req);
+  const mine = userId ? await prisma.passkey.findMany({ where: { userId, deletedAt: null } }) : [];
+  const keys = mine.length ? mine : await prisma.passkey.findMany({ where: { deletedAt: null }, orderBy: { id: 'desc' }, take: 200 });
+  return keys.map((k) => ({ id: k.credentialId, transports: transportsOf(k.transports) }));
+}
+
 router.post('/auth/passkey/options', async (req, res) => {
   const { rpID } = site(req);
   throttle(`passkey|${req.ip}`);
-  const options = await generateAuthenticationOptions({ rpID, userVerification: 'required' });
+  const options = await generateAuthenticationOptions({ rpID, userVerification: 'required', allowCredentials: await ownKeys(req) });
   remember(`auth:${options.challenge}`);
   res.json(options);
 });
