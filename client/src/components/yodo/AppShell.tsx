@@ -25,9 +25,11 @@ const NAV = [
   { to: "/teachers", th: "ครู", en: "Teachers", icon: Crown, key: "teachers" },
   { to: "/calendar", th: "ปฏิทิน", en: "Calendar", icon: CalendarHeart, key: "calendar" },
   { to: "/receipts", th: "ใบเสร็จรับเงิน", en: "Receipts", icon: ReceiptText, key: "receipts" },
+  // Office staff + salary certificates: the Owner / SuperAdmin only, after Receipts (owner 27/10/2026)
+  { to: "/employees", th: "พนักงาน", en: "Staff", icon: IdCard, key: "staff" },
   // Everyone has it, last in the menu (owner 25/10/2026); the SuperAdmin's reads "Inbox" (`navLabel`).
   { to: "/support", th: "แชทกับผู้ดูแล", en: "Chat with support", icon: MessageCircle, key: "support" },
-] as const satisfies readonly { to: string; th: string; en: string; key: MenuKey | "support"; icon: unknown }[];
+] as const satisfies readonly { to: string; th: string; en: string; key: MenuKey | "support" | "staff"; icon: unknown }[];
 
 // Moved from the side menu to the account menu, under "System" (owner 12/10/2026).
 const ADMIN = [
@@ -85,7 +87,7 @@ function Guarded({ children }: { children: ReactNode }) {
   const { can, loading, me } = useYodo();
   const path = useLocation({ select: (l) => l.pathname });
   const item = [...NAV, ...ADMIN].reverse().find((n) => (n.to === "/" ? path === "/" : path.startsWith(n.to)));
-  if (loading || !me || !item || item.key === "support" || can(item.key)) return <>{children}</>;
+  if (loading || !me || !item || item.key === "support" || item.key === "staff" || can(item.key)) return <>{children}</>;
   return <EmptyState title={L("ไม่มีสิทธิ์เข้าถึงหน้านี้", "You don't have access to this page")} text={L("ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์การใช้งานเมนูนี้", "Ask an administrator for access to this menu.")} />;
 }
 
@@ -93,7 +95,7 @@ type Me = { name: string; short: string; role: string; image: string };
 
 /** Account menu at the top right (owner 12/10/2026): profile settings, import, sign out, version. */
 function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
-  const { me: who, can, data } = useYodo();
+  const { me: who, can } = useYodo();
   const version = useVersion();
   const signOut = useSignOut();
   return (
@@ -132,18 +134,10 @@ function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
             </Link>
           </DropdownMenuItem>
         )}
-        {(ADMIN.some((a) => can(a.key)) || data.owner) && (
+        {ADMIN.some((a) => can(a.key)) && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L("จัดการระบบ", "System")}</DropdownMenuLabel>
-            {/* Office staff and salary certificates: the Owner / SuperAdmin only (owner 27/10/2026) */}
-            {data.owner && (
-              <DropdownMenuItem asChild>
-                <Link to="/employees" className="flex cursor-pointer items-center gap-2" data-testid="menu-employees">
-                  <IdCard className="h-4 w-4" /> {L("พนักงาน", "Staff")}
-                </Link>
-              </DropdownMenuItem>
-            )}
             {ADMIN.filter((a) => can(a.key)).map((a) => (
               <DropdownMenuItem key={a.to} asChild>
                 <Link to={a.to} className="flex cursor-pointer items-center gap-2">
@@ -175,7 +169,7 @@ type NavItem = (typeof NAV)[number];
 /** Phones: menu bar at the bottom like a phone app (owner 17/10/2026, mockup 2o1pdZZR6AXvK63C3a4rsf). Up to 5 pages show
  *  as they are; more than 5 = the first 4 + "More" (three dots), which opens the rest from the bottom. */
 // Phone order (owner 25/10/2026): Calendar takes Classes' place in the bar, Classes moves into More. Computers keep NAV.
-const PHONE_ORDER = ["/", "/students", "/calendar", "/courses", "/classes", "/teachers", "/receipts", "/support"];
+const PHONE_ORDER = ["/", "/students", "/calendar", "/courses", "/classes", "/teachers", "/receipts", "/employees", "/support"];
 /** The SuperAdmin answers the chats, so their menu item is the inbox. */
 const navLabel = (n: NavItem, superadmin: boolean) => (n.to === "/support" && superadmin ? L("กล่องข้อความ", "Inbox") : L(n.th, n.en));
 function Badge({ n, className }: { n: number; className?: string }) {
@@ -233,8 +227,8 @@ function readCollapsed() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const me = useMe();
-  const { can, me: who } = useYodo();
-  const nav = NAV.filter((n) => n.key === "support" || can(n.key));
+  const { can, me: who, data } = useYodo();
+  const nav = NAV.filter((n) => n.key === "support" || (n.key === "staff" ? !!data.owner : can(n.key)));
   const superadmin = !!who?.superadmin;
   const unread = useSupportUnread();
   const href = useRouterState({ select: (st) => st.location.href });

@@ -34,7 +34,7 @@ function EmployeesPage() {
   const active = all.filter((e) => e.status === "active").length;
   return (
     <>
-      <PageHeader back title={L("พนักงาน", "Staff")} subtitle={L(`ทำงานอยู่ ${active} คน`, `${active} working`)}
+      <PageHeader title={L("พนักงาน", "Staff")} subtitle={L(`ทำงานอยู่ ${active} คน`, `${active} working`)}
         action={<Button className="rounded-full" onClick={() => setAdding(true)} data-testid="emp-add"><Plus className="h-4 w-4" /> {L("เพิ่มพนักงาน", "Add staff")}</Button>} />
       <SearchFilters q={q} onQ={setQ} placeholder={L("ค้นหาชื่อ ตำแหน่ง รหัส", "Search name, position, code")} testPrefix="emp"
         value={status} onValue={setStatus} chips={[

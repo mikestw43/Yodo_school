@@ -313,7 +313,8 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   The card has no action button any more.
 - 27/10/2026 staff records (mockup Fj7itm8uCcAiGSyo6rEeHw v2; owner: office staff such as receptionists, NOT the teachers; only
   records + salary + salary certificate for now; ONLY the SuperAdmin and the Owner see it, no permission chip; "ตามนั้นทำได้เลย
-  แต่หนังสือรับรองเงินเดือนไม่ต้องใส่เหตุผล"): account menu > จัดการระบบ > "พนักงาน"/"Staff" (`data.owner`), `/employees` (list,
+  แต่หนังสือรับรองเงินเดือนไม่ต้องใส่เหตุผล"): menu "พนักงาน"/"Staff" (`data.owner`; owner 27/10/2026: in the side menu right after
+  ใบเสร็จรับเงิน, on phones in More after it; first built in the account menu), `/employees` (list,
   chips working / left / all) and `/employees/$id` (tabs Personal / Work + salary / Certificates). Server `routes/employees.ts`
   (`requireOwner` on everything): `Employee` (code EMP001 never reused, ID card + bank number encrypted with lib/crypto.ts, last 4
   kept, never in audit rows), `SalaryChange` (effective date + reason; the salary = newest change that has started, `salaryNow`;

@@ -1193,10 +1193,14 @@ try {
     await page.getByTestId('signer-title-en').fill('Managing Director');
     await page.getByTestId('signer-save').click();
     await page.waitForTimeout(500);
-    // the menu: account menu > System > Staff
-    await page.getByTestId('account-name').click();
-    await page.getByTestId('menu-employees').click();
+    // the menu: in the side menu right after Receipts (owner 27/10/2026)
+    {
+      const links = await page.locator('aside a').evaluateAll((els) => els.map((e) => e.getAttribute('href')));
+      check('menu: Staff comes right after Receipts', links.indexOf('/employees') === links.indexOf('/receipts') + 1, JSON.stringify(links));
+    }
+    await page.locator('aside a[href="/employees"]').click();
     await page.waitForURL(/\/employees$/);
+    await page.screenshot({ path: `${SHOTS}/59-staff-menu.png` });
     await page.getByTestId('emp-add').click();
     const f = page.getByTestId('employee-form');
     await f.getByTestId('emp-first').fill('ปวีณา');
@@ -1265,7 +1269,11 @@ try {
     await page.screenshot({ path: `${SHOTS}/64-cert-th.png` });
     await page.getByTestId('cert-back').click();
     const empUrl = page.url();
-    await pp.goto(BASE + '/employees');
+    await pp.goto(BASE + '/');
+    await pp.getByRole('button', { name: /เพิ่มเติม/ }).click();
+    await pp.waitForTimeout(400);
+    await pp.screenshot({ path: `${SHOTS}/p29-more-staff.png` });
+    await pp.getByRole('link', { name: 'พนักงาน' }).click();
     await pp.getByTestId('emp-row').first().waitFor();
     check('phone: staff list fits the screen', (await pp.evaluate(() => document.documentElement.scrollWidth)) <= 391);
     await pp.screenshot({ path: `${SHOTS}/p30-staff-list.png` });
