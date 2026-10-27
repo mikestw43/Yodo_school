@@ -42,6 +42,7 @@ const TABLE = (): Record<string, string> => ({
   students: L("นักเรียน", "Students"), teachers: L("ครู", "Teachers"), classes: L("คลาส", "Classes"), enrollments: L("ลงทะเบียนคลาส", "Class enrolments"), schedules: L("ตารางเรียน", "Schedule"),
   schedule_students: L("นักเรียนในคาบ", "Students in a session"), positions: L("ตำแหน่ง", "Positions"), position_permissions: L("สิทธิ์", "Permissions"), profiles: L("ผู้ใช้ระบบ", "Users"),
   auth: L("การเข้าสู่ระบบ", "Sign-in"), settings: L("ตั้งค่า", "Settings"),
+  employees: L("พนักงาน", "Staff"), salary_changes: L("ปรับเงินเดือน", "Salary changes"), salary_certs: L("หนังสือรับรองเงินเดือน", "Salary certificates"),
 });
 const FIELD = (): Record<string, string> => ({
   code: L("รหัส", "Code"), prefix: L("คำนำหน้า", "Title"), first_name: L("ชื่อ", "First name"), last_name: L("นามสกุล", "Last name"), nickname: L("ชื่อเล่น", "Nickname"), dob: L("วันเกิด", "Date of birth"),

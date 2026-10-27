@@ -16,6 +16,7 @@ import { router as receipts } from './routes/receipts.js';
 import { router as courses } from './routes/courses.js';
 import { router as cleardata } from './routes/cleardata.js';
 import { router as support } from './routes/support.js';
+import { router as employees } from './routes/employees.js';
 
 export function createApp() {
   const app = express();
@@ -47,6 +48,7 @@ export function createApp() {
   api.use(courses);
   api.use(cleardata);
   api.use(support);
+  api.use(employees);
   api.use(notices);
   api.use((_req, _res, next) => next(notFound()));
   api.use(errorHandler);

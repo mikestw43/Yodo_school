@@ -10,6 +10,16 @@ export class ApiError extends Error {
 // Server error codes shown to staff in plain Thai.
 const MESSAGES: Record<string, [string, string]> = {
   wrong_credentials: ["ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "Wrong username or password"],
+  // staff records and salary certificates (owner 27/10/2026)
+  national_id_format: ["เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก", "The ID card number must be 13 digits"],
+  first_name_required: ["กรุณากรอกชื่อ", "Please enter the first name"],
+  salary_required: ["กรุณาใส่เงินเดือน", "Please enter the salary"],
+  reason_required: ["กรุณาใส่เหตุผล", "Please enter a reason"],
+  employee_left: ["พนักงานคนนี้ลาออกแล้ว ออกหนังสือรับรองเงินเดือนไม่ได้", "This person has left; no salary certificate can be issued"],
+  english_name_missing: ["ยังไม่มีชื่อภาษาอังกฤษ ใส่ในข้อมูลพนักงานก่อน", "No English name yet: add it to the staff record first"],
+  national_id_missing: ["ยังไม่มีเลขบัตรประชาชน ใส่ในข้อมูลพนักงานก่อน หรือเลือกไม่ใส่", "No ID card number yet: add it to the staff record, or leave it out"],
+  last_salary: ["ต้องมีเงินเดือนอย่างน้อย 1 รายการ", "At least one salary entry must stay"],
+  cert_cancelled: ["หนังสือฉบับนี้ถูกยกเลิกไปแล้ว", "This certificate is already cancelled"],
   confirm_text: ["พิมพ์คำยืนยันให้ตรง", "Type the confirmation word exactly"],
   account_disabled: ["บัญชีนี้ถูกปิดใช้งาน", "This account is disabled"],
   too_many_attempts: ["ลองหลายครั้งเกินไป กรุณารอ 15 นาที", "Too many tries. Please wait 15 minutes"],

@@ -1044,6 +1044,7 @@ try {
     await pp.goto(BASE + '/students');
     await pp.getByText('มะลิ').first().click();
     await pp.getByRole('dialog').getByRole('button', { name: 'ดูรูปใหญ่' }).click();
+    await pp.waitForTimeout(400); // the window zooms in
     {
       const pw = (await pp.getByTestId('photo-big').boundingBox())?.width ?? 0;
       check('phone: the big photo fills the screen width', pw >= 340, `${pw}px`);
@@ -1181,6 +1182,106 @@ try {
     const c = await (await page.request.get(`${BASE}/api/admin/clear-courses`)).json();
     check('clear: classes, purchases and receipts gone, students kept, card stays', c.classes === 0 && c.receipts === 0 && c.enrollments === 0 && d.students.length === nStudents && await page.getByTestId('clear-card').isVisible(), JSON.stringify(c));
     check('clear: a backup was written first', fs.readdirSync(path.join(DATA, 'backups')).some((f) => f.includes('before-clear')));
+  }
+  // ---------- staff records and salary certificates (owner 27/10/2026): Owner / SuperAdmin only ----------
+  {
+    // who signs, on the Company settings page
+    await page.goto(BASE + '/company');
+    await page.getByTestId('signer-name').fill('พรกันยา ก่องศ์พานิชย์');
+    await page.getByTestId('signer-title').fill('กรรมการผู้จัดการ');
+    await page.getByTestId('signer-name-en').fill('Pornkanya Kongpanich');
+    await page.getByTestId('signer-title-en').fill('Managing Director');
+    await page.getByTestId('signer-save').click();
+    await page.waitForTimeout(500);
+    // the menu: account menu > System > Staff
+    await page.getByTestId('account-name').click();
+    await page.getByTestId('menu-employees').click();
+    await page.waitForURL(/\/employees$/);
+    await page.getByTestId('emp-add').click();
+    const f = page.getByTestId('employee-form');
+    await f.getByTestId('emp-first').fill('ปวีณา');
+    await f.getByTestId('emp-last').fill('ทองดี');
+    await f.getByTestId('emp-nickname').fill('แพรว');
+    await f.getByTestId('emp-first-en').fill('Paweena');
+    await f.getByTestId('emp-last-en').fill('Thongdee');
+    await f.getByTestId('emp-nid').fill('1123456789012');
+    await f.getByTestId('emp-position').fill('พนักงานต้อนรับ');
+    await f.getByTestId('emp-position-en').fill('Receptionist');
+    await f.getByTestId('emp-salary').fill('15000');
+    await page.screenshot({ path: `${SHOTS}/60-staff-form.png` });
+    await f.getByTestId('emp-save').click();
+    await page.waitForURL(/\/employees\/[0-9a-f-]{36}$/);
+    await page.getByTestId('emp-title').waitFor();
+    check('staff: added with code EMP001 and opened', (await page.innerText('body')).includes('EMP001') && (await page.getByTestId('emp-title').innerText()) === 'แพรว');
+    check('staff: the ID card number shows on the person page', (await page.getByTestId('emp-info').innerText()).includes('1123456789012'));
+    await page.getByTestId('emp-tab-work').click();
+    await page.getByTestId('salary-open').click();
+    await page.getByTestId('salary-amount').fill('18000');
+    await page.getByTestId('salary-reason').fill('ครบ 1 ปี');
+    await page.getByTestId('salary-save').click();
+    await page.getByTestId('salary-row').nth(1).waitFor();
+    const work = await page.getByTestId('emp-work').innerText();
+    const hist = await page.getByTestId('salary-history').innerText();
+    check('staff: salary change shows in the history and becomes the salary', work.includes('18,000.00') && hist.includes('15,000.00 บาท → 18,000.00 บาท') && hist.includes('ครบ 1 ปี'), hist.slice(0, 120));
+    await page.screenshot({ path: `${SHOTS}/61-staff-salary.png` });
+    // issue: preview first, then the real one
+    await page.getByTestId('cert-open').click();
+    const iss = page.getByTestId('cert-issue');
+    await iss.waitFor();
+    check('certificate: salary comes from the record, signer from Company settings', (await iss.getByTestId('cert-salary').inputValue()) === '18000' && (await iss.getByTestId('cert-signer').innerText()).includes('กรรมการผู้จัดการ'));
+    await page.screenshot({ path: `${SHOTS}/62-cert-issue.png` });
+    await iss.getByTestId('cert-preview').click();
+    await page.getByTestId('cert-frame').waitFor();
+    await page.waitForTimeout(800);
+    const pv = await page.frameLocator('[data-testid=cert-frame]').locator('body').innerText();
+    check('certificate preview: Thai wording with name, ID, position and salary in words', pv.includes('หนังสือรับรองเงินเดือน') && pv.includes('ปวีณา ทองดี') && pv.includes('1-1234-56789-01-2') && pv.includes('พนักงานต้อนรับ') && pv.includes('18,000.00 บาท (หนึ่งหมื่นแปดพันบาทถ้วน)') && pv.includes('ตัวอย่าง'), pv.slice(0, 300));
+    check('certificate: no purpose line (owner 27/10/2026)', !pv.includes('เพื่อใช้'));
+    await page.getByTestId('cert-back').click();
+    await iss.getByTestId('cert-lang-en').click();
+    await iss.getByTestId('cert-issue-save').click();
+    await page.getByTestId('cert-frame').waitFor();
+    await page.waitForTimeout(800);
+    const en = await page.frameLocator('[data-testid=cert-frame]').locator('body').innerText();
+    check('certificate: English, numbered CE, signer in English', /No\. CE\d{4}-0001/.test(en) && en.includes('Paweena Thongdee') && en.includes('Receptionist') && en.includes('Eighteen thousand baht only') && en.includes('Managing Director'), en.slice(0, 300));
+    await page.screenshot({ path: `${SHOTS}/63-cert-en.png` });
+    const dl = page.waitForEvent('download', { timeout: 10000 });
+    await page.getByTestId('cert-share').click();
+    const d = await dl.catch(() => null);
+    check('certificate: Share saves the PDF on a computer', !!d && /^Salary-Certificate-CE\d{4}-0001\.pdf$/.test(d.suggestedFilename()), d?.suggestedFilename() ?? 'no download');
+    // cancel: kept, struck through
+    await page.getByRole('button', { name: /^จัดการ CE/ }).click();
+    await page.getByRole('menuitem', { name: 'ยกเลิกหนังสือ' }).click();
+    await page.getByTestId('cert-cancel-reason').fill('ทดสอบ');
+    await page.getByTestId('cert-cancel-run').click();
+    await page.getByTestId('cert-view').waitFor({ state: 'detached' });
+    await page.getByTestId('cert-row').first().waitFor();
+    check('certificate: cancelled one stays in the list, struck through', (await page.getByTestId('cert-row').first().innerText()).includes('ยกเลิกแล้ว: ทดสอบ'));
+    // a Thai one for the phone screenshots
+    await page.getByTestId('cert-open-2').click();
+    await page.getByTestId('cert-lang-th').click();
+    await page.getByTestId('cert-issue-save').click();
+    await page.getByTestId('cert-frame').waitFor();
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `${SHOTS}/64-cert-th.png` });
+    await page.getByTestId('cert-back').click();
+    const empUrl = page.url();
+    await pp.goto(BASE + '/employees');
+    await pp.getByTestId('emp-row').first().waitFor();
+    check('phone: staff list fits the screen', (await pp.evaluate(() => document.documentElement.scrollWidth)) <= 391);
+    await pp.screenshot({ path: `${SHOTS}/p30-staff-list.png` });
+    await pp.goto(empUrl);
+    await pp.getByTestId('emp-tab-work').click();
+    await pp.waitForTimeout(300);
+    check('phone: staff page fits the screen', (await pp.evaluate(() => document.documentElement.scrollWidth)) <= 391);
+    await pp.screenshot({ path: `${SHOTS}/p31-staff-salary.png`, fullPage: true });
+    await pp.getByTestId('emp-tab-certs').click();
+    await pp.getByTestId('cert-row').first().click();
+    await pp.getByTestId('cert-frame').waitFor();
+    await pp.waitForTimeout(900);
+    const cw = await pp.getByTestId('cert-frame').evaluate((e) => e.getBoundingClientRect().width);
+    check('phone: the certificate is shrunk to fit', cw <= 390, `${Math.round(cw)}px`);
+    await pp.screenshot({ path: `${SHOTS}/p32-cert.png` });
+    await pp.getByTestId('cert-back').click();
   }
   check('no page errors', errors.length === 0, errors.slice(0, 5).join(' | '));
 } catch (e) {

@@ -558,3 +558,67 @@ describe('chat with support (owner 25/10/2026)', () => {
     expect((await ploy.post('/api/support/me').set(H).send({ image: room.messages[0].image })).status).toBe(400);
   });
 });
+
+describe('staff records and salary certificates (owner 27/10/2026)', () => {
+  it('only the Owner / SuperAdmin; codes, salary history, numbered certificates that can only be cancelled', async () => {
+    const ploy = await login('ploy', 'secret9');
+    expect((await ploy.get('/api/employees')).status).toBe(403);
+    const emp = { prefix: 'นางสาว', firstName: 'ปวีณา', lastName: 'ทองดี', prefixEn: 'Miss', firstNameEn: 'Paweena', lastNameEn: 'Thongdee', nickname: 'แพรว',
+      nationalId: '1-1234-56789-01-2', position: 'พนักงานต้อนรับ', positionEn: 'Receptionist', empType: 'full', startDate: '2025-07-01', bankName: 'กสิกรไทย', bankAccount: '123-4-56789-0', salary: 15000 };
+    expect((await ploy.post('/api/employees').set(H).send(emp)).status).toBe(403);
+    expect((await admin.post('/api/employees').set(H).send({ ...emp, nationalId: '123' })).status).toBe(400);
+    const e = await admin.post('/api/employees').set(H).send(emp);
+    expect(e.status, JSON.stringify(e.body)).toBe(201);
+    expect(e.body).toMatchObject({ code: 'EMP001', nationalIdLast4: '9012', bankAccountLast4: '7890', salary: 15000, status: 'active' });
+    const list = (await admin.get('/api/employees')).body;
+    expect(JSON.stringify(list)).not.toContain('1123456789012'); // the full ID only on the person's own page
+    expect((await admin.get(`/api/employees/${e.body.id}`)).body.employee.nationalId).toBe('1123456789012');
+    // salary changes: the newest one that has started is the salary
+    expect((await admin.post(`/api/employees/${e.body.id}/salary`).set(H).send({ effectiveFrom: '2025-10-01', amount: 16000, reason: 'ผ่านทดลองงาน' })).body.salary).toBe(16000);
+    const fut = await admin.post(`/api/employees/${e.body.id}/salary`).set(H).send({ effectiveFrom: '2099-01-01', amount: 99000, reason: '' });
+    expect(fut.body.salary).toBe(16000);
+    expect(fut.body.change.prevAmount).toBe(16000);
+    expect((await admin.delete(`/api/employees/${e.body.id}/salary/${fut.body.change.id}`).set(H)).body.salary).toBe(16000);
+    // the audit log never holds the ID card or bank number
+    const logs = (await admin.get('/api/audit-log')).body;
+    expect(JSON.stringify(logs)).not.toContain('1123456789012');
+    expect(logs.logs.some((l: { table_name: string }) => l.table_name === 'employees')).toBe(true);
+    // others with the audit log right never see staff rows (salaries)
+    const pos = await admin.post('/api/positions').set(H).send({ name: 'ผู้ตรวจ', description: '' });
+    const none = { view: false, add: false, edit: false, delete: false };
+    await admin.put(`/api/positions/${pos.body.id}/permissions`).set(H).send({ auditlog: { ...none, view: true } }).expect(200);
+    expect((await admin.post('/api/users').set(H).send({ firstName: 'Aud', lastName: '', nickname: '', username: 'aud', password: 'secret9', email: '', phone: '', positionId: pos.body.id, image: '' })).status).toBe(201);
+    const aud = await login('aud', 'secret9');
+    const theirs = await aud.get('/api/audit-log');
+    expect(theirs.status).toBe(200);
+    expect(theirs.body.logs.length).toBeGreaterThan(0);
+    expect(theirs.body.logs.some((l: { table_name: string }) => ['employees', 'salary_changes', 'salary_certs'].includes(l.table_name))).toBe(false);
+    expect((await aud.get('/api/employees')).status).toBe(403);
+    // certificates: numbered, English needs an English name, cancel only
+    const c1 = await admin.post(`/api/employees/${e.body.id}/certs`).set(H).send({ lang: 'th', showId: true, salary: 16000 });
+    expect(c1.status, JSON.stringify(c1.body)).toBe(201);
+    expect(c1.body.no).toMatch(/^CE\d{4}-0001$/);
+    expect(c1.body.data.nationalId).toBe('1123456789012');
+    const c2 = await admin.post(`/api/employees/${e.body.id}/certs`).set(H).send({ lang: 'en', showId: false, salary: 16000 });
+    expect(c2.body.no).toMatch(/-0002$/);
+    expect(c2.body.data.nationalId).toBe('');
+    const pdf = await admin.get(`/api/salary-certs/${c1.body.id}/pdf`).buffer(true).parse((res, cb) => { const b: Buffer[] = []; res.on('data', (d: Buffer) => b.push(d)); res.on('end', () => cb(null, Buffer.concat(b))); });
+    expect(pdf.status).toBe(200);
+    expect((pdf.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+    expect((await admin.post(`/api/salary-certs/${c1.body.id}/cancel`).set(H).send({ reason: '' })).status).toBe(400);
+    expect((await admin.post(`/api/salary-certs/${c1.body.id}/cancel`).set(H).send({ reason: 'พิมพ์ผิด' })).body.cancelled).toBe(true);
+    expect((await ploy.get(`/api/salary-certs/${c2.body.id}`)).status).toBe(403);
+    const noEn = await admin.post('/api/employees').set(H).send({ ...emp, firstNameEn: '', nationalId: '' });
+    expect(noEn.body.code).toBe('EMP002');
+    expect((await admin.post(`/api/employees/${noEn.body.id}/certs`).set(H).send({ lang: 'en', showId: false, salary: 1 })).body.error).toBe('english_name_missing');
+    expect((await admin.post(`/api/employees/${noEn.body.id}/certs`).set(H).send({ lang: 'th', showId: true, salary: 1 })).body.error).toBe('national_id_missing');
+    // deleted codes are never given again
+    expect((await admin.delete(`/api/employees/${noEn.body.id}`).set(H)).status).toBe(200);
+    expect((await admin.post('/api/employees').set(H).send({ ...emp, nationalId: '' })).body.code).toBe('EMP003');
+  });
+  it('the certificate wording is the same file on the server and in the app', () => {
+    const a = fs.readFileSync(path.resolve(__dirname, '../src/lib/cert-text.ts'), 'utf8');
+    const b = fs.readFileSync(path.resolve(__dirname, '../../client/src/lib/cert-text.ts'), 'utf8');
+    expect(b).toBe(a);
+  });
+});

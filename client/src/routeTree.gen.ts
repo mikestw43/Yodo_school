@@ -19,6 +19,7 @@ import { Route as AuthenticatedShellCalendarRouteImport } from './routes/_authen
 import { Route as AuthenticatedShellClassesRouteImport } from './routes/_authenticated/_shell/classes'
 import { Route as AuthenticatedShellCompanyRouteImport } from './routes/_authenticated/_shell/company'
 import { Route as AuthenticatedShellCoursesRouteImport } from './routes/_authenticated/_shell/courses'
+import { Route as AuthenticatedShellEmployeesRouteImport } from './routes/_authenticated/_shell/employees'
 import { Route as AuthenticatedShellImportRouteImport } from './routes/_authenticated/_shell/import'
 import { Route as AuthenticatedShellPermissionsRouteImport } from './routes/_authenticated/_shell/permissions'
 import { Route as AuthenticatedShellReceiptsRouteImport } from './routes/_authenticated/_shell/receipts'
@@ -26,6 +27,7 @@ import { Route as AuthenticatedShellStudentsRouteImport } from './routes/_authen
 import { Route as AuthenticatedShellSupportRouteImport } from './routes/_authenticated/_shell/support'
 import { Route as AuthenticatedShellTeachersRouteImport } from './routes/_authenticated/_shell/teachers'
 import { Route as AuthenticatedShellUsersRouteImport } from './routes/_authenticated/_shell/users'
+import { Route as AuthenticatedShellEmployeesIdRouteImport } from './routes/_authenticated/_shell/employees_.$id'
 import { Route as AuthenticatedShellReceiptsIdRouteImport } from './routes/_authenticated/_shell/receipts_.$id'
 import { Route as AuthenticatedShellSupportUserIdRouteImport } from './routes/_authenticated/_shell/support_.$userId'
 
@@ -82,6 +84,12 @@ const AuthenticatedShellCoursesRoute =
     path: '/courses',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellEmployeesRoute =
+  AuthenticatedShellEmployeesRouteImport.update({
+    id: '/employees',
+    path: '/employees',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellImportRoute =
   AuthenticatedShellImportRouteImport.update({
     id: '/import',
@@ -123,6 +131,12 @@ const AuthenticatedShellUsersRoute = AuthenticatedShellUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedShellRoute,
 } as any)
+const AuthenticatedShellEmployeesIdRoute =
+  AuthenticatedShellEmployeesIdRouteImport.update({
+    id: '/employees_/$id',
+    path: '/employees/$id',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellReceiptsIdRoute =
   AuthenticatedShellReceiptsIdRouteImport.update({
     id: '/receipts_/$id',
@@ -145,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/classes': typeof AuthenticatedShellClassesRoute
   '/company': typeof AuthenticatedShellCompanyRoute
   '/courses': typeof AuthenticatedShellCoursesRoute
+  '/employees': typeof AuthenticatedShellEmployeesRoute
   '/import': typeof AuthenticatedShellImportRoute
   '/permissions': typeof AuthenticatedShellPermissionsRoute
   '/receipts': typeof AuthenticatedShellReceiptsRoute
@@ -152,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/support': typeof AuthenticatedShellSupportRoute
   '/teachers': typeof AuthenticatedShellTeachersRoute
   '/users': typeof AuthenticatedShellUsersRoute
+  '/employees/$id': typeof AuthenticatedShellEmployeesIdRoute
   '/receipts/$id': typeof AuthenticatedShellReceiptsIdRoute
   '/support/$userId': typeof AuthenticatedShellSupportUserIdRoute
 }
@@ -164,6 +180,7 @@ export interface FileRoutesByTo {
   '/classes': typeof AuthenticatedShellClassesRoute
   '/company': typeof AuthenticatedShellCompanyRoute
   '/courses': typeof AuthenticatedShellCoursesRoute
+  '/employees': typeof AuthenticatedShellEmployeesRoute
   '/import': typeof AuthenticatedShellImportRoute
   '/permissions': typeof AuthenticatedShellPermissionsRoute
   '/receipts': typeof AuthenticatedShellReceiptsRoute
@@ -171,6 +188,7 @@ export interface FileRoutesByTo {
   '/support': typeof AuthenticatedShellSupportRoute
   '/teachers': typeof AuthenticatedShellTeachersRoute
   '/users': typeof AuthenticatedShellUsersRoute
+  '/employees/$id': typeof AuthenticatedShellEmployeesIdRoute
   '/receipts/$id': typeof AuthenticatedShellReceiptsIdRoute
   '/support/$userId': typeof AuthenticatedShellSupportUserIdRoute
 }
@@ -185,6 +203,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/classes': typeof AuthenticatedShellClassesRoute
   '/_authenticated/_shell/company': typeof AuthenticatedShellCompanyRoute
   '/_authenticated/_shell/courses': typeof AuthenticatedShellCoursesRoute
+  '/_authenticated/_shell/employees': typeof AuthenticatedShellEmployeesRoute
   '/_authenticated/_shell/import': typeof AuthenticatedShellImportRoute
   '/_authenticated/_shell/permissions': typeof AuthenticatedShellPermissionsRoute
   '/_authenticated/_shell/receipts': typeof AuthenticatedShellReceiptsRoute
@@ -193,6 +212,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/teachers': typeof AuthenticatedShellTeachersRoute
   '/_authenticated/_shell/users': typeof AuthenticatedShellUsersRoute
   '/_authenticated/_shell/': typeof AuthenticatedShellIndexRoute
+  '/_authenticated/_shell/employees_/$id': typeof AuthenticatedShellEmployeesIdRoute
   '/_authenticated/_shell/receipts_/$id': typeof AuthenticatedShellReceiptsIdRoute
   '/_authenticated/_shell/support_/$userId': typeof AuthenticatedShellSupportUserIdRoute
 }
@@ -207,6 +227,7 @@ export interface FileRouteTypes {
     | '/classes'
     | '/company'
     | '/courses'
+    | '/employees'
     | '/import'
     | '/permissions'
     | '/receipts'
@@ -214,6 +235,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/teachers'
     | '/users'
+    | '/employees/$id'
     | '/receipts/$id'
     | '/support/$userId'
   fileRoutesByTo: FileRoutesByTo
@@ -226,6 +248,7 @@ export interface FileRouteTypes {
     | '/classes'
     | '/company'
     | '/courses'
+    | '/employees'
     | '/import'
     | '/permissions'
     | '/receipts'
@@ -233,6 +256,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/teachers'
     | '/users'
+    | '/employees/$id'
     | '/receipts/$id'
     | '/support/$userId'
   id:
@@ -246,6 +270,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/classes'
     | '/_authenticated/_shell/company'
     | '/_authenticated/_shell/courses'
+    | '/_authenticated/_shell/employees'
     | '/_authenticated/_shell/import'
     | '/_authenticated/_shell/permissions'
     | '/_authenticated/_shell/receipts'
@@ -254,6 +279,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/teachers'
     | '/_authenticated/_shell/users'
     | '/_authenticated/_shell/'
+    | '/_authenticated/_shell/employees_/$id'
     | '/_authenticated/_shell/receipts_/$id'
     | '/_authenticated/_shell/support_/$userId'
   fileRoutesById: FileRoutesById
@@ -335,6 +361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellCoursesRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/employees': {
+      id: '/_authenticated/_shell/employees'
+      path: '/employees'
+      fullPath: '/employees'
+      preLoaderRoute: typeof AuthenticatedShellEmployeesRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/import': {
       id: '/_authenticated/_shell/import'
       path: '/import'
@@ -384,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellUsersRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/employees_/$id': {
+      id: '/_authenticated/_shell/employees_/$id'
+      path: '/employees/$id'
+      fullPath: '/employees/$id'
+      preLoaderRoute: typeof AuthenticatedShellEmployeesIdRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/receipts_/$id': {
       id: '/_authenticated/_shell/receipts_/$id'
       path: '/receipts/$id'
@@ -407,6 +447,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellClassesRoute: typeof AuthenticatedShellClassesRoute
   AuthenticatedShellCompanyRoute: typeof AuthenticatedShellCompanyRoute
   AuthenticatedShellCoursesRoute: typeof AuthenticatedShellCoursesRoute
+  AuthenticatedShellEmployeesRoute: typeof AuthenticatedShellEmployeesRoute
   AuthenticatedShellImportRoute: typeof AuthenticatedShellImportRoute
   AuthenticatedShellPermissionsRoute: typeof AuthenticatedShellPermissionsRoute
   AuthenticatedShellReceiptsRoute: typeof AuthenticatedShellReceiptsRoute
@@ -415,6 +456,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellTeachersRoute: typeof AuthenticatedShellTeachersRoute
   AuthenticatedShellUsersRoute: typeof AuthenticatedShellUsersRoute
   AuthenticatedShellIndexRoute: typeof AuthenticatedShellIndexRoute
+  AuthenticatedShellEmployeesIdRoute: typeof AuthenticatedShellEmployeesIdRoute
   AuthenticatedShellReceiptsIdRoute: typeof AuthenticatedShellReceiptsIdRoute
   AuthenticatedShellSupportUserIdRoute: typeof AuthenticatedShellSupportUserIdRoute
 }
@@ -425,6 +467,7 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellClassesRoute: AuthenticatedShellClassesRoute,
   AuthenticatedShellCompanyRoute: AuthenticatedShellCompanyRoute,
   AuthenticatedShellCoursesRoute: AuthenticatedShellCoursesRoute,
+  AuthenticatedShellEmployeesRoute: AuthenticatedShellEmployeesRoute,
   AuthenticatedShellImportRoute: AuthenticatedShellImportRoute,
   AuthenticatedShellPermissionsRoute: AuthenticatedShellPermissionsRoute,
   AuthenticatedShellReceiptsRoute: AuthenticatedShellReceiptsRoute,
@@ -433,6 +476,7 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellTeachersRoute: AuthenticatedShellTeachersRoute,
   AuthenticatedShellUsersRoute: AuthenticatedShellUsersRoute,
   AuthenticatedShellIndexRoute: AuthenticatedShellIndexRoute,
+  AuthenticatedShellEmployeesIdRoute: AuthenticatedShellEmployeesIdRoute,
   AuthenticatedShellReceiptsIdRoute: AuthenticatedShellReceiptsIdRoute,
   AuthenticatedShellSupportUserIdRoute: AuthenticatedShellSupportUserIdRoute,
 }

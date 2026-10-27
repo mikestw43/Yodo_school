@@ -6,6 +6,8 @@ import { prisma } from './db.js';
 const SKIP = new Set(['created_at', 'joined_at', 'updated_at', 'deleted_at', 'password_hash', 'token_version', 'last_login_at', 'lang', 'theme', 'google_sub']);
 const IMAGES = new Set(['image', 'receipt_image', 'signature']);
 const LISTS = new Set(['interested', 'specializations']);
+/** Staff records, salaries and salary certificates: only the Owner / SuperAdmin may read these audit rows (owner 27/10/2026). */
+export const STAFF_TABLES = ['employees', 'salary_changes', 'salary_certs'];
 const snake = (k: string) => k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 
 export function snap(row: Record<string, unknown> | null | undefined): Record<string, unknown> | null {

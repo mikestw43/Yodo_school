@@ -234,6 +234,11 @@ model Setting {
   mailUser        String  @default("")
   mailFromName    String  @default("")
   mailPass        String  @default("")
+  // Who signs salary certificates (owner 27/10/2026); the receipt signature and stamp are printed with it.
+  certSignName    String  @default("")
+  certSignNameEn  String  @default("")
+  certSignTitle   String  @default("")
+  certSignTitleEn String  @default("")
   updatedAt      DateTime @updatedAt
 }
 
@@ -357,4 +362,77 @@ model SupportMessage {
   createdAt DateTime  @default(now())
 
   @@index([userId, createdAt])
+}
+
+// Office staff (receptionists, housekeepers ...), not the teachers (owner 27/10/2026). Only the Owner / SuperAdmin see them.
+model Employee {
+  id               String    @id @default(uuid())
+  code             String    @unique // EMP001, given by the server, never reused
+  image            String    @default("")
+  prefix           String    @default("")
+  firstName        String
+  lastName         String    @default("")
+  prefixEn         String    @default("")
+  firstNameEn      String    @default("")
+  lastNameEn       String    @default("")
+  nickname         String    @default("")
+  nationalIdEnc    String    @default("") // lib/crypto.ts; only the last 4 are shown in lists
+  nationalIdLast4  String    @default("")
+  birthDate        String    @default("")
+  phone            String    @default("")
+  email            String    @default("")
+  address          String    @default("")
+  emergencyName    String    @default("")
+  emergencyPhone   String    @default("")
+  emergencyRelation String   @default("")
+  position         String    @default("")
+  positionEn       String    @default("")
+  empType          String    @default("full") // full | part
+  startDate        String
+  salary           Float     @default(0) // baht a month, history in SalaryChange
+  bankName         String    @default("")
+  bankAccountEnc   String    @default("")
+  bankAccountLast4 String    @default("")
+  endDate          String    @default("") // set when the person leaves
+  endReason        String    @default("")
+  note             String    @default("")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+}
+
+model SalaryChange {
+  id            String   @id @default(uuid())
+  employeeId    String
+  effectiveFrom String
+  amount        Float
+  prevAmount    Float    @default(0)
+  reason        String   @default("")
+  createdBy     String   @default("")
+  createdAt     DateTime @default(now())
+
+  @@index([employeeId])
+}
+
+// Salary certificates: CE + YYMM + "-" + 4 digits, never skipped, never deleted, only cancelled (like receipts).
+// The printed details are kept as they were on the day (`data` JSON), so a reprint never changes.
+model SalaryCert {
+  id           String    @id @default(uuid())
+  employeeId   String
+  no           String    @unique
+  ym           String
+  seq          Int
+  date         String
+  lang         String    @default("th")
+  showId       Boolean   @default(true)
+  salary       Float
+  data         String    @default("{}")
+  createdBy    String    @default("")
+  createdAt    DateTime  @default(now())
+  cancelledAt  DateTime?
+  cancelReason String    @default("")
+  cancelledBy  String    @default("")
+
+  @@unique([ym, seq])
+  @@index([employeeId])
 }

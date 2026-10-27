@@ -28,12 +28,17 @@ function saveFile(blob: Blob, name: string) {
 }
 
 export function ShareReceipt({ full }: { full: Full }) {
+  return <SharePdf url={`/receipts/${full.receipt.id}/pdf?lang=${getLang()}`} name={`Receipt-${full.receipt.no}.pdf`}
+    version={`${full.receipt.amount}|${full.receipt.cancelled}`} testId="receipt-share" />;
+}
+
+/** Share button for any PDF the server draws (receipts, salary certificates). `version` changes when the file does. */
+export function SharePdf({ url, name, version, testId }: { url: string; name: string; version: string; testId: string }) {
   const [busy, setBusy] = useState(false);
   const pdf = useRef<{ key: string; blob: Blob } | null>(null);
-  const key = `${full.receipt.id}|${full.receipt.amount}|${full.receipt.cancelled}|${getLang()}`;
-  const name = `Receipt-${full.receipt.no}.pdf`;
+  const key = `${url}|${version}`;
   const load = async () => {
-    if (pdf.current?.key !== key) pdf.current = { key, blob: await apiFile(`/receipts/${full.receipt.id}/pdf?lang=${getLang()}`) };
+    if (pdf.current?.key !== key) pdf.current = { key, blob: await apiFile(url) };
     return pdf.current.blob;
   };
   useEffect(() => { if (isPhone()) void load().catch(() => {}); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -51,7 +56,7 @@ export function ShareReceipt({ full }: { full: Full }) {
     } catch (e) { toast.error(errorText(e)); }
     setBusy(false);
   };
-  return <Button variant="outline" className="rounded-full" disabled={busy} onClick={share} data-testid="receipt-share"><Share2 className="h-4 w-4" /> {L("แชร์", "Share")}</Button>;
+  return <Button variant="outline" className="rounded-full" disabled={busy} onClick={share} data-testid={testId}><Share2 className="h-4 w-4" /> {L("แชร์", "Share")}</Button>;
 }
 
 export function EmailReceipt({ full, onSent }: { full: Full; onSent: () => void }) {

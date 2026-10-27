@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useLocation, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarHeart, ChevronDown, Hourglass, Crown, FileUp, History, LogOut, Ellipsis, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog, MessageCircle } from "lucide-react";
+import { CalendarHeart, ChevronDown, Hourglass, Crown, FileUp, History, LogOut, Ellipsis, Music4, PanelLeftClose, PanelLeftOpen, PersonStanding, ReceiptText, Settings, Building2, ShieldCheck, Sparkles, UserCog, MessageCircle, IdCard } from "lucide-react";
 import { api, clearMeCache, getMe } from "@/lib/api";
 import { ROLE_LABEL } from "@/lib/auth-utils";
 import { Avatar, EmptyState } from "@/components/yodo/ui";
@@ -93,7 +93,7 @@ type Me = { name: string; short: string; role: string; image: string };
 
 /** Account menu at the top right (owner 12/10/2026): profile settings, import, sign out, version. */
 function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
-  const { me: who, can } = useYodo();
+  const { me: who, can, data } = useYodo();
   const version = useVersion();
   const signOut = useSignOut();
   return (
@@ -132,10 +132,18 @@ function AccountMenu({ me, compact }: { me: Me; compact?: boolean }) {
             </Link>
           </DropdownMenuItem>
         )}
-        {ADMIN.some((a) => can(a.key)) && (
+        {(ADMIN.some((a) => can(a.key)) || data.owner) && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L("จัดการระบบ", "System")}</DropdownMenuLabel>
+            {/* Office staff and salary certificates: the Owner / SuperAdmin only (owner 27/10/2026) */}
+            {data.owner && (
+              <DropdownMenuItem asChild>
+                <Link to="/employees" className="flex cursor-pointer items-center gap-2" data-testid="menu-employees">
+                  <IdCard className="h-4 w-4" /> {L("พนักงาน", "Staff")}
+                </Link>
+              </DropdownMenuItem>
+            )}
             {ADMIN.filter((a) => can(a.key)).map((a) => (
               <DropdownMenuItem key={a.to} asChild>
                 <Link to={a.to} className="flex cursor-pointer items-center gap-2">

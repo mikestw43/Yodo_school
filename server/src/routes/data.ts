@@ -5,7 +5,7 @@ import type { DanceClass, Enrollment, Position, Schedule, Student, Teacher, User
 import { prisma } from '../lib/db.js';
 import { bad, notFound } from '../lib/http.js';
 import { MENU_KEYS, can, displayName, isOwner, requireAuth, requireOwner, requirePerm } from '../lib/auth.js';
-import { audit } from '../lib/audit.js';
+import { STAFF_TABLES, audit } from '../lib/audit.js';
 import { storeImage } from '../lib/images.js';
 import { isDate, lastMonths, monthBkk } from '../lib/dates.js';
 import { fdate, notifyAll } from '../lib/notify.js';
@@ -469,9 +469,10 @@ router.delete('/users/:id', requirePerm('users', 'delete'), async (req, res) => 
 });
 
 // ---------- audit log ----------
-router.get('/audit-log', requirePerm('auditlog', 'view'), async (_req, res) => {
+router.get('/audit-log', requirePerm('auditlog', 'view'), async (req, res) => {
+  const owner = await isOwner(req.user);
   const [logs, students, classes, teachers, positions, schedules, users] = await Promise.all([
-    prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 2000 }),
+    prisma.auditLog.findMany({ where: owner ? {} : { tableName: { notIn: STAFF_TABLES } }, orderBy: { createdAt: 'desc' }, take: 2000 }),
     prisma.student.findMany({ select: { id: true, code: true, prefix: true, firstName: true, lastName: true } }),
     prisma.danceClass.findMany({ select: { id: true, name: true } }),
     prisma.teacher.findMany({ select: { id: true, prefix: true, firstName: true, lastName: true } }),

@@ -311,6 +311,20 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   18 a page. Tap = details window (`teacher-view`): photo, name, full name, status, contact (phone / LINE / email, empty ones
   hidden), classes taught with days + time and the students not ended, Edit + the "more" button (disable/enable/delete).
   The card has no action button any more.
+- 27/10/2026 staff records (mockup Fj7itm8uCcAiGSyo6rEeHw v2; owner: office staff such as receptionists, NOT the teachers; only
+  records + salary + salary certificate for now; ONLY the SuperAdmin and the Owner see it, no permission chip; "ตามนั้นทำได้เลย
+  แต่หนังสือรับรองเงินเดือนไม่ต้องใส่เหตุผล"): account menu > จัดการระบบ > "พนักงาน"/"Staff" (`data.owner`), `/employees` (list,
+  chips working / left / all) and `/employees/$id` (tabs Personal / Work + salary / Certificates). Server `routes/employees.ts`
+  (`requireOwner` on everything): `Employee` (code EMP001 never reused, ID card + bank number encrypted with lib/crypto.ts, last 4
+  kept, never in audit rows), `SalaryChange` (effective date + reason; the salary = newest change that has started, `salaryNow`;
+  an entry can be removed, not the first), `SalaryCert` (CE + YYMM + "-" + 4 digits, never skipped, never deleted, cancel with
+  a reason; the printed details are a snapshot in `data`). Certificate: Thai or English (English needs the English name), ID
+  card number optional, salary prefilled (editable for that one), NO purpose / reason line; signer name + title TH/EN =
+  `Setting.certSign*`, card "ผู้ลงนามหนังสือรับรองเงินเดือน" on Company settings (Owner only); receipt signature + stamp are printed.
+  Words in `lib/cert-text.ts` (server and client copies must stay identical, a test checks); in-app view + print =
+  `lib/cert-print.ts` (`CertView` in components/yodo/employees.tsx, preview before issuing), Share = server PDF
+  `lib/cert-pdf.ts` (`SharePdf` in receipt-send.tsx). Audit log rows of staff tables are hidden from everyone but the Owner
+  (`STAFF_TABLES`, salaries).
 - 26/10/2026 (owner): the student's big photo (tap the photo in the details) fills the phone's width (96vw, up to 85vh), at
   least 28rem wide on computers (`photo-big`).
 - 26/10/2026 (mockup Vkm4yks4haeZwDYNJzxCb7 v2; owner "ข้อมูลเท่าเดิม แค่ตกแต่ง", "A ทำได้เลย"): the application keeps exactly the same

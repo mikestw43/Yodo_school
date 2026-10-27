@@ -56,6 +56,7 @@ function CompanyPage() {
           {edit && <div className="flex justify-end sm:col-span-2"><Button className="rounded-full" disabled={busy} onClick={save} data-testid="co-save">{L("บันทึก", "Save")}</Button></div>}
         </Card>
         <MailCard edit={edit} />
+        {data.owner && <CertSignerCard />}
         {data.owner && <ClearCard />}
         </div>
         <div className="grid content-start gap-5">
@@ -244,6 +245,34 @@ type ClearCounts = { classes: number; sessions: number; enrollments: number; pur
 
 /** Clear classes and receipts (owner 17/10/2026, mockup 2o1pdZZR6AXvK63C3a4rsf): Owner only, typed confirmation, the
  *  server backs the database up first. Students, teachers, users and company settings stay. The card stays afterwards. */
+type Signer = { name: string; nameEn: string; title: string; titleEn: string };
+/** Who signs salary certificates (owner 27/10/2026); the signature and stamp above are printed with it. Owner only. */
+function CertSignerCard() {
+  const [f, setF] = useState<Signer>({ name: "", nameEn: "", title: "", titleEn: "" });
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api<Signer>("/settings/cert-signer").then(setF).catch((e) => toast.error(errorText(e))); }, []);
+  const set = (k: keyof Signer, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const save = async () => {
+    setBusy(true);
+    try { setF(await api<Signer>("/settings/cert-signer", { method: "PUT", body: f })); toast.success(L("บันทึกแล้ว", "Saved")); }
+    catch (e) { toast.error(errorText(e)); }
+    setBusy(false);
+  };
+  return (
+    <Card className="grid content-start gap-x-4 gap-y-3 rounded-3xl p-6 sm:grid-cols-2" data-testid="cert-signer-card">
+      <div className="sm:col-span-2">
+        <p className="text-sm font-semibold">{L("ผู้ลงนามหนังสือรับรองเงินเดือน", "Who signs salary certificates")}</p>
+        <p className="text-xs text-muted-foreground">{L("ใช้ลายเซ็นและตราประทับด้านขวาเหมือนใบเสร็จ ไม่ใส่ลายเซ็น = เซ็นด้วยมือหลังพิมพ์", "The signature and stamp on the right are used, as on receipts. No signature = sign by hand after printing")}</p>
+      </div>
+      <Field label={L("ชื่อผู้ลงนาม", "Name")}><Input value={f.name} onChange={(e) => set("name", e.target.value)} data-testid="signer-name" /></Field>
+      <Field label={L("ตำแหน่ง", "Title")}><Input value={f.title} placeholder={L("เช่น กรรมการผู้จัดการ", "e.g. Managing Director")} onChange={(e) => set("title", e.target.value)} data-testid="signer-title" /></Field>
+      <Field label={L("ชื่อ (อังกฤษ)", "Name (English)")}><Input value={f.nameEn} onChange={(e) => set("nameEn", e.target.value)} data-testid="signer-name-en" /></Field>
+      <Field label={L("ตำแหน่ง (อังกฤษ)", "Title (English)")}><Input value={f.titleEn} placeholder="Managing Director" onChange={(e) => set("titleEn", e.target.value)} data-testid="signer-title-en" /></Field>
+      <div className="flex justify-end sm:col-span-2"><Button className="rounded-full" disabled={busy} onClick={save} data-testid="signer-save">{L("บันทึก", "Save")}</Button></div>
+    </Card>
+  );
+}
+
 function ClearCard() {
   const { reload } = useYodo();
   const [open, setOpen] = useState(false);
