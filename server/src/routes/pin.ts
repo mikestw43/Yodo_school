@@ -22,6 +22,8 @@ async function devicePin(req: Request) {
   if (typeof tok !== 'string' || tok.length < 20) return null;
   return prisma.devicePin.findUnique({ where: { tokenHash: hash(tok) } });
 }
+// Whose device this is (its PIN cookie), without signing anyone in: Face ID offers only their passkeys.
+export async function pinOwner(req: Request) { return (await devicePin(req))?.userId ?? null; }
 function forget(res: Response) { res.clearCookie(COOKIE, { path: '/' }); }
 
 // Each try is counted BEFORE the PIN is compared, so many tries sent at once cannot get past the limit.

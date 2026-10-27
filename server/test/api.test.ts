@@ -395,6 +395,19 @@ describe('PIN, Google and Face ID sign-in', () => {
     expect((await request(app).post('/api/me/passkeys/options').set({ ...H, origin: 'https://x.test' }).send({})).status).toBe(401);
     expect((await request(app).post('/api/auth/passkey').set({ ...H, origin: 'https://x.test' }).send({ response: {} })).body.error).toBe('passkey_expired');
   });
+
+  // owner 27/10/2026: the NAS apps share one host name; Face ID must offer only this app's (and this person's) passkeys
+  it('Face ID offers only the passkeys of the person whose PIN is on this device, else only YODO ones', async () => {
+    const { prisma } = await import('../src/lib/db.js');
+    const me = (await admin.get('/api/me')).body;
+    await prisma.passkey.create({ data: { userId: me.id, credentialId: 'cred-me', publicKey: Buffer.from([1]) } });
+    await prisma.passkey.create({ data: { userId: 'someone-else', credentialId: 'cred-other', publicKey: Buffer.from([1]) } });
+    const O = { ...H, origin: 'https://mikenas.tail4afc1d.ts.net:8443' };
+    const ids = (r: { body: { allowCredentials?: { id: string }[] } }) => (r.body.allowCredentials ?? []).map((c) => c.id).sort();
+    expect(ids(await admin.post('/api/auth/passkey/options').set(O).send({}))).toEqual(['cred-me']); // this device's PIN is the owner's
+    expect(ids(await request(app).post('/api/auth/passkey/options').set(O).send({}))).toEqual(['cred-me', 'cred-other']);
+    await prisma.passkey.deleteMany({ where: { credentialId: { in: ['cred-me', 'cred-other'] } } });
+  });
 });
 
 describe('Thai / English', () => {

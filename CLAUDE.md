@@ -332,6 +332,11 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
   gradient rule under the logo (page 2: under the header), centred serif title, term numbers in pink circles, the tick
   lines on a pale pink band with a pink left edge and a pink box.
 
+- 27/10/2026 (owner, all NAS apps): Face ID no longer shows the iPhone's "Sign in to your ts.net account" list of every app's
+  passkeys (FinHR, AI Secretary and YODO share the host name): `POST /auth/passkey/options` sends `allowCredentials` = the
+  passkeys of the person whose PIN cookie is on this device (`pinOwner` in routes/pin.ts; Face ID needs a PIN first), else
+  every YODO passkey (max 200). Test in api.test "PIN, Google and Face ID sign-in".
+
 ## Layout
 - `server/`: Node 22, Express 5, TypeScript, Prisma 6 + SQLite, zod, vitest + supertest. Entry `src/index.ts`, app `src/app.ts`.
   - `routes/auth.ts` first-run setup code (`DATA_DIR/setup-code.txt`), login (username or profile email), me, password.
