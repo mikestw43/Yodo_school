@@ -13,6 +13,9 @@ so it runs on the owner's NAS like FinHR (`mikestw43/finance-hr-app`, read-only 
 - Report tests as a short table. Never say "done" without running them.
 - Merge own PRs into `main` after tests pass (the NAS tracks `main`). Never merge into a live/production branch without asking.
 - After each delivery: say the version to look for (short hash, shown at the bottom of the account menu, top right) and send screenshots.
+- **Version number in blue (owner 29/10/2026, every chat from now on):** in every report write the version as a link to its
+  commit, e.g. [**76fe1df**](https://github.com/mikestw43/yodo_school/commit/<full hash>), so it shows blue and stands out; never
+  as plain text or `code`.
 - Keep this file up to date with every decision the owner makes (with the date).
 
 ## Owner's decisions
